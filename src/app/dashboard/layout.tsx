@@ -1,11 +1,11 @@
 import React from "react";
 import Link from "next/link";
-
+import { AuthProvider } from "@/context/Authcontext";
 function AdminDashboardLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 overflow-x-hidden">
       {/* Sidebar */}
       <div className="w-34 bg-white shadow-lg">
         <nav className="p-4">
@@ -23,7 +23,7 @@ function AdminDashboardLayout({
                 href="/dashboard/setup"
                 className="block px-4 py-2 text-gray-700 hover:bg-blue-50 rounded"
               >
-               Setup
+                Setup
               </Link>
             </li>
             <li>
@@ -49,7 +49,9 @@ function AdminDashboardLayout({
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
         <header className="bg-white shadow"></header>
-        <main className="p-3">{children}</main>
+        <AuthProvider>
+          <main className="p-3">{children}</main>
+        </AuthProvider>
       </div>
     </div>
   );

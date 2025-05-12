@@ -13,9 +13,15 @@ import { Label } from "@radix-ui/react-label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { LogInProps } from "@/components/LogIn";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { toast } from "sonner";
 import RestaurantType from "./RestaurantType";
+import RestaurantTiming from "./RestaurantTiming";
+import { useContext } from "react";
+import { AppContext } from "@/context/Authcontext";
 
-interface OpeningHours {
+export interface OpeningHours {
   day: string;
   open: string;
   close: string;
@@ -37,52 +43,145 @@ export interface Restaurant {
   updatedAt?: string;
 }
 
+/**
+ * RestaurantDialog Component
+ *
+ * A multi-step dialog for collecting restaurant information including:
+ * - Address details
+ * - Restaurant type
+ * - Opening hours
+ *
+ * @param {LogInProps} props - Component props
+ * @param {boolean} props.isOpen - Controls dialog visibility
+ * @param {function} props.setIsOpen - Function to update dialog visibility
+ */
 function RestaurantDialog({ isOpen, setIsOpen }: LogInProps) {
   const steps = ["Address", "TypeOfRestaurant", "Timing"];
   const [step, setStep] = useState(0);
-
-  const [openingHours, setOpeningHours] = useState<OpeningHours[]>([]);
+  const day = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+  const [openingHours, setOpeningHours] = useState<OpeningHours[]>(
+    day.map((day) => ({
+      day,
+      open: "",
+      close: "",
+      closed: false,
+    }))
+  );
 
   const [restaurantData, setRestaurantData] = useState<Restaurant>({
+    id: "",
+    ownerId: "",
     city: "",
     zipCode: "",
     streetName: "",
     phoneNumber: "",
     restaurantType: "",
-    openingHours: [],
+    openingHours: openingHours,
     logoUrl: "",
   });
-  console.log(step);
+
+  const handleForm = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRestaurantData({ ...restaurantData, [e.target.name]: e.target.value });
+  };
+  const context = useContext(AppContext);
+  if (!context) {
+    console.log("Context is null");
+    return null;
+  }
+  const { user, loading, setLoading } = context;
+  console.log(user);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      setLoading(true);
+      const refRestaurantCollection = await addDoc(
+        collection(db, "restaurants"),
+        {
+          ...restaurantData,
+          ownerId: user.uid,
+          openingHours: openingHours,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+        }
+      );
+
+      if (refRestaurantCollection) {
+        setIsOpen(false);
+        toast.success("Restauant information updated successfully");
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  console.log(restaurantData);
   return (
     <div>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Restaurant details</DialogTitle>
-            <form>
+            <form onSubmit={handleSubmit}>
               {step === 0 && (
                 <>
                   <Label>City</Label>
-                  <Input name="city" />
+                  <Input
+                    name="city"
+                    value={restaurantData.city}
+                    onChange={handleForm}
+                    placeholder="City name*"
+                    required
+                  />
                   <Label>Zip Code</Label>
-                  <Input name="zipCode" />
+                  <Input
+                    name="zipCode"
+                    value={restaurantData.zipCode}
+                    onChange={handleForm}
+                    placeholder="0000*"
+                    required
+                  />
                   <Label>Street Name</Label>
-                  <Input name="streetName" />
+                  <Input
+                    name="streetName"
+                    value={restaurantData.streetName}
+                    onChange={handleForm}
+                    placeholder="Street Name*"
+                    required
+                  />
+                  <Label>Phone Number</Label>
+                  <Input
+                    name="phoneNumber"
+                    value={restaurantData.phoneNumber}
+                    onChange={handleForm}
+                    placeholder="00000000*"
+                    required
+                  />
                 </>
               )}
               {step === 1 && (
                 <>
-                  <RestaurantType restaurantData={restaurantData}  setRestaurantData={setRestaurantData
-                    
-                  }/>
+                  <RestaurantType
+                    restaurantData={restaurantData}
+                    setRestaurantData={setRestaurantData}
+                    handleForm={handleForm}
+                  />
+                  *
                 </>
               )}
               {step === 2 && (
                 <>
-                  <Label>Opening hours</Label>
-                  <Input name="opningHours" />
-                  <Input name="xyz" />
-                  <Input name="opnngHours" />
+                  <RestaurantTiming
+                    openingHours={openingHours}
+                    setOpeningHours={setOpeningHours}
+                  />
                 </>
               )}
               <div className="flex  justify-between">
@@ -98,7 +197,7 @@ function RestaurantDialog({ isOpen, setIsOpen }: LogInProps) {
                     Next
                   </Button>
                 ) : (
-                  <Button>Submit</Button>
+                  <Button type="submit">Submit</Button>
                 )}
               </div>
             </form>
