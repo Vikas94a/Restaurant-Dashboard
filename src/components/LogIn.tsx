@@ -13,6 +13,7 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export interface LogInProps {
   isOpen: boolean;
@@ -45,7 +46,7 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
         form.password
       );
       if (respond) {
-        toast.success("login successfull");
+        toast.success("Login successful");
         setForm({
           email: "",
           password: "",
@@ -62,44 +63,92 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
   };
 
   return (
-    <div>
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Login</DialogTitle>
-            <form
-              className="h-50 flex  flex-col  justify-center items-center gap-4"
-              onSubmit={handleSubmit}
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-[425px] p-6 bg-white rounded-xl shadow-lg">
+        <DialogHeader className="space-y-4">
+          <DialogTitle className="text-2xl font-bold text-center text-gray-900">
+            Welcome Back
+          </DialogTitle>
+          <DialogDescription className="text-center text-gray-500">
+            Enter your credentials to access your account
+          </DialogDescription>
+        </DialogHeader>
+
+        <form className="space-y-6 mt-4" onSubmit={handleSubmit}>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">Email</Label>
+            <Input
+              name="email"
+              type="email"
+              id="email"
+              value={form.email}
+              onChange={handleInput}
+              placeholder="Enter your email"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">
+              Password
+            </Label>
+            <Input
+              name="password"
+              type="password"
+              value={form.password}
+              onChange={handleInput}
+              id="password"
+              placeholder="Enter your password"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label
+                htmlFor="remember-me"
+                className="ml-2 block text-sm text-gray-700"
+              >
+                Remember me
+              </label>
+            </div>
+            <div className="text-sm">
+              <a
+                href="#"
+                className="font-medium text-blue-600 hover:text-blue-500"
+              >
+                Forgot password?
+              </a>
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
+          >
+            Sign in
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{" "}
+            <Link
+              href="/signup"
+              className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
+              onClick={() => setIsOpen(false)}
             >
-              <div className="w-full">
-                <Label>Email</Label>
-                <Input
-                  name="email"
-                  type="email"
-                  id="email"
-                  value={form.email}
-                  onChange={handleInput}
-                  placeholder="yoursername@gmail.com"
-                />
-              </div>
-              <div className="w-full">
-                <Label>Password</Label>
-                <Input
-                  name="password"
-                  type="password"
-                  value={form.password}
-                  onChange={handleInput}
-                  id="password"
-                  placeholder="yoursername@gmail.com"
-                />
-              </div>
-              <div className="mt-4 flex w-full justify-center items-center">
-                <Button type="submit">Login</Button>
-              </div>
-            </form>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
-    </div>
+              Sign up
+            </Link>
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
