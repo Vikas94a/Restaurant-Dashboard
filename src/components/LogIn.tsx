@@ -127,13 +127,14 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
               </a>
             </div>
           </div>
-
+          {/* <Link href="/"> */}
           <Button
             type="submit"
             className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
           >
             Sign in
           </Button>
+          {/* </Link> */}
         </form>
 
         <div className="mt-6 text-center">

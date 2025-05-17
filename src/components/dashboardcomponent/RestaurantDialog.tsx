@@ -29,7 +29,7 @@ export interface OpeningHours {
 }
 
 export interface Restaurant {
-  id?: string;
+  restaurantId?: string;
   ownerId?: string;
   city: string;
   zipCode: string;
@@ -38,7 +38,6 @@ export interface Restaurant {
   restaurantType: string;
   openingHours: OpeningHours[];
   logoUrl?: string;
-
   createdAt?: string;
   updatedAt?: string;
 }
@@ -55,17 +54,20 @@ export interface Restaurant {
  * @param {boolean} props.isOpen - Controls dialog visibility
  * @param {function} props.setIsOpen - Function to update dialog visibility
  */
+
+export const day = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
 function RestaurantDialog({ isOpen, setIsOpen }: LogInProps) {
   const steps = ["Address", "TypeOfRestaurant", "Timing"];
   const [step, setStep] = useState(0);
-  const day = [
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-  ];
+
   const [openingHours, setOpeningHours] = useState<OpeningHours[]>(
     day.map((day) => ({
       day,
@@ -76,7 +78,7 @@ function RestaurantDialog({ isOpen, setIsOpen }: LogInProps) {
   );
 
   const [restaurantData, setRestaurantData] = useState<Restaurant>({
-    id: "",
+    restaurantId:"",
     ownerId: "",
     city: "",
     zipCode: "",
@@ -124,46 +126,59 @@ function RestaurantDialog({ isOpen, setIsOpen }: LogInProps) {
 
   console.log(restaurantData);
   return (
-    <div>
+    <div className="">
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Restaurant details</DialogTitle>
-            <form onSubmit={handleSubmit}>
+            <DialogTitle className="text-center font-bold  text-2xl text-gray-900">
+              Restaurant details
+            </DialogTitle>
+            <form className="flex flex-col space-y-5" onSubmit={handleSubmit}>
               {step === 0 && (
                 <>
-                  <Label>City</Label>
-                  <Input
-                    name="city"
-                    value={restaurantData.city}
-                    onChange={handleForm}
-                    placeholder="City name*"
-                    required
-                  />
-                  <Label>Zip Code</Label>
-                  <Input
-                    name="zipCode"
-                    value={restaurantData.zipCode}
-                    onChange={handleForm}
-                    placeholder="0000*"
-                    required
-                  />
-                  <Label>Street Name</Label>
-                  <Input
-                    name="streetName"
-                    value={restaurantData.streetName}
-                    onChange={handleForm}
-                    placeholder="Street Name*"
-                    required
-                  />
-                  <Label>Phone Number</Label>
-                  <Input
-                    name="phoneNumber"
-                    value={restaurantData.phoneNumber}
-                    onChange={handleForm}
-                    placeholder="00000000*"
-                    required
-                  />
+                  <div>
+                    <Label className="text-sm font-medium text-gray-700">
+                      City
+                    </Label>
+                    <Input
+                      name="city"
+                      value={restaurantData.city}
+                      onChange={handleForm}
+                      placeholder="City name*"
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    />
+                  </div>
+                  <div>
+                    <Label>Zip Code</Label>
+                    <Input
+                      name="zipCode"
+                      value={restaurantData.zipCode}
+                      onChange={handleForm}
+                      placeholder="0000*"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Street Name</Label>
+                    <Input
+                      name="streetName"
+                      value={restaurantData.streetName}
+                      onChange={handleForm}
+                      placeholder="Street Name*"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Phone Number</Label>
+                    <Input
+                      name="phoneNumber"
+                      value={restaurantData.phoneNumber}
+                      onChange={handleForm}
+                      placeholder="00000000*"
+                      required
+                    />
+                  </div>
                 </>
               )}
               {step === 1 && (
@@ -173,7 +188,6 @@ function RestaurantDialog({ isOpen, setIsOpen }: LogInProps) {
                     setRestaurantData={setRestaurantData}
                     handleForm={handleForm}
                   />
-                  *
                 </>
               )}
               {step === 2 && (

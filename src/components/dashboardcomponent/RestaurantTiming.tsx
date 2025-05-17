@@ -1,6 +1,6 @@
 import React from "react";
 import { Label } from "@radix-ui/react-label";
-import { OpeningHours } from "./RestaurantDialog";
+import { OpeningHours, day } from "./RestaurantDialog";
 
 interface OpeningHoursProps {
   openingHours: OpeningHours[];
@@ -11,14 +11,15 @@ function RestaurantTiming({
   openingHours,
   setOpeningHours,
 }: OpeningHoursProps) {
-  const day = [
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-  ];
+  // const day = [
+  //   "sunday",
+  //   "monday",
+  //   "tuesday",
+  //   "wednesday",
+  //   "thursday",
+  //   "friday",
+  //   "saturday",
+  // ];
 
   const updateHours = (
     index: number,
@@ -29,8 +30,6 @@ function RestaurantTiming({
     update[index] = { ...update[index], [fields]: value };
     setOpeningHours(update);
   };
-
-
 
   return (
     <div>

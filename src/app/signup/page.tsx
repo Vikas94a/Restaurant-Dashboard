@@ -68,13 +68,19 @@ function Signup() {
         <div className="w-full lg:w-1/2 bg-white rounded-2xl shadow-xl p-6 sm:p-8 lg:p-10">
           <div className="space-y-6">
             <div className="text-center lg:text-left">
-              <h1 className="text-3xl font-bold text-gray-900">Create your account</h1>
-              <p className="mt-2 text-gray-600">Join AI Eat Easy and transform your restaurant's online presence</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Create your account
+              </h1>
+              <p className="mt-2 text-gray-600">
+                Join AI Eat Easy and transform your restaurant's online presence
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Restaurant Name</Label>
+                <Label className="text-sm font-medium text-gray-700">
+                  Restaurant Name
+                </Label>
                 <Input
                   type="text"
                   value={form.restaurantName}
@@ -88,7 +94,9 @@ function Signup() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">First Name</Label>
+                  <Label className="text-sm font-medium text-gray-700">
+                    First Name
+                  </Label>
                   <Input
                     type="text"
                     value={form.firstName}
@@ -101,7 +109,9 @@ function Signup() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Last Name</Label>
+                  <Label className="text-sm font-medium text-gray-700">
+                    Last Name
+                  </Label>
                   <Input
                     type="text"
                     value={form.lastName}
@@ -115,7 +125,9 @@ function Signup() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Email</Label>
+                <Label className="text-sm font-medium text-gray-700">
+                  Email
+                </Label>
                 <Input
                   type="email"
                   value={form.email}
@@ -128,7 +140,9 @@ function Signup() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Password</Label>
+                <Label className="text-sm font-medium text-gray-700">
+                  Password
+                </Label>
                 <Input
                   type="password"
                   value={form.password}
@@ -140,7 +154,7 @@ function Signup() {
                 />
               </div>
 
-              <Button 
+              <Button
                 type="submit"
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
               >
@@ -150,9 +164,9 @@ function Signup() {
 
             <div className="text-center">
               <p className="text-sm text-gray-600">
-                Already have an account?{" "}
-                <Link 
-                  href="/login" 
+                Already have an account?
+                <Link
+                  href="/login"
                   className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
                 >
                   Sign in
@@ -166,13 +180,13 @@ function Signup() {
         <div className="w-full lg:w-1/2 flex items-center justify-center">
           <div className="relative w-full max-w-lg">
             <Image
-              src="/images/Ai-Eat-Easy logo.png"
+              src="/images/logo.png"
               alt="Company Logo"
               width={500}
               height={400}
               className="w-full h-auto object-contain transform hover:scale-105 transition-transform duration-300"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-3xl -z-10"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-full blur-3xl -z-10">jkjkkj</div>
           </div>
         </div>
       </div>

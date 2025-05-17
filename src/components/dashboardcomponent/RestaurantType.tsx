@@ -17,7 +17,7 @@ function RestaurantType({
   return (
     <div>
       <div>
-        <div className="flex ">
+        <div className="flex flex-col space-y-2 ">
           <Label>Restsurant type</Label>
           <Input
             type="restaurantType"
