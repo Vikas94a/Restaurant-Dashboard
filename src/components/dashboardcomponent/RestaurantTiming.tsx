@@ -11,15 +11,7 @@ function RestaurantTiming({
   openingHours,
   setOpeningHours,
 }: OpeningHoursProps) {
-  // const day = [
-  //   "sunday",
-  //   "monday",
-  //   "tuesday",
-  //   "wednesday",
-  //   "thursday",
-  //   "friday",
-  //   "saturday",
-  // ];
+
 
   const updateHours = (
     index: number,

@@ -13,7 +13,8 @@ interface AuthContextType {
   error: any;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   restaurantDetails?: Restaurant;
-  restaurantName:string
+  restaurantName:string;
+  logout: () => Promise<void>;
 }
 
 export const AppContext = createContext<AuthContextType | null>(null);
@@ -24,6 +25,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<any>(null);
   const [restaurantDetails, setRestaurantDetails] = useState<Restaurant>();
   const [restaurantName, setRestaurantName] = useState("");
+  // Add logout function
+  const logout = async () => {
+    try {
+      await auth.signOut();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
@@ -86,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContext.Provider
-      value={{ user, loading, error, setLoading, restaurantDetails, restaurantName }}
+      value={{ user, loading, error, setLoading, restaurantDetails, restaurantName, logout }}
     >
       {children}
     </AppContext.Provider>

@@ -1,87 +1,256 @@
 "use client";
-import { useContext } from "react";
-
+import { useContext, useState, useEffect } from "react";
 import { AppContext } from "@/context/Authcontext";
 import RestaurantDetails from "@/components/dashboardcomponent/ReataurantDetails";
-import RestaurantHours from "@/components/dashboardcomponent/RestaurantHours";
+import RestaurantTiming from "@/components/dashboardcomponent/RestaurantTiming";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faInfoCircle, faClock, faEdit, faSave, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { Restaurant, OpeningHours, day } from "@/components/dashboardcomponent/RestaurantDialog";
+import { Button } from "@/components/ui/button";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { toast } from "sonner";
 
 export default function RestaurantTest() {
   const context = useContext(AppContext);
-  if (!context) {
-    return <div>loading.....</div>;
+  const [editableDetails, setEditableDetails] = useState<Partial<Restaurant>>({});
+  const [editableHours, setEditableHours] = useState<OpeningHours[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [originalDetails, setOriginalDetails] = useState<Partial<Restaurant>>({});
+  const [originalHours, setOriginalHours] = useState<OpeningHours[]>([]);
+
+  useEffect(() => {
+    if (context?.restaurantDetails) {
+      setEditableDetails({ ...context.restaurantDetails });
+      setOriginalDetails({ ...context.restaurantDetails });
+      
+      // Initialize opening hours with data from restaurantDetails
+      let hoursData = context.restaurantDetails.openingHours || [];
+      
+      // If no hours exist, create default structure with all days
+      if (hoursData.length === 0) {
+        hoursData = day.map(dayName => ({
+          day: dayName,
+          open: '',
+          close: '',
+          closed: true
+        }));
+      } else {
+        // Ensure all days are present in the data
+        const existingDays = hoursData.map(h => h.day.toLowerCase());
+        day.forEach(dayName => {
+          if (!existingDays.includes(dayName.toLowerCase())) {
+            hoursData.push({
+              day: dayName,
+              open: '',
+              close: '',
+              closed: true
+            });
+          }
+        });
+      }
+      
+      setEditableHours(hoursData);
+      setOriginalHours([...hoursData]);
+      
+      console.log("Loaded restaurant hours:", hoursData);
+    }
+  }, [context?.restaurantDetails]);
+
+  if (!context || context.loading) {
+    return <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>;
   }
+
+  if (!context.restaurantDetails) {
+    return <div className="p-6 text-center text-gray-500">No restaurant found. Please create a restaurant first.</div>;
+  }
+
   const { restaurantName, restaurantDetails } = context;
+
+  const handleDetailsChange = (details: Partial<Restaurant>) => {
+    setEditableDetails(details);
+  };
+
+  const handleHoursChange = (hours: OpeningHours[]) => {
+    setEditableHours(hours);
+  };
+
+  const toggleEdit = () => {
+    if (isEditing) {
+      // If canceling edit, revert to original values
+      setEditableDetails({ ...originalDetails });
+      setEditableHours([...originalHours]);
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleSaveChanges = async () => {
+    if (!context?.user?.uid || !context.restaurantDetails?.restaurantId) {
+      toast.error("User not authenticated or restaurant not found");
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      // Filter out any empty or invalid time slots
+      const validHours = editableHours.map(hour => ({
+        ...hour,
+        open: hour.closed ? '' : (hour.open || ''),
+        close: hour.closed ? '' : (hour.close || '')
+      }));
+
+      const restaurantRef = doc(db, "restaurants", context.restaurantDetails.restaurantId);
+      
+      // Create separate objects for Firestore update and local state
+      const firestoreUpdate = {
+        ...editableDetails,
+        openingHours: validHours,
+        updatedAt: serverTimestamp(),
+      };
+
+      // Update Firestore
+      await updateDoc(restaurantRef, firestoreUpdate);
+      
+      // Update context with new data
+      if (context.restaurantDetails) {
+        context.restaurantDetails = {
+          ...context.restaurantDetails,
+          ...editableDetails,
+          openingHours: validHours,
+          updatedAt: new Date().toISOString(), // Use string timestamp for local state
+        };
+      }
+      
+      // Update local state
+      setOriginalDetails({ ...editableDetails });
+      setOriginalHours([...validHours]);
+      
+      toast.success("Restaurant details updated successfully!");
+    } catch (error) {
+      console.error("Error updating restaurant:", error);
+      toast.error("Failed to update restaurant details. Please try again.");
+    } finally {
+      setIsSaving(false);
+      setIsEditing(false);
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm mb-6">
-        <h1 className="p-6 text-gray-900 text-3xl font-bold max-w-7xl mx-auto">
-          {restaurantName || "Restaurant Setup"}
-        </h1>
-      </div>
+      <header className="bg-white shadow-sm mb-6">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          <h1 className="text-gray-900 text-3xl font-bold truncate">
+            {restaurantName || "Restaurant Setup"}
+          </h1>
+          <div className="flex space-x-2">
+            {isEditing ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  onClick={toggleEdit}
+                  disabled={isSaving}
+                  className="flex items-center gap-2"
+                >
+                  <FontAwesomeIcon icon={faTimes} />
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveChanges}
+                  disabled={isSaving}
+                  className="flex items-center gap-2"
+                >
+                  <FontAwesomeIcon icon={faSave} />
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </>
+            ) : (
+              <Button 
+                onClick={toggleEdit}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <FontAwesomeIcon icon={faEdit} />
+                Edit
+              </Button>
+            )}
+          </div>
+        </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-12">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-12 flex-grow">
+        <section className="bg-white rounded-lg shadow-md overflow-hidden">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">
               Restaurant Configuration
             </h2>
-            <p className="text-gray-600 mb-2">
-              Complete your restaurant setup to get started
+            <p className="text-gray-600">
+              {isEditing 
+                ? "Update your restaurant details and hours below."
+                : "View your restaurant details and hours below."}
             </p>
           </div>
 
           <div className="md:flex md:flex-row p-6 gap-8">
             <div className="md:w-1/2 mb-6 md:mb-0">
               <h3 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2 text-blue-500"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <FontAwesomeIcon icon={faInfoCircle} className="h-5 w-5 mr-2 text-blue-500" />
                 Restaurant Details
               </h3>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <RestaurantDetails restaurantDetails={restaurantDetails} />
-                {/* <RestaurantDetails /> */}
+              <div className="bg-gray-50 p-4 rounded-lg shadow-inner">
+                <RestaurantDetails
+                  restaurantDetails={editableDetails}
+                  onDetailsChange={handleDetailsChange}
+                  isEditing={isEditing}
+                />
               </div>
             </div>
+
             <div className="md:w-1/2">
               <h3 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 mr-2 text-blue-500"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <FontAwesomeIcon icon={faClock} className="h-5 w-5 mr-2 text-blue-500" />
                 Restaurant Hours
               </h3>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <RestaurantHours restaurantDetails={restaurantDetails} />
+              <div className="bg-gray-50 p-4 rounded-lg shadow-inner">
+                {isEditing ? (
+                  <RestaurantTiming
+                    openingHours={editableHours}
+                    setOpeningHours={setEditableHours}
+                  />
+                ) : (
+                  <div className="grid gap-2">
+                    {editableHours && editableHours.length > 0 ? (
+                      editableHours.map((hour, index) => (
+                        <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
+                          <div className="font-medium capitalize">
+                            {hour.day}
+                          </div>
+                          <div>
+                            {hour.closed ? (
+                              <span className="text-red-500">Closed</span>
+                            ) : (
+                              <span>
+                                {hour.open || "--:--"} - {hour.close || "--:--"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 italic">No opening hours set</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
-              Save Changes
-            </button>
-          </div>
-        </div>
-      </div>
+          
+        </section>
+      </main>
     </div>
   );
 }
