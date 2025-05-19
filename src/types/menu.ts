@@ -31,4 +31,19 @@ export interface MenuCategoryProps {
   onEditItem: (item: MenuItem) => void;
   onDeleteItem: (id: string) => void;
   onToggleItemAvailability: (id: string) => void;
+}
+
+export interface Item {
+  id?: string;
+  itemName: string;
+  itemDescription: string;
+  itemPrice: number;
+}
+
+export interface Category {
+  categoryName: string;
+  categoryDescription: string;
+  items: Item[];
+  isEditing?: boolean;
+  docId?: string;
 } 

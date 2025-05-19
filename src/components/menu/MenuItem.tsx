@@ -1,53 +1,59 @@
-import React from 'react';
-import { MenuItemProps } from '@/types/menu';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Edit, Trash2, Eye, EyeOff } from 'lucide-react';
-import Image from 'next/image';
+import React from "react";
+import { MenuItemProps } from "@/types/menu";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
 
 export const MenuItem: React.FC<MenuItemProps> = ({
-  item,
-  onEdit,
-  onDelete,
-  onToggleAvailability,
+  item,                    // The individual menu item object (name, description, price, image, availability)
+  onEdit,                  // Callback function to trigger edit action for this item
+  onDelete,                // Callback function to trigger delete action for this item by id
+  onToggleAvailability,    // Callback function to toggle item's availability status by id
 }) => {
   return (
     <Card className="p-4 flex gap-4">
+      {/* Image container with fixed size, using Next.js Image for optimized loading */}
       <div className="relative w-24 h-24 flex-shrink-0">
         <Image
-          src={item.image}
-          alt={item.name}
-          fill
-          className="object-cover rounded-md"
+          src={item.image}            // Image URL of the menu item
+          alt={item.name}             // Alt text for accessibility
+          fill                        // Makes image fill the container
+          className="object-cover rounded-md" // Styling: cover image and rounded corners
         />
       </div>
+
+      {/* Main content area grows to fill available space */}
       <div className="flex-grow">
         <div className="flex justify-between items-start">
           <div>
+            {/* Item name */}
             <h3 className="font-semibold">{item.name}</h3>
+            {/* Item description in smaller gray text */}
             <p className="text-sm text-gray-600">{item.description}</p>
+            {/* Item price formatted to 2 decimals */}
             <p className="text-lg font-bold mt-1">${item.price.toFixed(2)}</p>
           </div>
+
+          {/* Action buttons: Edit, Delete, Toggle Availability */}
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onEdit(item)}
-            >
+            {/* Edit button triggers onEdit callback with item data */}
+            <Button variant="ghost" size="icon" onClick={() => onEdit(item)}>
               <Edit size={18} />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(item.id)}
-            >
+
+            {/* Delete button triggers onDelete callback with item id */}
+            <Button variant="ghost" size="icon" onClick={() => onDelete(item.id)}>
               <Trash2 size={18} />
             </Button>
+
+            {/* Toggle availability button toggles item availability state */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => onToggleAvailability(item.id)}
             >
+              {/* Show open eye icon if available, closed eye if not */}
               {item.available ? <Eye size={18} /> : <EyeOff size={18} />}
             </Button>
           </div>
@@ -55,4 +61,4 @@ export const MenuItem: React.FC<MenuItemProps> = ({
       </div>
     </Card>
   );
-}; 
+};

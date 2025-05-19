@@ -21,4 +21,4 @@ const ConditionalNavBar = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export default ConditionalNavBar; 
+export default ConditionalNavBar;

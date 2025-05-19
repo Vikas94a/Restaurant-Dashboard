@@ -4,22 +4,24 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@radix-ui/react-label";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
+} from "@/components/ui/dialog"; // Custom Dialog components for modal
+import { Label } from "@radix-ui/react-label"; // Accessible label component
+import { signInWithEmailAndPassword } from "firebase/auth"; // Firebase auth function to sign in user
+import { auth } from "@/lib/firebase"; // Firebase auth instance
+import { Input } from "./ui/input"; // Custom styled Input component
+import { Button } from "./ui/button"; // Custom styled Button component
 import { useState, useRef, useEffect } from "react";
-import { toast } from "sonner";
-import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { toast } from "sonner"; // Toast notification library for user feedback
+import Link from "next/link"; // Next.js Link component for navigation
+import { Loader2 } from "lucide-react"; // Loading spinner icon
 
+// Props for controlling open state of the login modal
 export interface LogInProps {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
+// Interface defining the shape of the form state
 export interface InputForm {
   email: string;
   password: string;
@@ -27,59 +29,74 @@ export interface InputForm {
 }
 
 export default function Login({ isOpen, setIsOpen }: LogInProps) {
+  // Form state to hold email, password, and any error message
   const [form, setForm] = useState<InputForm>({
     email: "",
     password: "",
     error: "",
   });
+  
+  // Loading state to indicate if login request is in progress
   const [loading, setLoading] = useState(false);
+
+  // Ref for the email input to focus it automatically when modal opens
   const emailRef = useRef<HTMLInputElement>(null);
 
-  // Autofocus on email input when modal opens
+  // Effect to autofocus email input when modal is opened
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => emailRef.current?.focus(), 150);
     }
   }, [isOpen]);
 
+  // Handler for input changes (email or password)
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value, error: "" });
+    setForm({ ...form, [e.target.name]: e.target.value, error: "" }); 
+    // Update the specific field and clear any previous error
   };
 
+  // Form submit handler for login
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Basic validation to check required fields
     if (!form.email || !form.password) {
       setForm({ ...form, error: "Email and password are required." });
       toast.error("Please fill in all fields");
       return;
     }
 
-    setLoading(true);
+    setLoading(true); // Show loading spinner
 
     try {
+      // Attempt to sign in with Firebase auth
       const response = await signInWithEmailAndPassword(
         auth,
         form.email,
         form.password
       );
+
       if (response) {
         toast.success("Login successful");
-        setForm({ email: "", password: "", error: "" });
-        setIsOpen(false);
+        setForm({ email: "", password: "", error: "" }); // Reset form on success
+        setIsOpen(false); // Close modal
       }
     } catch (error: any) {
       console.error(error);
-      setForm({ ...form, error: "Email or password is incorrect." });
+      setForm({ ...form, error: "Email or password is incorrect." }); // Show error on failure
       toast.error("Email or password is incorrect");
     } finally {
-      setLoading(false);
+      setLoading(false); // Hide loading spinner
     }
   };
 
   return (
+    // Dialog component controlled by isOpen prop
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      {/* Modal content container with styling */}
       <DialogContent className="sm:max-w-[425px] p-6 bg-white rounded-xl shadow-lg">
+        
+        {/* Header of the modal with title and description */}
         <DialogHeader className="space-y-4">
           <DialogTitle className="text-2xl font-bold text-center text-gray-900">
             Welcome Back
@@ -89,13 +106,16 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
           </DialogDescription>
         </DialogHeader>
 
+        {/* Login form */}
         <form className="space-y-6 mt-4" onSubmit={handleSubmit}>
+          
+          {/* Email input field */}
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-medium text-gray-700">
               Email
             </Label>
             <Input
-              ref={emailRef}
+              ref={emailRef} // Autofocus ref
               name="email"
               type="email"
               id="email"
@@ -107,6 +127,7 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
             />
           </div>
 
+          {/* Password input field */}
           <div className="space-y-2">
             <Label htmlFor="password" className="text-sm font-medium text-gray-700">
               Password
@@ -123,12 +144,14 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
             />
           </div>
 
+          {/* Display error message if any */}
           {form.error && (
             <div className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded text-sm text-center">
               {form.error}
             </div>
           )}
 
+          {/* Remember me checkbox and forgot password link */}
           <div className="flex items-center justify-between text-sm text-gray-600">
             <label className="flex items-center gap-2">
               <input
@@ -142,6 +165,7 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
             </a>
           </div>
 
+          {/* Submit button, shows loader when logging in */}
           <Button
             type="submit"
             className="w-full py-2"
@@ -157,6 +181,7 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
           </Button>
         </form>
 
+        {/* Link to Signup page, closes modal on click */}
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Don't have an account?{" "}

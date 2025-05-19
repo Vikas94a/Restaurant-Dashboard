@@ -1,5 +1,6 @@
-"use client";
+"use client"; // Enables client-side rendering in Next.js
 
+// Import necessary hooks, libraries, and components
 import { useState } from "react";
 import Image from "next/image";
 import { Label } from "@radix-ui/react-label";
@@ -12,6 +13,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+// Define the structure of the form state
 export interface inputForm {
   restaurantName: string;
   firstName: string;
@@ -22,6 +24,8 @@ export interface inputForm {
 
 function Signup() {
   const router = useRouter();
+
+  // Form state for input values
   const [form, setForm] = useState<inputForm>({
     restaurantName: "",
     firstName: "",
@@ -29,19 +33,21 @@ function Signup() {
     email: "",
     password: "",
   });
+
+  // Toggle password visibility
   const [showPassword, setShowPassword] = useState(false);
 
-  // Handle input changes
+  // Handle input change and update form state
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // Handle signup form submission
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const db = getFirestore();
 
-    // Basic client-side validation
+    // Basic validation check
     if (
       !form.email ||
       !form.password ||
@@ -53,6 +59,7 @@ function Signup() {
     }
 
     try {
+      // Create user with Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         form.email,
@@ -60,6 +67,7 @@ function Signup() {
       );
       const userID = userCredential.user.uid;
 
+      // Store user details in Firestore
       await setDoc(doc(db, "users", userID), {
         restaurantName: form.restaurantName,
         firstName: form.firstName,
@@ -68,18 +76,19 @@ function Signup() {
       });
 
       toast.success("Signup successful!");
-      router.push("/dashboard");
+      router.push("/dashboard"); // Redirect to dashboard after successful signup
     } catch (error: any) {
-      toast.error(error.message || "Signup failed. Try again.");
+      toast.error(error.message || "Signup failed. Try again."); // Show error if signup fails
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4 sm:p-6 lg:p-10">
       <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-14">
-        {/* Left side: Signup Form */}
+        {/* Left: Signup Form */}
         <div className="w-full lg:w-1/2 bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
           <div className="space-y-6">
+            {/* Header */}
             <div className="text-center lg:text-left">
               <h1 className="text-3xl font-bold text-gray-900">
                 Create Your Account
@@ -90,8 +99,9 @@ function Signup() {
               </p>
             </div>
 
-            {/* Signup Form */}
+            {/* Form Starts */}
             <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Restaurant Name */}
               <div className="space-y-2">
                 <Label htmlFor="restaurantName">Restaurant Name</Label>
                 <Input
@@ -104,6 +114,7 @@ function Signup() {
                 />
               </div>
 
+              {/* First Name and Last Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
@@ -128,6 +139,7 @@ function Signup() {
                 </div>
               </div>
 
+              {/* Email */}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -141,6 +153,7 @@ function Signup() {
                 />
               </div>
 
+              {/* Password with toggle */}
               <div className="space-y-2 relative">
                 <Label htmlFor="password">Password</Label>
                 <Input
@@ -161,6 +174,7 @@ function Signup() {
                 </button>
               </div>
 
+              {/* Submit Button */}
               <Button
                 type="submit"
                 className="w-full py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
@@ -169,6 +183,7 @@ function Signup() {
               </Button>
             </form>
 
+            {/* Link to Login */}
             <p className="text-center text-sm text-gray-600">
               Already have an account?{" "}
               <Link
@@ -181,7 +196,7 @@ function Signup() {
           </div>
         </div>
 
-        {/* Right side: Visual branding */}
+        {/* Right: Branding image and background effect */}
         <div className="w-full lg:w-1/2 flex items-center justify-center">
           <div className="relative w-full max-w-lg">
             <Image
@@ -191,6 +206,7 @@ function Signup() {
               height={400}
               className="w-full h-auto object-contain transition-transform duration-300 hover:scale-105"
             />
+            {/* Decorative gradient background blur */}
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 to-purple-500/10 rounded-full blur-3xl -z-10" />
           </div>
         </div>

@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { MenuItem, Category } from '@/services/menuService';
 
 interface MenuItemFormProps {
-  categories: Category[];
-  initialData?: MenuItem;
-  onSubmit: (data: Omit<MenuItem, 'id'>) => void;
-  onCancel: () => void;
+  categories: Category[];                 // List of categories to choose from in dropdown
+  initialData?: MenuItem;                 // Optional initial data when editing an existing item
+  onSubmit: (data: Omit<MenuItem, 'id'>) => void;  // Callback when form is submitted with new/updated data
+  onCancel: () => void;                   // Callback when cancel button is clicked
 }
 
 const MenuItemForm: React.FC<MenuItemFormProps> = ({
@@ -14,6 +14,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
   onSubmit,
   onCancel
 }) => {
+  // Form state to store inputs for all fields except id
   const [formData, setFormData] = useState<Omit<MenuItem, 'id'>>({
     name: '',
     description: '',
@@ -23,6 +24,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
     isAvailable: true
   });
 
+  // When initialData changes (like when editing), pre-fill form with that data
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -36,11 +38,14 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
     }
   }, [initialData]);
 
+  // Handle form submission: prevent default page reload and call onSubmit with formData
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
   };
 
+  // Handle input changes for text, number, textarea, and select inputs
+  // Parse numbers correctly and update corresponding formData field
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -51,6 +56,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
     }));
   };
 
+  // Handle checkbox input changes separately since they use checked instead of value
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
     setFormData(prev => ({
@@ -61,6 +67,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg bg-white">
+      {/* Name input */}
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700">
           Name
@@ -76,6 +83,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
         />
       </div>
 
+      {/* Description textarea */}
       <div>
         <label htmlFor="description" className="block text-sm font-medium text-gray-700">
           Description
@@ -91,6 +99,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
         />
       </div>
 
+      {/* Price number input */}
       <div>
         <label htmlFor="price" className="block text-sm font-medium text-gray-700">
           Price
@@ -108,6 +117,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
         />
       </div>
 
+      {/* Category select dropdown */}
       <div>
         <label htmlFor="category" className="block text-sm font-medium text-gray-700">
           Category
@@ -129,6 +139,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
         </select>
       </div>
 
+      {/* Image URL input */}
       <div>
         <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700">
           Image URL
@@ -143,6 +154,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
         />
       </div>
 
+      {/* Available checkbox */}
       <div className="flex items-center">
         <input
           type="checkbox"
@@ -157,6 +169,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
         </label>
       </div>
 
+      {/* Action buttons: Cancel and Submit (Add or Update) */}
       <div className="flex justify-end gap-2">
         <button
           type="button"
@@ -169,6 +182,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
           type="submit"
           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
         >
+          {/* Button text changes if editing or adding */}
           {initialData ? 'Update' : 'Add'} Item
         </button>
       </div>
@@ -176,4 +190,4 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
   );
 };
 
-export default MenuItemForm; 
+export default MenuItemForm;

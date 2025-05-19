@@ -1,188 +1,60 @@
-"use client";
-import { useContext, useState, useEffect } from "react";
+"use client"; // Enables client-side rendering in Next.js
+
+// Import necessary hooks and components
+import { useContext } from "react";
 import { AppContext } from "@/context/Authcontext";
 import RestaurantDetails from "@/components/dashboardcomponent/ReataurantDetails";
 import RestaurantTiming from "@/components/dashboardcomponent/RestaurantTiming";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faInfoCircle, faClock, faEdit, faSave, faTimes } from '@fortawesome/free-solid-svg-icons';
-import { Restaurant, OpeningHours, day } from "@/components/dashboardcomponent/RestaurantDialog";
-import { Button } from "@/components/ui/button";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { toast } from "sonner";
+import { faInfoCircle, faClock } from '@fortawesome/free-solid-svg-icons';
+import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
+import { SetupHeader } from "@/components/dashboardcomponent/SetupHeader";
+import { useRestaurantSetup } from "@/hooks/useRestaurantSetup";
 
-export default function RestaurantTest() {
+export default function RestaurantSetup() {
+  // Get global app context
   const context = useContext(AppContext);
-  const [editableDetails, setEditableDetails] = useState<Partial<Restaurant>>({});
-  const [editableHours, setEditableHours] = useState<OpeningHours[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [originalDetails, setOriginalDetails] = useState<Partial<Restaurant>>({});
-  const [originalHours, setOriginalHours] = useState<OpeningHours[]>([]);
 
-  useEffect(() => {
-    if (context?.restaurantDetails) {
-      setEditableDetails({ ...context.restaurantDetails });
-      setOriginalDetails({ ...context.restaurantDetails });
-      
-      // Initialize opening hours with data from restaurantDetails
-      let hoursData = context.restaurantDetails.openingHours || [];
-      
-      // If no hours exist, create default structure with all days
-      if (hoursData.length === 0) {
-        hoursData = day.map(dayName => ({
-          day: dayName,
-          open: '',
-          close: '',
-          closed: true
-        }));
-      } else {
-        // Ensure all days are present in the data
-        const existingDays = hoursData.map(h => h.day.toLowerCase());
-        day.forEach(dayName => {
-          if (!existingDays.includes(dayName.toLowerCase())) {
-            hoursData.push({
-              day: dayName,
-              open: '',
-              close: '',
-              closed: true
-            });
-          }
-        });
-      }
-      
-      setEditableHours(hoursData);
-      setOriginalHours([...hoursData]);
-      
-      console.log("Loaded restaurant hours:", hoursData);
-    }
-  }, [context?.restaurantDetails]);
-
+  // Show loading spinner while context is loading
   if (!context || context.loading) {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-    </div>;
+    return <LoadingSpinner />;
   }
 
+  // Show message if no restaurant is found
   if (!context.restaurantDetails) {
     return <div className="p-6 text-center text-gray-500">No restaurant found. Please create a restaurant first.</div>;
   }
 
-  const { restaurantName, restaurantDetails } = context;
+  // Destructure values from context
+  const { restaurantName, restaurantDetails, user } = context;
 
-  const handleDetailsChange = (details: Partial<Restaurant>) => {
-    setEditableDetails(details);
-  };
-
-  const handleHoursChange = (hours: OpeningHours[]) => {
-    setEditableHours(hours);
-  };
-
-  const toggleEdit = () => {
-    if (isEditing) {
-      // If canceling edit, revert to original values
-      setEditableDetails({ ...originalDetails });
-      setEditableHours([...originalHours]);
-    }
-    setIsEditing(!isEditing);
-  };
-
-  const handleSaveChanges = async () => {
-    if (!context?.user?.uid || !context.restaurantDetails?.restaurantId) {
-      toast.error("User not authenticated or restaurant not found");
-      return;
-    }
-
-    setIsSaving(true);
-    
-    try {
-      // Filter out any empty or invalid time slots
-      const validHours = editableHours.map(hour => ({
-        ...hour,
-        open: hour.closed ? '' : (hour.open || ''),
-        close: hour.closed ? '' : (hour.close || '')
-      }));
-
-      const restaurantRef = doc(db, "restaurants", context.restaurantDetails.restaurantId);
-      
-      // Create separate objects for Firestore update and local state
-      const firestoreUpdate = {
-        ...editableDetails,
-        openingHours: validHours,
-        updatedAt: serverTimestamp(),
-      };
-
-      // Update Firestore
-      await updateDoc(restaurantRef, firestoreUpdate);
-      
-      // Update context with new data
-      if (context.restaurantDetails) {
-        context.restaurantDetails = {
-          ...context.restaurantDetails,
-          ...editableDetails,
-          openingHours: validHours,
-          updatedAt: new Date().toISOString(), // Use string timestamp for local state
-        };
-      }
-      
-      // Update local state
-      setOriginalDetails({ ...editableDetails });
-      setOriginalHours([...validHours]);
-      
-      toast.success("Restaurant details updated successfully!");
-    } catch (error) {
-      console.error("Error updating restaurant:", error);
-      toast.error("Failed to update restaurant details. Please try again.");
-    } finally {
-      setIsSaving(false);
-      setIsEditing(false);
-    }
-  };
+  // Use custom hook to manage form state and actions
+  const {
+    editableDetails,
+    editableHours,
+    isSaving,
+    isEditing,
+    handleDetailsChange,
+    toggleEdit,
+    handleSaveChanges,
+    setEditableHours
+  } = useRestaurantSetup(restaurantDetails, user?.uid);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm mb-6">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-gray-900 text-3xl font-bold truncate">
-            {restaurantName || "Restaurant Setup"}
-          </h1>
-          <div className="flex space-x-2">
-            {isEditing ? (
-              <>
-                <Button 
-                  variant="outline" 
-                  onClick={toggleEdit}
-                  disabled={isSaving}
-                  className="flex items-center gap-2"
-                >
-                  <FontAwesomeIcon icon={faTimes} />
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSaveChanges}
-                  disabled={isSaving}
-                  className="flex items-center gap-2"
-                >
-                  <FontAwesomeIcon icon={faSave} />
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </>
-            ) : (
-              <Button 
-                onClick={toggleEdit}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <FontAwesomeIcon icon={faEdit} />
-                Edit
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* Header with Edit and Save controls */}
+      <SetupHeader
+        restaurantName={restaurantName}
+        isEditing={isEditing}
+        isSaving={isSaving}
+        onEdit={toggleEdit}
+        onSave={handleSaveChanges}
+      />
 
+      {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-12 flex-grow">
         <section className="bg-white rounded-lg shadow-md overflow-hidden">
+          {/* Section title and description */}
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-800 mb-2">
               Restaurant Configuration
@@ -194,7 +66,9 @@ export default function RestaurantTest() {
             </p>
           </div>
 
+          {/* Two-column layout: Details and Hours */}
           <div className="md:flex md:flex-row p-6 gap-8">
+            {/* Left: Restaurant Details */}
             <div className="md:w-1/2 mb-6 md:mb-0">
               <h3 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
                 <FontAwesomeIcon icon={faInfoCircle} className="h-5 w-5 mr-2 text-blue-500" />
@@ -209,6 +83,7 @@ export default function RestaurantTest() {
               </div>
             </div>
 
+            {/* Right: Restaurant Hours */}
             <div className="md:w-1/2">
               <h3 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
                 <FontAwesomeIcon icon={faClock} className="h-5 w-5 mr-2 text-blue-500" />
@@ -216,11 +91,13 @@ export default function RestaurantTest() {
               </h3>
               <div className="bg-gray-50 p-4 rounded-lg shadow-inner">
                 {isEditing ? (
+                  // Show editable timing fields if in edit mode
                   <RestaurantTiming
                     openingHours={editableHours}
                     setOpeningHours={setEditableHours}
                   />
                 ) : (
+                  // Show readable hours if not editing
                   <div className="grid gap-2">
                     {editableHours && editableHours.length > 0 ? (
                       editableHours.map((hour, index) => (
@@ -247,8 +124,6 @@ export default function RestaurantTest() {
               </div>
             </div>
           </div>
-
-          
         </section>
       </main>
     </div>

@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { Category } from '@/services/menuService';
 
 interface CategoryCardProps {
-  category: Category;
-  isSelected: boolean;
-  onSelect: () => void;
-  onEdit: (updates: Partial<Category>) => void;
-  onDelete: () => void;
+  category: Category;             // Category object with id, name, description, etc.
+  isSelected: boolean;            // Whether this card is currently selected (for UI highlight)
+  onSelect: () => void;           // Callback when the card is clicked (to select it)
+  onEdit: (updates: Partial<Category>) => void;   // Callback to update category data
+  onDelete: () => void;           // Callback to delete this category
 }
 
 const CategoryCard: React.FC<CategoryCardProps> = ({
@@ -16,10 +16,14 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
   onEdit,
   onDelete
 }) => {
+  // Local state for whether card is in edit mode
   const [isEditing, setIsEditing] = useState(false);
+
+  // Local state to track edited values while in edit mode
   const [editedName, setEditedName] = useState(category.name);
   const [editedDescription, setEditedDescription] = useState(category.description || '');
 
+  // Handler to save changes: calls onEdit with updates and exits edit mode
   const handleSave = () => {
     onEdit({
       name: editedName,
@@ -33,9 +37,11 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
       className={`border rounded-lg p-4 cursor-pointer transition-colors ${
         isSelected ? 'bg-blue-50 border-blue-500' : 'hover:bg-gray-50'
       }`}
+      // Only trigger onSelect when NOT editing, to avoid accidental select while editing
       onClick={!isEditing ? onSelect : undefined}
     >
       {isEditing ? (
+        // Edit mode UI: inputs for name and description + Save/Cancel buttons
         <div className="space-y-2">
           <input
             type="text"
@@ -67,12 +73,14 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
           </div>
         </div>
       ) : (
+        // View mode UI: show category name, description, and action buttons
         <>
           <h3 className="text-lg font-semibold">{category.name}</h3>
           {category.description && (
             <p className="text-gray-600 mt-1">{category.description}</p>
           )}
           <div className="mt-2 flex gap-2">
+            {/* Edit button sets editing mode, stopping event from bubbling to prevent onSelect */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -82,6 +90,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
             >
               Edit
             </button>
+            {/* Delete button triggers onDelete callback, also stops event propagation */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -98,4 +107,4 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
   );
 };
 
-export default CategoryCard; 
+export default CategoryCard;
