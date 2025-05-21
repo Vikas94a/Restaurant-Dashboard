@@ -1,7 +1,7 @@
 "use client"; 
 // Tells Next.js that this component should be rendered on the client side (not server-side rendered)
 
-import React, { useState, useContext } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,13 +13,13 @@ import {
 import { Label } from "@radix-ui/react-label"; // Accessible label component
 import { Input } from "../ui/input"; // Custom input component
 import { Button } from "../ui/button"; // Custom button component
-import { LogInProps } from "@/components/LogIn"; // Props type imported from Login component
 import { db } from "@/lib/firebase"; // Firebase Firestore database instance
 import { collection, addDoc, Timestamp } from "firebase/firestore"; // Firestore functions
 import { toast } from "sonner"; // Toast notifications library
 import RestaurantType from "./RestaurantType"; // Subcomponent for selecting restaurant type
 import RestaurantTiming from "./RestaurantTiming"; // Subcomponent for setting opening hours
-import { AppContext } from "@/context/Authcontext"; // React Context for user authentication
+import { useAppSelector } from '@/store/hooks';
+
 
 // Interface to define opening hours for each day
 export interface OpeningHours {
@@ -57,17 +57,22 @@ export const day = [
   "saturday",
 ];
 
+interface RestaurantDialogProps {
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+}
+
 /**
  * RestaurantDialog Component
  * 
  * A multi-step modal dialog to collect restaurant information.
  * Steps include Address info, Restaurant Type, and Opening Hours.
  * 
- * @param {LogInProps} props - Props include:
+ * @param {RestaurantDialogProps} props - Props include:
  *  - isOpen: boolean to control visibility of the dialog
  *  - setIsOpen: function to update visibility (open/close dialog)
  */
-function RestaurantDialog({ isOpen, setIsOpen }: LogInProps) {
+function RestaurantDialog({ isOpen, setIsOpen }: RestaurantDialogProps) {
   // Define all steps of the dialog to control navigation
   const steps = ["Address", "TypeOfRestaurant", "Timing"];
 
@@ -97,23 +102,19 @@ function RestaurantDialog({ isOpen, setIsOpen }: LogInProps) {
     logoUrl: "",
   });
 
+  // Use AppSelector to get user authentication info
+  const user = useAppSelector((state) => state.auth.user);
+  if (!user) {
+    // If no user available (e.g. user not logged in), log error and render nothing
+    console.log("User is null");
+    return null;
+  }
+
   // Handle input changes on form fields (city, zipCode, etc.)
   const handleForm = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Update the corresponding field in restaurantData state
     setRestaurantData({ ...restaurantData, [e.target.name]: e.target.value });
   };
-
-  // Use AppContext to get user authentication info
-  const context = useContext(AppContext);
-  if (!context) {
-    // If no context available (e.g. user not logged in), log error and render nothing
-    console.log("Context is null");
-    return null;
-  }
-
-  // Destructure user and loading states from context
-  const { user, loading, setLoading } = context;
-  console.log(user); // Debug: log current user info
 
   /**
    * Handle form submission when user clicks Submit on last step.
@@ -123,8 +124,6 @@ function RestaurantDialog({ isOpen, setIsOpen }: LogInProps) {
     e.preventDefault(); // Prevent default form submission behavior (page reload)
 
     try {
-      setLoading(true); // Show loading spinner or disable inputs during submission
-
       // Add a new document to 'restaurants' collection in Firestore
       const refRestaurantCollection = await addDoc(
         collection(db, "restaurants"),
@@ -144,9 +143,8 @@ function RestaurantDialog({ isOpen, setIsOpen }: LogInProps) {
       }
     } catch (error) {
       // Log any errors during saving
-      console.log(error);
-    } finally {
-      setLoading(false); // Stop loading spinner regardless of success or failure
+      console.error("Error saving restaurant:", error);
+      toast.error("Failed to save restaurant information");
     }
   };
 

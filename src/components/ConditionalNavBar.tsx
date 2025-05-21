@@ -2,20 +2,19 @@
 
 import React from "react";
 import NavBar from "@/components/NavBar";
-import { useAuth } from "@/context/Authcontext";
+import { useAppSelector } from "@/store/hooks";
 
 const ConditionalNavBar = ({ children }: { children: React.ReactNode }) => {
-  const context = useAuth();
+  const user = useAppSelector((state) => state.auth.user);
+  const loading = useAppSelector((state) => state.auth.loading);
 
-  // Check if context is null before accessing properties
-  if (!context || context.loading) {
-    // Optionally render a loading state or nothing while checking auth
+  if (loading) {
     return null;
   }
 
   return (
     <>
-      {!context.user && <NavBar />}
+      {!user && <NavBar />}
       {children}
     </>
   );

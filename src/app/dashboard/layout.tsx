@@ -1,22 +1,18 @@
-import React from "react";
-import { AuthProvider } from "@/context/Authcontext";
+"use client";
+
 import Sidebar from "@/components/Sidebar";
 
-function AdminDashboardLayout({
+export default function DashboardLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-x-hidden">
+    <div className="flex min-h-screen">
       <Sidebar />
-
-      {/* Main Content */}
-      <div className="flex-1 ml-56 overflow-auto bg-white/80 backdrop-blur-sm">
-        <AuthProvider>
-          <main className="p-8">{children}</main>
-        </AuthProvider>
-      </div>
+      <main className="flex-1 ml-56">
+        {children}
+      </main>
     </div>
   );
 }
-
-export default AdminDashboardLayout;

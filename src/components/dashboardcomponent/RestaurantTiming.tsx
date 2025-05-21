@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { Label } from "@radix-ui/react-label";
 import { OpeningHours, day } from "./RestaurantDialog";

@@ -2,26 +2,47 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
 
-    // Rules for the 'restaurants' collection
+    // Helper function to check if user is a restaurant owner
+    function isRestaurantOwner(restaurantId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/restaurants/$(restaurantId)) &&
+        get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
+    }
+
+    // Restaurants collection rules
     match /restaurants/{restaurantId} {
-      // Allow any authenticated user to read restaurant data
-      allow read: if true;
+      allow read: if true;  // Anyone can read restaurant details
+      allow write: if isRestaurantOwner(restaurantId);
 
-      // Allow any authenticated user to write (create/update/delete) restaurant data
-      allow write: if true;
+      // Orders subcollection rules
+      match /orders/{orderId} {
+        allow create: if isAuthenticated();  // Any authenticated user can create an order
+        allow read: if isRestaurantOwner(restaurantId);  // Only restaurant owner can read orders
+        allow update: if isRestaurantOwner(restaurantId);  // Only restaurant owner can update order status
+        allow delete: if false;  // No one can delete orders
+      }
 
-      // Nested rules for the 'menu' subcollection under each restaurant
-      match /menu/{menuId} {
-        allow read, write: if true; // <-- TEMP: allow anyone
-        // In production: replace with auth check
-        // allow read, write: if request.auth != null;
+      // Rules for the 'menu' subcollection
+      match /menu/{menuItemId} {
+        allow read: if true;  // Anyone can read menu items
+        allow write: if isRestaurantOwner(restaurantId);  // Only restaurant owner can modify menu
+      }
+
+      // Rules for the 'categories' subcollection
+      match /categories/{categoryId} {
+        allow read: if true;  // Anyone can read categories
+        allow write: if isRestaurantOwner(restaurantId);  // Only restaurant owner can modify categories
       }
     }
 
-    // Rules for the 'users' collection
+    // Users collection rules
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth.uid == userId;
     }
   }
 }

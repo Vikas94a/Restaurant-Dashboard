@@ -2,39 +2,33 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
-import { AppContext } from "@/context/Authcontext";
-import { useContext } from "react";
+import { useAppSelector } from "@/store/hooks";
 import { ArrowRight, Info } from "lucide-react";
 
 export default function Home() {
-  const context = useContext(AppContext);
-
-  if (!context) {
-    console.log("Context is null");
-    return null;
-  }
+  const user = useAppSelector((state) => state.auth.user);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-100 flex items-center">
-      <section className="max-w-7xl mx-auto px-6 py-20 md:py-28">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          {/* Left Content */}
-          <div className="text-center md:text-left space-y-6">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-gray-900">
-              Discover where your restaurant is{" "}
+      <section className="max-w-7xl mx-auto px-6 py-24 md:py-32 bg-white rounded-3xl shadow-xl">
+        <div className="grid md:grid-cols-2 gap-16 items-center">
+          {/* Text Content */}
+          <div className="text-center md:text-left space-y-8">
+            <h1 className="text-5xl md:text-6xl font-bold leading-tight tracking-tight text-gray-900">
+              Discover where your restaurant is <br />
               <span className="text-blue-600">losing sales</span>
             </h1>
-            <p className="text-lg md:text-xl text-gray-600 max-w-xl">
-              Get smart insights into your restaurant’s online presence and
+            <p className="text-lg md:text-xl text-gray-600 max-w-xl mx-auto md:mx-0">
+              Get smart insights into your restaurant's online presence and
               optimize for higher revenue.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start pt-4">
-              <Button className="px-6 py-3 text-lg bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start pt-2">
+              <Button className="px-7 py-3 text-base font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all duration-200 shadow-md flex items-center gap-2">
                 Get Started <ArrowRight size={18} />
               </Button>
               <Button
                 variant="outline"
-                className="px-6 py-3 text-lg border-gray-300 rounded-lg flex items-center gap-2"
+                className="px-7 py-3 text-base font-semibold border-gray-300 text-gray-700 hover:border-gray-400 hover:text-black rounded-full transition-all duration-200 flex items-center gap-2"
               >
                 Learn More <Info size={18} />
               </Button>
@@ -43,7 +37,7 @@ export default function Home() {
 
           {/* Hero Image */}
           <div className="w-full">
-            <div className="rounded-xl overflow-hidden shadow-lg">
+            <div className="rounded-3xl overflow-hidden shadow-xl">
               <Image
                 src="/images/hero.png"
                 alt="Hero image"

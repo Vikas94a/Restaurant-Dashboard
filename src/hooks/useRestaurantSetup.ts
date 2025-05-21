@@ -24,40 +24,46 @@ export const useRestaurantSetup = (
 
   // Effect to sync editable state when restaurantDetails change
   useEffect(() => {
-    if (restaurantDetails) {
-      // Initialize editable details with a copy of original
-      setEditableDetails({ ...restaurantDetails });
-      setOriginalDetails({ ...restaurantDetails });
-
-      // Initialize opening hours or default all days as closed if none provided
-      let hoursData = restaurantDetails.openingHours || [];
-
-      if (hoursData.length === 0) {
-        // Create default closed hours for all days
-        hoursData = day.map(dayName => ({
-          day: dayName,
-          open: "",
-          close: "",
-          closed: true,
-        }));
-      } else {
-        // Ensure every day of the week is present, add missing days as closed
-        const existingDays = hoursData.map(h => h.day.toLowerCase());
-        day.forEach(dayName => {
-          if (!existingDays.includes(dayName.toLowerCase())) {
-            hoursData.push({
-              day: dayName,
-              open: "",
-              close: "",
-              closed: true,
-            });
-          }
-        });
-      }
-
-      setEditableHours(hoursData);
-      setOriginalHours([...hoursData]);
+    if (!restaurantDetails) {
+      setEditableDetails({});
+      setOriginalDetails({});
+      setEditableHours([]);
+      setOriginalHours([]);
+      return;
     }
+
+    // Initialize editable details with a copy of original
+    setEditableDetails({ ...restaurantDetails });
+    setOriginalDetails({ ...restaurantDetails });
+
+    // Initialize opening hours or default all days as closed if none provided
+    let hoursData = restaurantDetails.openingHours || [];
+
+    if (hoursData.length === 0) {
+      // Create default closed hours for all days
+      hoursData = day.map(dayName => ({
+        day: dayName,
+        open: "",
+        close: "",
+        closed: true,
+      }));
+    } else {
+      // Ensure every day of the week is present, add missing days as closed
+      const existingDays = hoursData.map(h => h.day.toLowerCase());
+      day.forEach(dayName => {
+        if (!existingDays.includes(dayName.toLowerCase())) {
+          hoursData.push({
+            day: dayName,
+            open: "",
+            close: "",
+            closed: true,
+          });
+        }
+      });
+    }
+
+    setEditableHours(hoursData);
+    setOriginalHours([...hoursData]);
   }, [restaurantDetails]);
 
   // Update editable restaurant details state when user edits form fields

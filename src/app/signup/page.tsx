@@ -83,27 +83,33 @@ function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4 sm:p-6 lg:p-10">
-      <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-14">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-6xl flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-16">
         {/* Left: Signup Form */}
-        <div className="w-full lg:w-1/2 bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
-          <div className="space-y-6">
+        <div className="w-full lg:w-1/2 bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 lg:p-12 transition-all duration-300">
+          <div className="space-y-8">
             {/* Header */}
             <div className="text-center lg:text-left">
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-4xl font-bold text-gray-900 leading-tight">
                 Create Your Account
               </h1>
-              <p className="mt-2 text-gray-600 text-sm">
-                Join AI Eat Easy and elevate your restaurant's online
-                experience.
+              <p className="mt-2 text-gray-600 text-base">
+                Join{" "}
+                <span className="font-medium text-blue-600">AI Eat Easy</span>{" "}
+                and elevate your restaurant’s experience.
               </p>
             </div>
 
             {/* Form Starts */}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Restaurant Name */}
               <div className="space-y-2">
-                <Label htmlFor="restaurantName">Restaurant Name</Label>
+                <Label
+                  htmlFor="restaurantName"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Restaurant Name
+                </Label>
                 <Input
                   id="restaurantName"
                   name="restaurantName"
@@ -111,13 +117,19 @@ function Signup() {
                   value={form.restaurantName}
                   onChange={handleInput}
                   required
+                  className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
 
-              {/* First Name and Last Name */}
+              {/* First & Last Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label
+                    htmlFor="firstName"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    First Name
+                  </Label>
                   <Input
                     id="firstName"
                     name="firstName"
@@ -125,23 +137,35 @@ function Signup() {
                     value={form.firstName}
                     onChange={handleInput}
                     required
+                    className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label
+                    htmlFor="lastName"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Last Name
+                  </Label>
                   <Input
                     id="lastName"
                     name="lastName"
                     placeholder="Doe"
                     value={form.lastName}
                     onChange={handleInput}
+                    className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   />
                 </div>
               </div>
 
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label
+                  htmlFor="email"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -150,12 +174,18 @@ function Signup() {
                   value={form.email}
                   onChange={handleInput}
                   required
+                  className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
 
               {/* Password with toggle */}
               <div className="space-y-2 relative">
-                <Label htmlFor="password">Password</Label>
+                <Label
+                  htmlFor="password"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Password
+                </Label>
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -164,11 +194,12 @@ function Signup() {
                   value={form.password}
                   onChange={handleInput}
                   required
+                  className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-8 text-sm text-blue-500 hover:underline"
+                  className="absolute right-3 top-9 text-sm text-blue-500 hover:underline focus:outline-none"
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
@@ -177,14 +208,14 @@ function Signup() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                className="w-full py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                className="w-full py-3 text-white bg-blue-600 hover:bg-blue-700 text-lg font-semibold rounded-xl transition-all duration-200"
               >
                 Create Account
               </Button>
             </form>
 
             {/* Link to Login */}
-            <p className="text-center text-sm text-gray-600">
+            <p className="text-center text-sm text-gray-600 pt-4">
               Already have an account?{" "}
               <Link
                 href="/login"
@@ -196,17 +227,16 @@ function Signup() {
           </div>
         </div>
 
-        {/* Right: Branding image and background effect */}
+        {/* Right: Branding Image */}
         <div className="w-full lg:w-1/2 flex items-center justify-center">
-          <div className="relative w-full max-w-lg">
+          <div className="relative w-full max-w-md">
             <Image
               src="/images/logo.png"
               alt="AI Eat Easy Logo"
-              width={500}
+              width={600}
               height={400}
               className="w-full h-auto object-contain transition-transform duration-300 hover:scale-105"
             />
-            {/* Decorative gradient background blur */}
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 to-purple-500/10 rounded-full blur-3xl -z-10" />
           </div>
         </div>

@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useCart } from "@/hooks/useCart";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPlus, faMinus } from '@fortawesome/free-solid-svg-icons';
 
 // Define the shape of a menu item (like a dish on the menu)
 interface Items {
@@ -32,6 +35,8 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
 
   // Track which category user has selected to display items for that category
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const { cart, handleAddToCart, handleIncreaseQuantity, handleDecreaseQuantity } = useCart();
 
   // Fetch menu categories and items from Firestore when restaurantId changes
   useEffect(() => {
@@ -81,77 +86,125 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
   console.log(menuItems);
 
   return (
-    <div className="flex h-[calc(100vh-160px)] bg-gray-50 rounded-2xl shadow-inner overflow-hidden">
-      {/* Left sidebar with category buttons */}
-      <aside className="w-52 bg-white border-r border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 className="text-xl font-semibold text-gray-800">🍽️ Categories</h2>
+<div className="flex h-[calc(100vh-80px)] bg-gray-50 rounded-2xl shadow-inner overflow-hidden">
+  {/* Sidebar */}
+  <aside className="w-60 bg-white border-r border-gray-200 flex flex-col">
+    <div className="px-6 py-5 border-b border-gray-200 sticky top-0 bg-white z-10">
+      <h2 className="text-xl font-bold text-gray-800">🍽️ Menu</h2>
+    </div>
+    <nav className="overflow-y-auto flex-1 custom-scroll">
+      {menuItems.map((category) => (
+        <button
+          key={category.id}
+          onClick={() => setSelectedCategory(category.categoryName)}
+          className={`w-full text-left px-6 py-4 transition-all duration-200 ease-in-out hover:bg-green-50 group ${
+            selectedCategory === category.categoryName
+              ? "bg-green-100 border-l-4 border-green-500"
+              : ""
+          }`}
+        >
+          <h3 className="text-base font-semibold text-gray-800 group-hover:text-green-600 transition">
+            {category.categoryName}
+          </h3>
+          <p className="text-sm text-gray-500 mt-1 truncate">
+            {category.categoryDescription}
+          </p>
+        </button>
+      ))}
+    </nav>
+  </aside>
+
+  {/* Main Content */}
+  <main className="flex-1 overflow-y-auto p-10">
+    {selectedCategoryData ? (
+      <section>
+        {/* Header */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+            {selectedCategoryData.categoryName}
+          </h2>
+          {selectedCategoryData.categoryDescription && (
+            <p className="text-gray-600 mt-2 text-base max-w-2xl">
+              {selectedCategoryData.categoryDescription}
+            </p>
+          )}
         </div>
 
-        <nav className="overflow-y-auto custom-scroll h-full">
-          {menuItems.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.categoryName)} // Select category on click
-              className={`w-full text-left px-6 py-4 transition-all duration-200 ease-in-out hover:bg-gray-100 group ${
-                selectedCategory === category.categoryName
-                  ? "bg-green-50 border-l-4 border-green-500" // Highlight selected category
-                  : ""
-              }`}
+        {/* Grid of Items */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {selectedCategoryData.items?.map((item, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-2xl shadow hover:shadow-lg transition-all border border-gray-100 p-5 flex flex-col justify-between"
             >
-              <h3 className="text-base font-medium text-gray-800 group-hover:text-green-600 transition">
-                {category.categoryName}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1 truncate">
-                {category.categoryDescription}
-              </p>
-            </button>
-          ))}
-        </nav>
-      </aside>
+              <div className="mb-3">
+                <h3 className="text-lg font-semibold text-gray-800">{item.itemName}</h3>
+                {item.itemDescription && (
+                  <p className="text-sm text-gray-500 mt-1">{item.itemDescription}</p>
+                )}
+              </div>
+              <div className="flex items-center justify-between mt-auto">
+                <p className="text-green-600 font-bold text-lg">
+                  ${item.itemPrice?.toFixed(2)}
+                </p>
+                {/* Conditional rendering based on whether item is in cart */}
+                {item.itemName && item.itemPrice !== undefined && selectedCategoryData?.categoryName && restaurantId && (
+                  () => {
+                    const itemId = `${restaurantId}-${item.itemName}`;
+                    const cartItem = cart.items.find(cartItem => cartItem.id === itemId);
 
-      {/* Main content area displaying menu items for the selected category */}
-      <main className="flex-1 overflow-y-auto px-8 py-6">
-        {selectedCategoryData ? (
-          <section>
-            <header className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-900">
-                {selectedCategoryData.categoryName}
-              </h2>
-              <p className="text-gray-600 mt-1">
-                {selectedCategoryData.categoryDescription}
-              </p>
-            </header>
-
-            {/* Grid of individual menu items */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {selectedCategoryData.items?.map((item, index) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-xl shadow-md p-5 hover:shadow-lg transition-all border border-gray-100"
-                >
-                  <div className="flex flex-col space-y-2">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      {item.itemName}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {item.itemDescription}
-                    </p>
-                    <p className="text-green-600 font-bold text-md mt-2">
-                      ${item.itemPrice?.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                    if (cartItem) {
+                      // Item is in cart, show quantity controls
+                      return (
+                        <div className="flex items-center ml-auto border border-gray-300 rounded-md overflow-hidden">
+                          <button
+                            className="px-3 py-1 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            onClick={() => handleDecreaseQuantity(itemId)}
+                            disabled={cartItem.quantity <= 1}
+                          >
+                            <FontAwesomeIcon icon={faMinus} className="w-3 h-3 text-gray-600" />
+                          </button>
+                          <span className="px-4 py-1 bg-gray-100 text-sm font-medium text-gray-800">
+                            {cartItem.quantity}
+                          </span>
+                          <button
+                            className="px-3 py-1 hover:bg-gray-200 transition-colors"
+                            onClick={() => handleIncreaseQuantity(itemId)}
+                          >
+                            <FontAwesomeIcon icon={faPlus} className="w-3 h-3 text-gray-600" />
+                          </button>
+                        </div>
+                      );
+                    } else {
+                      // Item is not in cart, show Add to Cart button
+                      return (
+                        <button
+                          className="btn btn-sm bg-primary text-white hover:bg-primary-dark px-4 py-2"
+                          onClick={() => handleAddToCart({
+                            itemName: item.itemName as string,
+                            itemPrice: item.itemPrice as number,
+                            categoryName: selectedCategoryData.categoryName,
+                            restaurantId: restaurantId
+                          })}
+                        >
+                          Add to Cart
+                        </button>
+                      );
+                    }
+                  }
+                )() /* Immediately invoke the function */}
+              </div>
             </div>
-          </section>
-        ) : (
-          // Placeholder message when no category is selected
-          <div className="text-center text-gray-500 mt-16 text-lg">
-            👈 Select a category to view menu items
-          </div>
-        )}
-      </main>
-    </div>
+          ))}
+        </div>
+      </section>
+    ) : (
+      <div className="text-center text-gray-500 mt-32 text-lg">
+        👈 Select a category to view delicious items!
+      </div>
+    )}
+  </main>
+</div>
+  
   );
 }

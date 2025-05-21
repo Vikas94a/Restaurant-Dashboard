@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { menuService, MenuItem, Category } from '@/services/menuService';
-import CategoryCard from './CategoryCard';
-import MenuItemForm from './MenuItemForm';
+import React, { useState, useEffect } from "react";
+import { menuService, MenuItem, Category } from "@/services/menuService";
+import CategoryCard from "./CategoryCard";
+import MenuItemForm from "./MenuItemForm";
 
 interface MenuEditorProps {
   restaurantId: string;
@@ -19,28 +19,28 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ restaurantId }) => {
   // The menu item currently being edited (null if none)
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
 
-  // Load menu data from backend whenever restaurantId changes
-  useEffect(() => {
-    loadMenuData();
-  }, [restaurantId]);
-
   // Function to load both menu items and categories concurrently
   const loadMenuData = async () => {
     try {
       // Fetch menu items and categories simultaneously
       const [items, cats] = await Promise.all([
         menuService.getMenuItems(restaurantId),
-        menuService.getCategories(restaurantId)
+        menuService.getCategories(restaurantId),
       ]);
-      setMenuItems(items);   // Save items to state
-      setCategories(cats);   // Save categories to state
+      setMenuItems(items); // Save items to state
+      setCategories(cats); // Save categories to state
     } catch (error) {
-      console.error('Error loading menu data:', error);
+      console.error("Error loading menu data:", error);
     }
   };
 
+  // Load menu data from backend whenever restaurantId changes
+  useEffect(() => {
+    loadMenuData();
+  }, [restaurantId]);
+
   // Handler to add a new menu item
-  const handleAddItem = async (item: Omit<MenuItem, 'id'>) => {
+  const handleAddItem = async (item: Omit<MenuItem, "id">) => {
     try {
       // Send the new item to backend and get generated id
       const newItemId = await menuService.addMenuItem(restaurantId, item);
@@ -51,23 +51,28 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ restaurantId }) => {
       // Close the add item form
       setIsAddingItem(false);
     } catch (error) {
-      console.error('Error adding menu item:', error);
+      console.error("Error adding menu item:", error);
     }
   };
 
   // Handler to update an existing menu item
-  const handleUpdateItem = async (itemId: string, updates: Partial<MenuItem>) => {
+  const handleUpdateItem = async (
+    itemId: string,
+    updates: Partial<MenuItem>
+  ) => {
     try {
       // Send updated fields to backend
       await menuService.updateMenuItem(restaurantId, itemId, updates);
       // Update item in local state to reflect changes immediately
-      setMenuItems(menuItems.map(item => 
-        item.id === itemId ? { ...item, ...updates } : item
-      ));
+      setMenuItems(
+        menuItems.map((item) =>
+          item.id === itemId ? { ...item, ...updates } : item
+        )
+      );
       // Clear editing state (close edit form)
       setEditingItem(null);
     } catch (error) {
-      console.error('Error updating menu item:', error);
+      console.error("Error updating menu item:", error);
     }
   };
 
@@ -77,33 +82,38 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ restaurantId }) => {
       // Ask backend to delete item by id
       await menuService.deleteMenuItem(restaurantId, itemId);
       // Remove deleted item from local state to update UI
-      setMenuItems(menuItems.filter(item => item.id !== itemId));
+      setMenuItems(menuItems.filter((item) => item.id !== itemId));
     } catch (error) {
-      console.error('Error deleting menu item:', error);
+      console.error("Error deleting menu item:", error);
     }
   };
 
   // Handler to add a new category (menu section)
-  const handleAddCategory = async (category: Omit<Category, 'id'>) => {
+  const handleAddCategory = async (category: Omit<Category, "id">) => {
     try {
       // Send new category to backend and get generated id
-      const newCategoryId = await menuService.addCategory(restaurantId, category);
+      const newCategoryId = await menuService.addCategory(
+        restaurantId,
+        category
+      );
       // Create new category object with id
       const newCategory = { ...category, id: newCategoryId };
       // Add to categories state to update UI
       setCategories([...categories, newCategory]);
     } catch (error) {
-      console.error('Error adding category:', error);
+      console.error("Error adding category:", error);
     }
   };
 
   // Filter menu items by selected category, or show all if none selected
   const filteredItems = selectedCategory
-    ? menuItems.filter(item => item.category === selectedCategory)
+    ? menuItems.filter((item) => item.category === selectedCategory)
     : menuItems;
 
+  console.log("Its a menuitems in the console window", menuItems);
   return (
     <div className="p-4">
+  
       {/* Header with title and button to open add item form */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Menu Editor</h2>
@@ -117,7 +127,7 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ restaurantId }) => {
 
       {/* Display categories as selectable cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {categories.map(category => (
+        {categories.map((category) => (
           <CategoryCard
             key={category.id}
             category={category}
@@ -152,11 +162,11 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ restaurantId }) => {
 
       {/* Show list of menu items filtered by selected category */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredItems.map(item => (
+        {filteredItems.map((item) => (
           <div key={item.id} className="border rounded-lg p-4">
             <h3 className="text-lg font-semibold">{item.name}</h3>
             <p className="text-gray-600">{item.description}</p>
-            <p className="text-lg font-bold">${item.price.toFixed(2)}</p>
+            <p className="text-lg font-bold">${(item.price || 0).toFixed(2)}</p>
             <div className="mt-2 flex gap-2">
               {/* Button to edit the item: opens editing form */}
               <button

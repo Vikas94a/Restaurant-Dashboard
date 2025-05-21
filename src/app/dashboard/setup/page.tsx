@@ -1,8 +1,6 @@
 "use client"; // Enables client-side rendering in Next.js
 
-// Import necessary hooks and components
-import { useContext } from "react";
-import { AppContext } from "@/context/Authcontext";
+import { useAppSelector } from "@/store/hooks";
 import RestaurantDetails from "@/components/dashboardcomponent/ReataurantDetails";
 import RestaurantTiming from "@/components/dashboardcomponent/RestaurantTiming";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -12,23 +10,10 @@ import { SetupHeader } from "@/components/dashboardcomponent/SetupHeader";
 import { useRestaurantSetup } from "@/hooks/useRestaurantSetup";
 
 export default function RestaurantSetup() {
-  // Get global app context
-  const context = useContext(AppContext);
+  // Get data from Redux store
+  const { user, restaurantDetails, loading } = useAppSelector((state) => state.auth);
 
-  // Show loading spinner while context is loading
-  if (!context || context.loading) {
-    return <LoadingSpinner />;
-  }
-
-  // Show message if no restaurant is found
-  if (!context.restaurantDetails) {
-    return <div className="p-6 text-center text-gray-500">No restaurant found. Please create a restaurant first.</div>;
-  }
-
-  // Destructure values from context
-  const { restaurantName, restaurantDetails, user } = context;
-
-  // Use custom hook to manage form state and actions
+  // Use custom hook to manage form state and actions - always call this hook
   const {
     editableDetails,
     editableHours,
@@ -38,13 +23,23 @@ export default function RestaurantSetup() {
     toggleEdit,
     handleSaveChanges,
     setEditableHours
-  } = useRestaurantSetup(restaurantDetails, user?.uid);
+  } = useRestaurantSetup(restaurantDetails || null, user?.uid);
+
+  // Show loading spinner while data is loading
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  // Show message if no restaurant is found
+  if (!restaurantDetails) {
+    return <div className="p-6 text-center text-gray-500">No restaurant found. Please create a restaurant first.</div>;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header with Edit and Save controls */}
       <SetupHeader
-        restaurantName={restaurantName}
+        restaurantName={user?.restaurantName || "Restaurant"}
         isEditing={isEditing}
         isSaving={isSaving}
         onEdit={toggleEdit}
