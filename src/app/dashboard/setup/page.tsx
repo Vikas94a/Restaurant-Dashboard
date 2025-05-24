@@ -1,7 +1,7 @@
 "use client"; // Enables client-side rendering in Next.js
 
 import { useAppSelector } from "@/store/hooks";
-import RestaurantDetails from "@/components/dashboardcomponent/ReataurantDetails";
+import RestaurantDetails from "@/components/dashboardcomponent/RestaurantDetails";
 import RestaurantTiming from "@/components/dashboardcomponent/RestaurantTiming";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faInfoCircle, faClock } from '@fortawesome/free-solid-svg-icons';

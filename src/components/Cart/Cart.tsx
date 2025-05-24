@@ -1,9 +1,6 @@
-import React from 'react'
+// This file forwards the Cart implementation from the parent directory
+// This prevents breaking existing imports while we refactor
 
-function Cart() {
-  return (
-    <div>Cart</div>
-  )
-}
+import Cart from '../Cart';
 
-export default Cart
+export default Cart;

@@ -2,8 +2,15 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-interface RestaurantState {
-  hours: any[];
+export interface RestaurantHour {
+  day: string;
+  openTime: string;
+  closeTime: string;
+  isClosed: boolean;
+}
+
+export interface RestaurantState {
+  hours: RestaurantHour[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
 }

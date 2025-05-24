@@ -53,38 +53,97 @@ export default function CheckoutPage() {
   const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
 
   // Find today's hours using Redux store data
-  const todayHours = useMemo(() => 
-    restaurantDetails?.openingHours?.find(hour => hour.day.toLowerCase() === currentDay), 
-    [restaurantDetails?.openingHours, currentDay]
-  );
+  const todayHours = useMemo(() => {
+    if (!restaurantDetails?.openingHours) return undefined;
+    const hours = restaurantDetails.openingHours.find(hour => 
+      hour.day.toLowerCase() === currentDay
+    );
+    
+    // If no hours for today, return undefined
+    if (!hours) return undefined;
+    
+    // Ensure times are in 24-hour format with leading zeros
+    const formatTime = (timeStr: string) => {
+      if (!timeStr) return '00:00';
+      const [hours, minutes] = timeStr.split(':');
+      return `${hours.padStart(2, '0')}:${(minutes || '00').padStart(2, '0')}`;
+    };
+    
+    return {
+      ...hours,
+      open: formatTime(hours.open),
+      close: formatTime(hours.close)
+    };
+  }, [restaurantDetails?.openingHours, currentDay]);
   
-  const [openHour, openMinute] = todayHours?.open?.split(':').map(Number) || [0, 0];
-  const [closeHour, closeMinute] = todayHours?.close?.split(':').map(Number) || [0, 0];
+  // Parse opening and closing times
+  const [openHour, openMinute] = useMemo(() => {
+    if (!todayHours?.open) return [0, 0];
+    const [hours, minutes] = todayHours.open.split(':').map(Number);
+    return [isNaN(hours) ? 0 : hours, isNaN(minutes) ? 0 : minutes];
+  }, [todayHours]);
+  
+  const [closeHour, closeMinute] = useMemo(() => {
+    if (!todayHours?.close) return [23, 59];
+    const [hours, minutes] = todayHours.close.split(':').map(Number);
+    return [isNaN(hours) ? 23 : hours, isNaN(minutes) ? 59 : minutes];
+  }, [todayHours]);
 
+  // Create date objects for opening and closing times
   const openingTime = useMemo(() => {
     const time = new Date();
     time.setHours(openHour, openMinute, 0, 0);
+    // If closing time is on the next day (e.g., 3 AM), adjust the date
+    if (closeHour < openHour && time.getHours() >= closeHour) {
+      time.setDate(time.getDate() + 1);
+    }
     return time;
-  }, [openHour, openMinute]);
+  }, [openHour, openMinute, closeHour]);
 
   const closingTime = useMemo(() => {
-    const time = new Date();
+    const time = new Date(openingTime);
     time.setHours(closeHour, closeMinute, 0, 0);
     return time;
-  }, [closeHour, closeMinute]);
+  }, [openingTime, closeHour, closeMinute]);
 
-  // Check if ASAP is a valid option
+  // Add 30-minute buffer to current time for ASAP orders
   const nowWithBuffer = useMemo(() => new Date(now.getTime() + 30 * 60000), [now]);
-  const isAsapAvailable = useMemo(() => 
-    isAsapPickupAvailable(todayHours, nowWithBuffer, openingTime, closingTime),
-    [todayHours, nowWithBuffer, openingTime, closingTime]
-  );
+  
+  // Check if ASAP is a valid option
+  const isAsapAvailable = useMemo(() => {
+    if (!todayHours || todayHours.closed) return false;
+    
+    // Check if current time + buffer is within opening hours
+    return nowWithBuffer >= openingTime && nowWithBuffer < closingTime;
+  }, [todayHours, nowWithBuffer, openingTime, closingTime]);
 
-  // Generate available pickup times using our utility function
-  const availableLaterTimes = useMemo(() => 
-    generateAvailablePickupTimes(todayHours, openingTime, closingTime, nowWithBuffer),
-    [todayHours, openingTime, closingTime, nowWithBuffer]
-  );
+  // Generate available pickup times
+  const availableLaterTimes = useMemo(() => {
+    if (!todayHours || todayHours.closed) return [];
+    
+    const times = [];
+    let startTime = new Date(nowWithBuffer);
+    
+    // Round up to next 30-minute interval
+    const minutes = startTime.getMinutes();
+    const roundedMinutes = minutes + (30 - (minutes % 30));
+    startTime.setMinutes(roundedMinutes);
+    startTime.setSeconds(0, 0);
+
+    // Generate time slots until closing time
+    while (startTime < closingTime) {
+      times.push(
+        startTime.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        })
+      );
+      startTime.setMinutes(startTime.getMinutes() + 30);
+    }
+    
+    return times;
+  }, [todayHours, nowWithBuffer, closingTime]);
 
   // Effect to set initial pickup option and time when restaurantDetails or availableLaterTimes become available
   useEffect(() => {

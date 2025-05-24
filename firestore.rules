@@ -38,6 +38,11 @@ service cloud.firestore {
         allow read: if true;  // Anyone can read categories
         allow write: if isRestaurantOwner(restaurantId);  // Only restaurant owner can modify categories
       }
+
+      // Rules for the 'reusableExtraGroups' subcollection
+      match /reusableExtraGroups/{groupId} {
+        allow read, write: if isRestaurantOwner(restaurantId);
+      }
     }
 
     // Users collection rules

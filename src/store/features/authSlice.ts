@@ -4,6 +4,19 @@ import { db, auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { Restaurant } from "@/components/dashboardcomponent/RestaurantDialog";
 
+// Auto-logout timer variable and duration
+let autoLogoutTimer: ReturnType<typeof setTimeout> | null = null;
+// Set to 5 minutes (300000ms) for testing, change back to 1 hour (3600000) for production
+const AUTO_LOGOUT_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds for testing
+
+// Debug function to log timer status
+const logTimerStatus = (action: string) => {
+  console.log(`[AutoLogout] ${action} - Current time: ${new Date().toISOString()}`);
+  console.log(`[AutoLogout] Next auto-logout at: ${
+    autoLogoutTimer ? new Date(Date.now() + AUTO_LOGOUT_DURATION).toISOString() : 'No active timer'
+  }`);
+};
+
 // Types
 interface User {
   uid: string;
@@ -11,7 +24,7 @@ interface User {
   [key: string]: any;
 }
 
-interface AuthState {
+export interface AuthState {
   user: User | null;
   loading: boolean;
   error: any;
@@ -36,14 +49,46 @@ const convertTimestampToString = (timestamp: Timestamp | undefined) => {
 // Async thunks
 export const fetchUserData = createAsyncThunk(
   'auth/fetchUserData',
-  async (firebaseUser: any) => {
+  async (firebaseUser: any, thunkAPI) => {
+    console.log('[AutoLogout] fetchUserData called', { hasUser: !!firebaseUser?.uid });
+    
+    if (!firebaseUser || !firebaseUser.uid) {
+      console.log('[AutoLogout] No user or UID - clearing any existing timer');
+      if (autoLogoutTimer) {
+        clearTimeout(autoLogoutTimer);
+        autoLogoutTimer = null;
+      }
+      return null;
+    }
+
+    // Clear any existing timer when user data is (re)fetched
+    if (autoLogoutTimer) {
+      console.log('[AutoLogout] Clearing existing timer');
+      clearTimeout(autoLogoutTimer);
+      autoLogoutTimer = null;
+    }
+
     const refUserDoc = doc(db, "users", firebaseUser.uid);
     const docSnapshot = await getDoc(refUserDoc);
     
     if (docSnapshot.exists()) {
       const userData = { uid: firebaseUser.uid, ...docSnapshot.data() } as User;
+      
+      // Start the auto-logout timer if user data is successfully fetched
+      console.log(`[AutoLogout] Setting new auto-logout timer for ${AUTO_LOGOUT_DURATION/1000/60} minutes`);
+      
+      autoLogoutTimer = setTimeout(() => {
+        console.log('[AutoLogout] Auto-logout timer triggered - dispatching logout');
+        thunkAPI.dispatch(logout());
+        // Force page reload to ensure all auth state is cleared
+        window.location.href = '/';
+      }, AUTO_LOGOUT_DURATION);
+      
+      logTimerStatus('New timer set');
       return userData;
     }
+    
+    console.log('[AutoLogout] User document not found - no timer set');
     return null;
   }
 );
@@ -87,6 +132,13 @@ const authSlice = createSlice({
       state.error = action.payload;
     },
     logout: (state) => {
+      console.log('[AutoLogout] Logout action triggered');
+      // Clear the auto-logout timer when explicitly logging out or timer triggers logout
+      if (autoLogoutTimer) {
+        console.log('[AutoLogout] Clearing auto-logout timer on logout');
+        clearTimeout(autoLogoutTimer);
+        autoLogoutTimer = null;
+      }
       state.user = null;
       state.restaurantDetails = undefined;
       state.restaurantName = "";
@@ -116,6 +168,27 @@ const authSlice = createSlice({
       });
   },
 });
+
+// Add a function to initialize the auth state
+export const initializeAuth = () => {
+  return (dispatch: any) => {
+    // Return the unsubscribe function from onAuthStateChanged
+    return onAuthStateChanged(auth, (user) => {
+      console.log('[AutoLogout] Auth state changed', { hasUser: !!user });
+      if (user) {
+        dispatch(fetchUserData(user))
+          .unwrap()
+          .then((userData: any) => {
+            if (userData) {
+              dispatch(fetchRestaurantData(userData.uid));
+            }
+          });
+      } else {
+        dispatch(logout());
+      }
+    });
+  };
+};
 
 export const { setLoading, setError, logout } = authSlice.actions;
 export default authSlice.reducer; 

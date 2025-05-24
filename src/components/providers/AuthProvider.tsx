@@ -1,28 +1,26 @@
 "use client";
 
 import { useEffect } from 'react';
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { useAppDispatch } from '@/store/hooks';
-import { fetchUserData, fetchRestaurantData, logout } from '@/store/features/authSlice';
+import { initializeAuth } from '@/store/features/authSlice';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userData = await dispatch(fetchUserData(firebaseUser)).unwrap();
-        if (userData) {
-          dispatch(fetchRestaurantData(userData.uid));
-        }
-      } else {
-        dispatch(logout());
-      }
-    });
-
-    return () => unsubscribe();
+    console.log('[AuthProvider] Initializing auth...');
+    
+    // Initialize auth
+    const unsubscribe = dispatch(initializeAuth());
+    
+    // Cleanup function to unsubscribe when component unmounts
+    return () => {
+      console.log('[AuthProvider] Cleaning up auth...');
+      // The unsubscribe function is returned by the onAuthStateChanged callback
+      // and is automatically called by Firebase when the component unmounts
+      // No need to call it explicitly here as it's handled by Firebase
+    };
   }, [dispatch]);
 
   return <>{children}</>;
-} 
+}

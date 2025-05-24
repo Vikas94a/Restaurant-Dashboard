@@ -11,7 +11,7 @@ export interface CartItem {
 }
 
 // Define the cart state type
-interface CartState {
+export interface CartState {
   items: CartItem[];
   total: number;
 }
