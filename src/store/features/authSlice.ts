@@ -6,15 +6,16 @@ import { Restaurant } from "@/components/dashboardcomponent/RestaurantDialog";
 
 // Auto-logout timer variable and duration
 let autoLogoutTimer: ReturnType<typeof setTimeout> | null = null;
-// Set to 5 minutes (300000ms) for testing, change back to 1 hour (3600000) for production
-const AUTO_LOGOUT_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds for testing
+const AUTO_LOGOUT_DURATION = 60 * 60 * 1000; // 1 minute in milliseconds for testing
+
+// Flag to track if we're in the process of logging out
+let isLoggingOut = false;
 
 // Debug function to log timer status
 const logTimerStatus = (action: string) => {
   console.log(`[AutoLogout] ${action} - Current time: ${new Date().toISOString()}`);
-  console.log(`[AutoLogout] Next auto-logout at: ${
-    autoLogoutTimer ? new Date(Date.now() + AUTO_LOGOUT_DURATION).toISOString() : 'No active timer'
-  }`);
+  console.log(`[AutoLogout] Next auto-logout at: ${autoLogoutTimer ? new Date(Date.now() + AUTO_LOGOUT_DURATION).toISOString() : 'No active timer'
+    }`);
 };
 
 // Types
@@ -51,7 +52,7 @@ export const fetchUserData = createAsyncThunk(
   'auth/fetchUserData',
   async (firebaseUser: any, thunkAPI) => {
     console.log('[AutoLogout] fetchUserData called', { hasUser: !!firebaseUser?.uid });
-    
+
     if (!firebaseUser || !firebaseUser.uid) {
       console.log('[AutoLogout] No user or UID - clearing any existing timer');
       if (autoLogoutTimer) {
@@ -70,24 +71,23 @@ export const fetchUserData = createAsyncThunk(
 
     const refUserDoc = doc(db, "users", firebaseUser.uid);
     const docSnapshot = await getDoc(refUserDoc);
-    
+
     if (docSnapshot.exists()) {
       const userData = { uid: firebaseUser.uid, ...docSnapshot.data() } as User;
-      
+
       // Start the auto-logout timer if user data is successfully fetched
-      console.log(`[AutoLogout] Setting new auto-logout timer for ${AUTO_LOGOUT_DURATION/1000/60} minutes`);
-      
+      console.log(`[AutoLogout] Setting new auto-logout timer for ${AUTO_LOGOUT_DURATION / 1000 / 60} minutes`);
+
       autoLogoutTimer = setTimeout(() => {
         console.log('[AutoLogout] Auto-logout timer triggered - dispatching logout');
+        // First dispatch logout to clear all user data
         thunkAPI.dispatch(logout());
-        // Force page reload to ensure all auth state is cleared
-        window.location.href = '/';
       }, AUTO_LOGOUT_DURATION);
-      
+
       logTimerStatus('New timer set');
       return userData;
     }
-    
+
     console.log('[AutoLogout] User document not found - no timer set');
     return null;
   }
@@ -98,23 +98,23 @@ export const fetchRestaurantData = createAsyncThunk(
   async (userId: string) => {
     const q = query(collection(db, "restaurants"), where("ownerId", "==", userId));
     const querySnapshot = await getDocs(q);
-    
+
     if (!querySnapshot.empty) {
       const restaurantDoc = querySnapshot.docs[0];
       const restaurantData = restaurantDoc.data() as Restaurant;
       restaurantData.restaurantId = restaurantDoc.id;
-      
+
       // Convert Timestamps to strings
       const createdAt = restaurantData.createdAt as unknown as Timestamp;
       const updatedAt = restaurantData.updatedAt as unknown as Timestamp;
-      
+
       if (createdAt && typeof createdAt.toDate === 'function') {
         restaurantData.createdAt = convertTimestampToString(createdAt);
       }
       if (updatedAt && typeof updatedAt.toDate === 'function') {
         restaurantData.updatedAt = convertTimestampToString(updatedAt);
       }
-      
+
       return restaurantData;
     }
     return undefined;
@@ -132,16 +132,67 @@ const authSlice = createSlice({
       state.error = action.payload;
     },
     logout: (state) => {
+      if (isLoggingOut) return; // Prevent multiple logout attempts
+      isLoggingOut = true;
+
       console.log('[AutoLogout] Logout action triggered');
-      // Clear the auto-logout timer when explicitly logging out or timer triggers logout
+
+      // Clear any pending timers
       if (autoLogoutTimer) {
         console.log('[AutoLogout] Clearing auto-logout timer on logout');
         clearTimeout(autoLogoutTimer);
         autoLogoutTimer = null;
       }
-      state.user = null;
-      state.restaurantDetails = undefined;
-      state.restaurantName = "";
+
+
+      // Clear Firebase auth state
+      import('firebase/auth').then(({ signOut }) => {
+        signOut(auth).catch(console.error);
+      });
+
+      // Clear all auth data from localStorage
+      const clearAuthData = () => {
+        try {
+          // Clear Redux Persist data
+          const persistedState = localStorage.getItem('persist:root');
+          if (persistedState) {
+            const parsed = JSON.parse(persistedState);
+            if (parsed.auth) {
+              delete parsed.auth;
+              localStorage.setItem('persist:root', JSON.stringify(parsed));
+            }
+          }
+
+          // Clear Firebase auth data
+          localStorage.removeItem(`firebase:authUser:${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}:[DEFAULT]`);
+
+          // Clear any other Firebase-related data
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('firebase:') || key.startsWith('persist:')) {
+              localStorage.removeItem(key);
+            }
+          });
+
+          // Clear session storage as well
+          sessionStorage.clear();
+
+          // Reset state
+          state.user = null;
+          state.restaurantDetails = undefined;
+          state.restaurantName = "";
+          state.loading = false;
+          state.error = null;
+
+
+        } catch (e) {
+          console.error('Error during logout cleanup:', e);
+        } finally {
+          isLoggingOut = false;
+        }
+      };
+
+      // Execute cleanup
+      clearAuthData();
     },
   },
   extraReducers: (builder) => {
@@ -172,19 +223,42 @@ const authSlice = createSlice({
 // Add a function to initialize the auth state
 export const initializeAuth = () => {
   return (dispatch: any) => {
+    let isInitialized = false;
+
     // Return the unsubscribe function from onAuthStateChanged
     return onAuthStateChanged(auth, (user) => {
-      console.log('[AutoLogout] Auth state changed', { hasUser: !!user });
+      console.log('[AutoLogout] Auth state changed', { hasUser: !!user, isLoggingOut, isInitialized });
+
+      // Skip if we're in the middle of logging out
+      if (isLoggingOut) {
+        console.log('[AutoLogout] Skipping auth state change during logout');
+        return;
+      }
+
+      // Skip initial auth state check to prevent unnecessary reloads
+      if (!isInitialized) {
+        isInitialized = true;
+        if (!user) {
+          return;
+        }
+      }
+
       if (user) {
-        dispatch(fetchUserData(user))
-          .unwrap()
-          .then((userData: any) => {
-            if (userData) {
-              dispatch(fetchRestaurantData(userData.uid));
-            }
-          });
+        // Only proceed with login if we're not in the middle of logging out
+        if (!isLoggingOut) {
+          dispatch(fetchUserData(user))
+            .unwrap()
+            .then((userData: any) => {
+              if (userData && !isLoggingOut) {
+                dispatch(fetchRestaurantData(userData.uid));
+              }
+            });
+        }
       } else {
-        dispatch(logout());
+        // Only dispatch logout if we're not already logging out and not in initial state
+        if (!isLoggingOut && isInitialized) {
+          dispatch(logout());
+        }
       }
     });
   };

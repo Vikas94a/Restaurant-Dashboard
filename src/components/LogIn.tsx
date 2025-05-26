@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Dialog,
   DialogContent,
@@ -14,6 +16,7 @@ import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner"; // Toast notification library for user feedback
 import Link from "next/link"; // Next.js Link component for navigation
 import { Loader2 } from "lucide-react"; // Loading spinner icon
+import { useRouter } from "next/navigation";
 
 // Props for controlling open state of the login modal
 export interface LogInProps {
@@ -29,6 +32,7 @@ export interface InputForm {
 }
 
 export default function Login({ isOpen, setIsOpen }: LogInProps) {
+  const router = useRouter();
   // Form state to hold email, password, and any error message
   const [form, setForm] = useState<InputForm>({
     email: "",
@@ -80,6 +84,7 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
         toast.success("Login successful");
         setForm({ email: "", password: "", error: "" }); // Reset form on success
         setIsOpen(false); // Close modal
+        router.push('/dashboard');
       }
     } catch (error: any) {
       console.error(error);

@@ -3,15 +3,17 @@
 import { useAppSelector } from "@/store/hooks";
 import RestaurantDetails from "@/components/dashboardcomponent/RestaurantDetails";
 import RestaurantTiming from "@/components/dashboardcomponent/RestaurantTiming";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faInfoCircle, faClock } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faInfoCircle, faClock } from "@fortawesome/free-solid-svg-icons";
 import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
 import { SetupHeader } from "@/components/dashboardcomponent/SetupHeader";
 import { useRestaurantSetup } from "@/hooks/useRestaurantSetup";
 
 export default function RestaurantSetup() {
   // Get data from Redux store
-  const { user, restaurantDetails, loading } = useAppSelector((state) => state.auth);
+  const { user, restaurantDetails, loading } = useAppSelector(
+    (state) => state.auth
+  );
 
   // Use custom hook to manage form state and actions - always call this hook
   const {
@@ -22,7 +24,7 @@ export default function RestaurantSetup() {
     handleDetailsChange,
     toggleEdit,
     handleSaveChanges,
-    setEditableHours
+    setEditableHours,
   } = useRestaurantSetup(restaurantDetails || null, user?.uid);
 
   // Show loading spinner while data is loading
@@ -32,7 +34,11 @@ export default function RestaurantSetup() {
 
   // Show message if no restaurant is found
   if (!restaurantDetails) {
-    return <div className="p-6 text-center text-gray-500">No restaurant found. Please create a restaurant first.</div>;
+    return (
+      <div className="p-6 text-center text-gray-500">
+        No restaurant found. Please create a restaurant first.
+      </div>
+    );
   }
 
   return (
@@ -55,7 +61,7 @@ export default function RestaurantSetup() {
               Restaurant Configuration
             </h2>
             <p className="text-gray-600">
-              {isEditing 
+              {isEditing
                 ? "Update your restaurant details and hours below."
                 : "View your restaurant details and hours below."}
             </p>
@@ -66,7 +72,10 @@ export default function RestaurantSetup() {
             {/* Left: Restaurant Details */}
             <div className="md:w-1/2 mb-6 md:mb-0">
               <h3 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
-                <FontAwesomeIcon icon={faInfoCircle} className="h-5 w-5 mr-2 text-blue-500" />
+                <FontAwesomeIcon
+                  icon={faInfoCircle}
+                  className="h-5 w-5 mr-2 text-blue-500"
+                />
                 Restaurant Details
               </h3>
               <div className="bg-gray-50 p-4 rounded-lg shadow-inner">
@@ -81,7 +90,10 @@ export default function RestaurantSetup() {
             {/* Right: Restaurant Hours */}
             <div className="md:w-1/2">
               <h3 className="text-lg font-medium text-gray-800 mb-3 flex items-center">
-                <FontAwesomeIcon icon={faClock} className="h-5 w-5 mr-2 text-blue-500" />
+                <FontAwesomeIcon
+                  icon={faClock}
+                  className="h-5 w-5 mr-2 text-blue-500"
+                />
                 Restaurant Hours
               </h3>
               <div className="bg-gray-50 p-4 rounded-lg shadow-inner">
@@ -96,7 +108,10 @@ export default function RestaurantSetup() {
                   <div className="grid gap-2">
                     {editableHours && editableHours.length > 0 ? (
                       editableHours.map((hour, index) => (
-                        <div key={index} className="flex items-center justify-between py-2 border-b last:border-0">
+                        <div
+                          key={index}
+                          className="flex items-center justify-between py-2 border-b last:border-0"
+                        >
                           <div className="font-medium capitalize">
                             {hour.day}
                           </div>
@@ -112,7 +127,9 @@ export default function RestaurantSetup() {
                         </div>
                       ))
                     ) : (
-                      <p className="text-gray-500 italic">No opening hours set</p>
+                      <p className="text-gray-500 italic">
+                        No opening hours set
+                      </p>
                     )}
                   </div>
                 )}

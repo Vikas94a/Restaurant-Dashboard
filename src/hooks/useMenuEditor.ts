@@ -7,15 +7,27 @@ import { toast } from 'sonner';
 
 // Types
 export interface NestedMenuItem {
-  itemName: string;
-  itemDescription?: string;
-  itemPrice: number;
+  id?: string;
   frontendId?: string;
-  // Add fields for image and editing state if they are part of the item's direct properties
-  itemImage?: string | null; 
-  isEditing?: boolean; // If item itself can be in an editing state for options, etc.
-  customizations?: CustomizationGroup[]; // Existing item-specific customizations
-  linkedReusableExtraIds?: string[]; // IDs of linked extras from the global library
+  // Support both old and new formats
+  name?: string;
+  itemName?: string;
+  description?: string;
+  itemDescription?: string;
+  price?: { amount: number; currency: string };
+  itemPrice?: number;
+  imageUrl?: string;
+  itemImage?: string | null;
+  category?: string;
+  isAvailable?: boolean;
+  isPopular?: boolean;
+  dietaryTags?: string[];
+  customizations?: CustomizationGroup[];
+  linkedReusableExtras?: { [groupId: string]: string[] };
+  linkedReusableExtraIds?: string[];
+  subItems?: NestedMenuItem[];
+  itemType?: 'item' | 'modifier';
+  isEditing?: boolean;
 }
 
 export interface CustomizationChoice {
@@ -57,6 +69,16 @@ export interface ReusableExtraGroup {
   choices: ReusableExtraChoice[];
   // Potentially: isArchived?: boolean; // To hide without deleting
 }
+
+export type ItemChangeField = 
+  | 'name' 
+  | 'description' 
+  | 'priceAmount' 
+  | 'priceCurrency' 
+  | 'isAvailable' 
+  | 'isPopular' 
+  | 'dietaryTags' 
+  | 'itemType';
 
 export function useMenuEditor(restaurantId: string) {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -129,28 +151,80 @@ export function useMenuEditor(restaurantId: string) {
   }, [restaurantId]);
 
   // Handle changes to category fields
-  const handleCategoryChange = (index: number, e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    const updatedCategories = [...categories];
-    updatedCategories[index] = { ...updatedCategories[index], [name]: value };
-    setCategories(updatedCategories);
+  const handleCategoryChange = (
+    catIndex: number, 
+    field: keyof Pick<Category, 'categoryName' | 'categoryDescription'>, 
+    value: string
+  ) => {
+    setCategories(prevCategories => {
+      const newCategories = [...prevCategories];
+      if (catIndex >= 0 && catIndex < newCategories.length) {
+        newCategories[catIndex] = {
+          ...newCategories[catIndex],
+          [field]: value
+        };
+      }
+      return newCategories;
+    });
   };
 
   // Handle changes to item fields within a category
-  const handleItemChange = (catIndex: number, itemIndex: number, e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    const updatedCategories = [...categories];
-    
-    // For price fields, convert to number
-    const newValue = name === 'itemPrice' ? parseFloat(value) || 0 : value;
-    
-    // Update the specific item within the category
-    updatedCategories[catIndex].items[itemIndex] = {
-      ...updatedCategories[catIndex].items[itemIndex],
-      [name]: newValue
-    };
-    
-    setCategories(updatedCategories);
+  const handleItemChange = (
+    catIndex: number, 
+    itemIndex: number, 
+    field: ItemChangeField,
+    value: string | number | boolean | string[]
+  ) => {
+    const newCategories = [...categories];
+    if (catIndex >= 0 && catIndex < newCategories.length && 
+        itemIndex >= 0 && itemIndex < newCategories[catIndex].items.length) {
+      const itemToUpdate = { ...newCategories[catIndex].items[itemIndex] };
+
+      if (field === 'priceAmount') {
+        if (typeof itemToUpdate.itemPrice === 'number') {
+          itemToUpdate.itemPrice = Number(value);
+        } else {
+          itemToUpdate.price = {
+            ...(itemToUpdate.price || { currency: 'USD' }),
+            amount: Number(value)
+          };
+        }
+      } else if (field === 'priceCurrency') {
+        if (typeof itemToUpdate.itemPrice === 'number') {
+          itemToUpdate.price = {
+            amount: itemToUpdate.itemPrice,
+            currency: String(value)
+          };
+          itemToUpdate.itemPrice = undefined;
+        } else {
+          itemToUpdate.price = {
+            ...(itemToUpdate.price || { amount: 0 }),
+            currency: String(value)
+          };
+        }
+      } else if (field === 'name') {
+        itemToUpdate.name = String(value);
+        itemToUpdate.itemName = String(value);
+      } else if (field === 'description') {
+        itemToUpdate.description = String(value);
+        itemToUpdate.itemDescription = String(value);
+      } else if (field === 'isAvailable' || field === 'isPopular') {
+        itemToUpdate[field] = Boolean(value);
+      } else if (field === 'itemType') {
+        itemToUpdate.itemType = value === 'item' || value === 'modifier' ? value : 'item';
+      } else if (field === 'dietaryTags') {
+        itemToUpdate.dietaryTags = Array.isArray(value) 
+          ? value.map(String)
+          : typeof value === 'string' 
+            ? value.split(',').map(tag => tag.trim()).filter(tag => tag)
+            : [];
+      }
+      
+      newCategories[catIndex].items[itemIndex] = itemToUpdate;
+      setCategories(newCategories);
+    } else {
+      console.error("Invalid category or item index in handleItemChange");
+    }
   };
 
   // Add a new empty category
@@ -181,10 +255,15 @@ export function useMenuEditor(restaurantId: string) {
   };
 
   // Toggle editing mode for a category
-  const toggleEditCategory = (index: number, isEditing: boolean) => {
-    const updatedCategories = [...categories];
-    updatedCategories[index].isEditing = isEditing;
-    setCategories(updatedCategories);
+  const toggleEditCategory = (categoryId: string) => {
+    setCategories(prevCategories => 
+      prevCategories.map(category => {
+        if (category.docId === categoryId || category.frontendId === categoryId) {
+          return { ...category, isEditing: !category.isEditing };
+        }
+        return category;
+      })
+    );
   };
 
   // Update customizations for a specific item
@@ -227,9 +306,20 @@ export function useMenuEditor(restaurantId: string) {
   };
 
   // Save a category and its items to Firestore
-  const handleSaveCategory = async (catIndex: number) => {
-    const category = categories[catIndex];
-    if (!category.categoryName) {
+  async function handleSaveCategory(categoryId: string): Promise<void> {
+    const categoryIndex = categories.findIndex(cat => cat.docId === categoryId || cat.frontendId === categoryId);
+    if (categoryIndex === -1) {
+      toast.error("Category not found for saving.");
+      return;
+    }
+
+    const category = categories[categoryIndex];
+    if (!category) {
+      toast.error("Invalid category data.");
+      return;
+    }
+
+    if (!category.categoryName?.trim()) {
       toast.error("Category name is required");
       return;
     }
@@ -244,9 +334,7 @@ export function useMenuEditor(restaurantId: string) {
         if (itemData.customizations && itemData.customizations.length > 0) {
           itemToSave.customizations = itemData.customizations;
         } else {
-          // If customizations are empty or undefined, ensure they are not sent or are explicitly set to an empty array/null
-          // Depending on how you want to handle it in Firestore. Here, we remove it if it's empty.
-          delete itemToSave.customizations; 
+          delete itemToSave.customizations;
         }
         return itemToSave;
       });
@@ -273,26 +361,25 @@ export function useMenuEditor(restaurantId: string) {
         const docRef = await addDoc(collection(db, "restaurants", restaurantId, "menu"), categoryData);
         
         // Update local state with the new docId
-        const updatedCategories = [...categories];
-        updatedCategories[catIndex] = {
-          ...updatedCategories[catIndex],
-          docId: docRef.id,
-          isEditing: false
-        };
+        setCategories(prevCategories => {
+          const newCategories = [...prevCategories];
+          newCategories[categoryIndex] = {
+            ...newCategories[categoryIndex],
+            docId: docRef.id,
+            isEditing: false
+          };
+          return newCategories;
+        });
         
-        setCategories(updatedCategories);
         toast.success("Category added successfully");
       }
-      
-      // Exit editing mode
-      toggleEditCategory(catIndex, false);
     } catch (error) {
       console.error("Error saving category:", error);
       toast.error("Failed to save category");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   // Handle deleting a category
   const handleDeleteCategory = (catIndex: number) => {

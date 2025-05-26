@@ -76,7 +76,7 @@ function Signup() {
       });
 
       toast.success("Signup successful!");
-      router.push("/dashboard"); // Redirect to dashboard after successful signup
+      router.push("/dashboard/overview"); // Redirect to dashboard after successful signup
     } catch (error: any) {
       toast.error(error.message || "Signup failed. Try again."); // Show error if signup fails
     }

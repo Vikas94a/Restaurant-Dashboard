@@ -14,10 +14,17 @@ service cloud.firestore {
         get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.ownerId == request.auth.uid;
     }
 
+    // Helper function to check if user is creating their first restaurant
+    function isNewRestaurantOwner() {
+      return isAuthenticated() && 
+        !exists(/databases/$(database)/documents/restaurants/$(request.resource.data.ownerId));
+    }
+
     // Restaurants collection rules
     match /restaurants/{restaurantId} {
       allow read: if true;  // Anyone can read restaurant details
-      allow write: if isRestaurantOwner(restaurantId);
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;  // User can create their own restaurant
+      allow update, delete: if isRestaurantOwner(restaurantId);  // Only owner can update/delete
 
       // Orders subcollection rules
       match /orders/{orderId} {
