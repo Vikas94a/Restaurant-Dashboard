@@ -2,22 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, addDoc, updateDoc, doc, deleteDoc, arrayRemove } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, arrayRemove } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 // Types
 export interface NestedMenuItem {
   id?: string;
   frontendId?: string;
-  // Support both old and new formats
-  name?: string;
-  itemName?: string;
-  description?: string;
-  itemDescription?: string;
-  price?: { amount: number; currency: string };
-  itemPrice?: number;
+  name: string;
+  description: string;
+  price: { amount: number; currency: string };
   imageUrl?: string;
-  itemImage?: string | null;
   category?: string;
   isAvailable?: boolean;
   isPopular?: boolean;
@@ -57,28 +52,49 @@ export interface Category {
 
 // New interfaces for the Reusable Extras Library
 export interface ReusableExtraChoice {
-  id: string; 
+  id: string;
   name: string;
-  price: number; 
+  price: number;
 }
 
 export interface ReusableExtraGroup {
   id: string; // Firestore document ID for this group
-  groupName: string; 
-  selectionType: 'single' | 'multiple'; 
+  groupName: string;
+  selectionType: 'single' | 'multiple';
   choices: ReusableExtraChoice[];
   // Potentially: isArchived?: boolean; // To hide without deleting
 }
 
-export type ItemChangeField = 
-  | 'name' 
-  | 'description' 
-  | 'priceAmount' 
-  | 'priceCurrency' 
-  | 'isAvailable' 
-  | 'isPopular' 
-  | 'dietaryTags' 
+export type ItemChangeField =
+  | 'name'
+  | 'description'
+  | 'priceAmount'
+  | 'priceCurrency'
+  | 'isAvailable'
+  | 'isPopular'
+  | 'dietaryTags'
   | 'itemType';
+
+// Error message mapping for menu editor operations
+const MENU_EDITOR_ERROR_MESSAGES = {
+  'not-found': 'Menu item not found. Please try again.',
+  'permission-denied': 'You do not have permission to edit this menu.',
+  'unavailable': 'Menu editor service is currently unavailable.',
+  'invalid-data': 'Invalid menu data provided.',
+  'network-error': 'Network error. Please check your connection.',
+  'save-failed': 'Failed to save menu changes. Please try again.',
+  'delete-failed': 'Failed to delete menu item. Please try again.',
+  'update-failed': 'Failed to update menu item. Please try again.',
+  'default': 'An unexpected error occurred while editing the menu.'
+};
+
+// Helper function to get user-friendly error message
+const getMenuEditorErrorMessage = (error: any): string => {
+  if (error?.code) {
+    return MENU_EDITOR_ERROR_MESSAGES[error.code as keyof typeof MENU_EDITOR_ERROR_MESSAGES] || MENU_EDITOR_ERROR_MESSAGES.default;
+  }
+  return MENU_EDITOR_ERROR_MESSAGES.default;
+};
 
 export function useMenuEditor(restaurantId: string) {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -94,8 +110,32 @@ export function useMenuEditor(restaurantId: string) {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {},
+    onConfirm: () => { },
   });
+  const [error, setError] = useState<string | null>(null);
+
+  function normalizeItem(item: Partial<NestedMenuItem>, index: number): NestedMenuItem {
+    return {
+      id: item.id || `item-${index}`,
+      name: item.name || (item as any).itemName || '',
+      description: item.description || (item as any).itemDescription || '',
+      price: {
+        amount: item.price?.amount ?? (item as any).itemPrice ?? 0,
+        currency: item.price?.currency ?? 'USD',
+      },
+      imageUrl: item.imageUrl,
+      category: item.category,
+      isAvailable: item.isAvailable ?? true,
+      isPopular: item.isPopular ?? false,
+      dietaryTags: item.dietaryTags ?? [],
+      customizations: item.customizations ?? [],
+      linkedReusableExtras: item.linkedReusableExtras ?? {},
+      linkedReusableExtraIds: item.linkedReusableExtraIds ?? [],
+      subItems: item.subItems ?? [],
+      itemType: item.itemType ?? 'item',
+      isEditing: false,
+    };
+  }
 
   // Fetch menu data from Firestore
   const fetchMenuData = async () => {
@@ -121,11 +161,7 @@ export function useMenuEditor(restaurantId: string) {
       } else {
         const fetchedCategories = querySnapshot.docs.map((doc) => {
           const data = doc.data();
-
-          const itemsWithFrontendIds = data.items?.map((item: NestedMenuItem, index: number) => ({
-            ...item,
-            frontendId: `${doc.id}-${index}`,
-          })) || [];
+          const itemsWithFrontendIds = (data.items || []).map(normalizeItem);
 
           return {
             ...data,
@@ -152,8 +188,8 @@ export function useMenuEditor(restaurantId: string) {
 
   // Handle changes to category fields
   const handleCategoryChange = (
-    catIndex: number, 
-    field: keyof Pick<Category, 'categoryName' | 'categoryDescription'>, 
+    catIndex: number,
+    field: keyof Pick<Category, 'categoryName' | 'categoryDescription'>,
     value: string
   ) => {
     setCategories(prevCategories => {
@@ -170,56 +206,44 @@ export function useMenuEditor(restaurantId: string) {
 
   // Handle changes to item fields within a category
   const handleItemChange = (
-    catIndex: number, 
-    itemIndex: number, 
+    catIndex: number,
+    itemIndex: number,
     field: ItemChangeField,
     value: string | number | boolean | string[]
   ) => {
     const newCategories = [...categories];
-    if (catIndex >= 0 && catIndex < newCategories.length && 
-        itemIndex >= 0 && itemIndex < newCategories[catIndex].items.length) {
+    if (catIndex >= 0 && catIndex < newCategories.length &&
+      itemIndex >= 0 && itemIndex < newCategories[catIndex].items.length) {
       const itemToUpdate = { ...newCategories[catIndex].items[itemIndex] };
 
       if (field === 'priceAmount') {
-        if (typeof itemToUpdate.itemPrice === 'number') {
-          itemToUpdate.itemPrice = Number(value);
-        } else {
-          itemToUpdate.price = {
-            ...(itemToUpdate.price || { currency: 'USD' }),
-            amount: Number(value)
-          };
-        }
+        // Ensure price object exists, then update amount
+        itemToUpdate.price = {
+          ...(itemToUpdate.price || { currency: 'USD' }), // Default currency if price object is new
+          amount: Number(value)
+        };
       } else if (field === 'priceCurrency') {
-        if (typeof itemToUpdate.itemPrice === 'number') {
-          itemToUpdate.price = {
-            amount: itemToUpdate.itemPrice,
-            currency: String(value)
-          };
-          itemToUpdate.itemPrice = undefined;
-        } else {
-          itemToUpdate.price = {
-            ...(itemToUpdate.price || { amount: 0 }),
-            currency: String(value)
-          };
-        }
+        // Ensure price object exists, then update currency
+        itemToUpdate.price = {
+          ...(itemToUpdate.price || { amount: 0 }), // Default amount if price object is new
+          currency: String(value)
+        };
       } else if (field === 'name') {
-        itemToUpdate.name = String(value);
-        itemToUpdate.itemName = String(value);
+        itemToUpdate.name = String(value); // Corrected: remove duplicate assignment
       } else if (field === 'description') {
-        itemToUpdate.description = String(value);
-        itemToUpdate.itemDescription = String(value);
+        itemToUpdate.description = String(value); // Corrected: remove duplicate assignment
       } else if (field === 'isAvailable' || field === 'isPopular') {
         itemToUpdate[field] = Boolean(value);
       } else if (field === 'itemType') {
         itemToUpdate.itemType = value === 'item' || value === 'modifier' ? value : 'item';
       } else if (field === 'dietaryTags') {
-        itemToUpdate.dietaryTags = Array.isArray(value) 
+        itemToUpdate.dietaryTags = Array.isArray(value)
           ? value.map(String)
-          : typeof value === 'string' 
+          : typeof value === 'string'
             ? value.split(',').map(tag => tag.trim()).filter(tag => tag)
             : [];
       }
-      
+
       newCategories[catIndex].items[itemIndex] = itemToUpdate;
       setCategories(newCategories);
     } else {
@@ -236,27 +260,46 @@ export function useMenuEditor(restaurantId: string) {
       isEditing: true,
       frontendId: `new-category-${Date.now()}`
     };
-    
+
     setCategories([...categories, newCategory]);
   };
 
   // Add a new empty item to a category
-  const handleAddItem = (catIndex: number) => {
+  const handleAddItem = async (catIndex: number) => {
     const updatedCategories = [...categories];
     const newItem: NestedMenuItem = {
-      itemName: "",
-      itemDescription: "",
-      itemPrice: 0,
-      frontendId: `new-item-${Date.now()}-${catIndex}`
+      id: `new-item-${Date.now()}-${catIndex}`,
+      name: "",
+      description: "",
+      price: { amount: 0, currency: "USD" },
+      isAvailable: true,
+      isEditing: true
     };
-    
+
     updatedCategories[catIndex].items.push(newItem);
     setCategories(updatedCategories);
+
+    // If the category exists in Firestore, update it
+    const category = updatedCategories[catIndex];
+    if (category.docId) {
+      try {
+        const categoryRef = doc(db, "restaurants", restaurantId, "menu", category.docId);
+        await updateDoc(categoryRef, {
+          items: category.items.map(cleanItemForFirestore)
+        });
+        toast.success("Item added successfully");
+      } catch (error: any) {
+        console.error("[MenuEditor] Error adding item:", error);
+        const errorMessage = getMenuEditorErrorMessage(error);
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
+    }
   };
 
   // Toggle editing mode for a category
   const toggleEditCategory = (categoryId: string) => {
-    setCategories(prevCategories => 
+    setCategories(prevCategories =>
       prevCategories.map(category => {
         if (category.docId === categoryId || category.frontendId === categoryId) {
           return { ...category, isEditing: !category.isEditing };
@@ -273,11 +316,11 @@ export function useMenuEditor(restaurantId: string) {
       return;
     }
 
-    setCategories(prevCategories => 
+    setCategories(prevCategories =>
       prevCategories.map(category => ({
         ...category,
-        items: category.items.map(item => 
-          item.frontendId === itemFrontendId 
+        items: category.items.map(item =>
+          item.id === itemFrontendId
             ? { ...item, customizations: newCustomizations }
             : item
         )
@@ -292,21 +335,41 @@ export function useMenuEditor(restaurantId: string) {
       return;
     }
 
-    setCategories(prevCategories => 
+    setCategories(prevCategories =>
       prevCategories.map(category => ({
         ...category,
-        items: category.items.map(item => 
-          item.frontendId === itemFrontendId 
-            ? { ...item, linkedReusableExtraIds: linkedExtraGroupIds } 
+        items: category.items.map(item =>
+          item.id === itemFrontendId
+            ? { ...item, linkedReusableExtraIds: linkedExtraGroupIds }
             : item
         )
       }))
     );
-    toast.success('Item linked extras updated locally.');
   };
 
+  function cleanItemForFirestore(item: NestedMenuItem): any {
+    return {
+      name: item.name,
+      description: item.description,
+      price: {
+        amount: item.price?.amount ?? 0,
+        currency: item.price?.currency ?? 'USD',
+      },
+      imageUrl: item.imageUrl ?? '',
+      category: item.category ?? '',
+      isAvailable: item.isAvailable ?? true,
+      isPopular: item.isPopular ?? false,
+      dietaryTags: item.dietaryTags ?? [],
+      customizations: item.customizations ?? [],
+      linkedReusableExtras: item.linkedReusableExtras ?? {},
+      linkedReusableExtraIds: item.linkedReusableExtraIds ?? [],
+      subItems: item.subItems ?? [],
+      itemType: item.itemType ?? 'item',
+    };
+  }
+
   // Save a category and its items to Firestore
-  async function handleSaveCategory(categoryId: string): Promise<void> {
+  const handleSaveCategory = async (categoryId: string): Promise<void> => {
     const categoryIndex = categories.findIndex(cat => cat.docId === categoryId || cat.frontendId === categoryId);
     if (categoryIndex === -1) {
       toast.error("Category not found for saving.");
@@ -325,20 +388,12 @@ export function useMenuEditor(restaurantId: string) {
     }
 
     setLoading(true);
+    setError(null);
 
     try {
       // Prepare items for Firestore: remove frontendId and any other client-side-only properties
-      const itemsForFirestore = category.items.map(({ frontendId, isEditing, ...itemData }) => {
-        // Ensure customizations are included if they exist
-        const itemToSave: Omit<NestedMenuItem, 'frontendId' | 'isEditing'> & { customizations?: CustomizationGroup[] } = { ...itemData };
-        if (itemData.customizations && itemData.customizations.length > 0) {
-          itemToSave.customizations = itemData.customizations;
-        } else {
-          delete itemToSave.customizations;
-        }
-        return itemToSave;
-      });
-      
+      const itemsForFirestore = category.items.map(cleanItemForFirestore);
+
       // Check if category exists (has docId) or needs to be created
       if (category.docId) {
         // Update existing category
@@ -348,7 +403,7 @@ export function useMenuEditor(restaurantId: string) {
           categoryDescription: category.categoryDescription || "",
           items: itemsForFirestore
         });
-        
+
         toast.success("Category updated successfully");
       } else {
         // Create new category
@@ -357,9 +412,9 @@ export function useMenuEditor(restaurantId: string) {
           categoryDescription: category.categoryDescription || "",
           items: itemsForFirestore
         };
-        
+
         const docRef = await addDoc(collection(db, "restaurants", restaurantId, "menu"), categoryData);
-        
+
         // Update local state with the new docId
         setCategories(prevCategories => {
           const newCategories = [...prevCategories];
@@ -370,21 +425,23 @@ export function useMenuEditor(restaurantId: string) {
           };
           return newCategories;
         });
-        
+
         toast.success("Category added successfully");
       }
-    } catch (error) {
-      console.error("Error saving category:", error);
-      toast.error("Failed to save category");
+    } catch (error: any) {
+      console.error("[MenuEditor] Error saving category:", error);
+      const errorMessage = getMenuEditorErrorMessage(error);
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   // Handle deleting a category
   const handleDeleteCategory = (catIndex: number) => {
     const category = categories[catIndex];
-    
+
     const openConfirmDialog = () => {
       setConfirmDialog({
         isOpen: true,
@@ -392,22 +449,25 @@ export function useMenuEditor(restaurantId: string) {
         message: `Are you sure you want to delete "${category.categoryName || 'Unnamed Category'}" and all its items? This action cannot be undone.`,
         onConfirm: async () => {
           setLoading(true);
-          
+          setError(null);
+
           try {
             if (category.docId) {
               // Delete from Firestore if it exists there
               await deleteDoc(doc(db, "restaurants", restaurantId, "menu", category.docId));
             }
-            
+
             // Remove from local state
             const updatedCategories = [...categories];
             updatedCategories.splice(catIndex, 1);
             setCategories(updatedCategories);
-            
+
             toast.success("Category deleted successfully");
-          } catch (error) {
-            console.error("Error deleting category:", error);
-            toast.error("Failed to delete category");
+          } catch (error: any) {
+            console.error("[MenuEditor] Error deleting category:", error);
+            const errorMessage = getMenuEditorErrorMessage(error);
+            setError(errorMessage);
+            toast.error(errorMessage);
           } finally {
             setLoading(false);
             setConfirmDialog(prev => ({ ...prev, isOpen: false }));
@@ -415,7 +475,7 @@ export function useMenuEditor(restaurantId: string) {
         }
       });
     };
-    
+
     openConfirmDialog();
   };
 
@@ -423,38 +483,41 @@ export function useMenuEditor(restaurantId: string) {
   const handleDeleteItem = (catIndex: number, itemIndex: number) => {
     const category = categories[catIndex];
     const item = category.items[itemIndex];
-    
+
     const openConfirmDialog = () => {
       setConfirmDialog({
         isOpen: true,
         title: "Delete Item",
-        message: `Are you sure you want to delete "${item.itemName || 'Unnamed Item'}"? This action cannot be undone.`,
+        message: `Are you sure you want to delete "${item.name || 'Unnamed Item'}"? This action cannot be undone.`,
         onConfirm: async () => {
           setLoading(true);
-          
+          setError(null);
+
           try {
             if (category.docId) {
               // For items in Firestore, we need to update the array
               const categoryRef = doc(db, "restaurants", restaurantId, "menu", category.docId);
-              
+
               // Remove frontendId before updating Firestore
-              const { frontendId, ...itemWithoutFrontendId } = item;
-              
+              const { id, ...itemWithoutFrontendId } = item;
+
               await updateDoc(categoryRef, {
                 // Remove the item from the items array
                 items: arrayRemove(itemWithoutFrontendId)
               });
             }
-            
+
             // Update local state
             const updatedCategories = [...categories];
             updatedCategories[catIndex].items.splice(itemIndex, 1);
             setCategories(updatedCategories);
-            
+
             toast.success("Item deleted successfully");
-          } catch (error) {
-            console.error("Error deleting item:", error);
-            toast.error("Failed to delete item");
+          } catch (error: any) {
+            console.error("[MenuEditor] Error deleting item:", error);
+            const errorMessage = getMenuEditorErrorMessage(error);
+            setError(errorMessage);
+            toast.error(errorMessage);
           } finally {
             setLoading(false);
             setConfirmDialog(prev => ({ ...prev, isOpen: false }));
@@ -462,7 +525,7 @@ export function useMenuEditor(restaurantId: string) {
         }
       });
     };
-    
+
     openConfirmDialog();
   };
 
@@ -483,7 +546,7 @@ export function useMenuEditor(restaurantId: string) {
       } as ReusableExtraGroup));
       setReusableExtras(fetchedExtras);
       toast.success("Reusable extras loaded successfully.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching reusable extras:", error);
       toast.error("Failed to load reusable extras.");
       setReusableExtras([]); // Clear on error to avoid inconsistent state
@@ -505,7 +568,7 @@ export function useMenuEditor(restaurantId: string) {
       setReusableExtras(prev => [...prev, newGroup]);
       toast.success("Reusable extra group added successfully.");
       return docRef.id;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding reusable extra group:", error);
       toast.error("Failed to add reusable extra group.");
       return null;
@@ -525,11 +588,82 @@ export function useMenuEditor(restaurantId: string) {
       await updateDoc(groupRef, groupData);
       setReusableExtras(prev => prev.map(g => g.id === groupId ? { ...g, ...groupData, id: groupId } : g)); // Ensure id is preserved
       toast.success("Reusable extra group updated successfully.");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating reusable extra group:", error);
       toast.error("Failed to update reusable extra group.");
     } finally {
       setLoadingExtras(false);
+    }
+  };
+
+  // Helper function to clean up orphaned references in menu items
+  const cleanupOrphanedExtraReferences = async (deletedGroupId: string) => {
+    try {
+      // Get all categories from Firestore to ensure we have the latest data
+      const menuRef = collection(db, "restaurants", restaurantId, "menu");
+      const querySnapshot = await getDocs(menuRef);
+      
+      const updatePromises: Promise<void>[] = [];
+      const updatedLocalCategories = new Map<string, Category>();
+
+      // First, process all categories from Firestore
+      querySnapshot.docs.forEach((docSnapshot) => {
+        const categoryData = docSnapshot.data();
+        const items = categoryData.items || [];
+        let hasChanges = false;
+
+        // Check if any items need updating
+        const updatedItems = items.map((item: any) => {
+          if (item.linkedReusableExtraIds?.includes(deletedGroupId)) {
+            hasChanges = true;
+            return {
+              ...item,
+              linkedReusableExtraIds: item.linkedReusableExtraIds.filter((id: string) => id !== deletedGroupId)
+            };
+          }
+          return item;
+        });
+
+        // If changes were made, prepare the update
+        if (hasChanges) {
+          // Prepare Firestore update
+          const categoryRef = doc(db, "restaurants", restaurantId, "menu", docSnapshot.id);
+          updatePromises.push(
+            updateDoc(categoryRef, {
+              items: updatedItems.map(cleanItemForFirestore)
+            })
+          );
+
+          // Store the updated category for local state update if needed
+          updatedLocalCategories.set(docSnapshot.id, {
+            docId: docSnapshot.id,
+            categoryName: categoryData.categoryName,
+            categoryDescription: categoryData.categoryDescription,
+            items: updatedItems.map(normalizeItem),
+            isEditing: false
+          });
+        }
+      });
+
+      // Execute all Firestore updates
+      if (updatePromises.length > 0) {
+        await Promise.all(updatePromises);
+        toast.success(`Updated ${updatePromises.length} categories to remove references to deleted extra group`);
+      }
+
+      // Update local state for any categories that are currently loaded
+      if (updatedLocalCategories.size > 0) {
+        setCategories(prevCategories => 
+          prevCategories.map(category => 
+            updatedLocalCategories.has(category.docId!) 
+              ? updatedLocalCategories.get(category.docId!)! 
+              : category
+          )
+        );
+      }
+    } catch (error: any) {
+      console.error("Error cleaning up orphaned references:", error);
+      toast.error("Failed to clean up menu item references");
     }
   };
 
@@ -542,17 +676,19 @@ export function useMenuEditor(restaurantId: string) {
     setConfirmDialog({
       isOpen: true,
       title: "Delete Reusable Extra Group",
-      message: `Are you sure you want to delete this reusable extra group? This action cannot be undone and might affect items using it.`, // Added warning
+      message: `Are you sure you want to delete this reusable extra group? This action cannot be undone and might affect items using it.`,
       onConfirm: async () => {
         setLoadingExtras(true);
         try {
           const groupRef = doc(db, "restaurants", restaurantId, "reusableExtraGroups", groupId);
           await deleteDoc(groupRef);
           setReusableExtras(prev => prev.filter(g => g.id !== groupId));
+          
+          // Clean up orphaned references in menu items
+          await cleanupOrphanedExtraReferences(groupId);
+          
           toast.success("Reusable extra group deleted successfully.");
-          // TODO: Consider adding logic here or in a separate function to find and update items
-          // that were using this deleted group (e.g., remove the linkedReusableExtraIds).
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error deleting reusable extra group:", error);
           toast.error("Failed to delete reusable extra group.");
         } finally {
@@ -578,7 +714,7 @@ export function useMenuEditor(restaurantId: string) {
     handleSaveCategory,
     handleDeleteCategory,
     handleDeleteItem,
-    updateItemCustomizations, 
+    updateItemCustomizations,
     updateItemLinkedExtras, // Expose the new function
     // For Reusable Extras Library
     reusableExtras,
@@ -587,5 +723,7 @@ export function useMenuEditor(restaurantId: string) {
     addReusableExtraGroup,
     updateReusableExtraGroup,
     deleteReusableExtraGroup,
+    error,
+    setError, // Expose setError function
   };
 }

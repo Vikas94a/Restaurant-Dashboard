@@ -70,7 +70,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
     setIsSaving(true);
     try {
       onSaveLinkedExtras(item.frontendId, selectedReusableExtraGroupIds);
-      toast.success(`'${item.itemName}' updated with selected extras.`);
+      toast.success(`'${item.name}' updated with selected extras.`);
       onClose();
     } catch (error) {
       console.error('Error saving linked extras:', error);

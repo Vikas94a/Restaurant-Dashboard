@@ -11,6 +11,7 @@ import {
   faChevronDown,
   faChevronUp,
   faUtensils,
+  faBoxesStacked,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   Category,
@@ -128,9 +129,9 @@ export default function CategoryItem({
 
   return (
     <>
-      <div className="mb-4 bg-white rounded-md shadow overflow-hidden transition-all duration-300 hover:shadow-md border border-gray-200">
+      <div className="block w-full max-w-full min-w-0 mb-4 bg-white rounded-md shadow overflow-hidden transition-all duration-300 hover:shadow-md border border-gray-200">
         <div
-          className={`px-4 py-3 ${
+          className={`w-full overflow-hidden px-4 py-3 ${
             category.isEditing
               ? "bg-gray-50 border-b border-gray-200"
               : "bg-white border-l-4 border-orange-400"
@@ -140,7 +141,7 @@ export default function CategoryItem({
           onClick={!category.isEditing ? handleCategoryClick : undefined} // Refined: Only clickable when not editing
         >
           {category.isEditing ? (
-            <div className="flex-1 mr-3 space-y-3">
+            <div className="flex-1 min-w-0 mr-3 space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
                   Category Name*
@@ -156,7 +157,7 @@ export default function CategoryItem({
                       e.target.value
                     )
                   }
-                  className="text-lg font-semibold px-3.5 py-2.5 border border-gray-300 rounded-md focus:border-primary focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 w-full outline-none shadow-sm transition-colors duration-150"
+                  className="text-lg font-semibold px-3.5 py-2.5 border border-gray-300 rounded-md focus:border-primary focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 w-full outline-none shadow-sm transition-colors duration-150 overflow-x-auto"
                   placeholder="Category Name"
                   required
                   maxLength={CHARACTER_LIMITS.CATEGORY_NAME}
@@ -181,7 +182,7 @@ export default function CategoryItem({
                       e.target.value
                     )
                   }
-                  className="text-sm text-gray-700 px-3.5 py-2.5 border border-gray-300 rounded-md focus:border-primary focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 w-full outline-none resize-none shadow-sm transition-colors duration-150"
+                  className="text-sm text-gray-700 px-3.5 py-2.5 border border-gray-300 rounded-md focus:border-primary focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 w-full outline-none resize-none shadow-sm transition-colors duration-150 overflow-x-auto"
                   placeholder="Category Description (Optional)"
                   rows={2}
                   maxLength={CHARACTER_LIMITS.CATEGORY_DESCRIPTION}
@@ -195,20 +196,20 @@ export default function CategoryItem({
             </div>
           ) : (
             // Display mode for category header (clickable part)
-            <div className="flex-1 flex items-center min-w-0">
+            <div className="flex-1 flex items-center min-w-0 overflow-hidden">
               <div className="flex-shrink-0 mr-3 w-8 h-8 bg-primary bg-opacity-10 rounded flex items-center justify-center text-primary">
                 <FontAwesomeIcon icon={faUtensils} className="h-4 w-4" />
               </div>
-              <div className="flex-grow min-w-0">
+              <div className="flex-grow min-w-0 overflow-hidden"> 
                 <h3
-                  className="text-sm font-bold text-gray-800 truncate"
+                  className="text-lg font-semibold text-gray-800 truncate overflow-wrap-anywhere max-w-full"
                   title={category.categoryName || "Unnamed Category"}
                 >
                   {category.categoryName || "Unnamed Category"}
                 </h3>
                 {category.categoryDescription && (
                   <p
-                    className="text-xs text-gray-600 truncate"
+                    className="text-xs text-gray-600 truncate overflow-wrap-anywhere max-w-full"
                     title={category.categoryDescription}
                   >
                     {category.categoryDescription}
@@ -341,10 +342,8 @@ export default function CategoryItem({
             <div className="flex flex-col gap-4">
               {category.items.map((item, itemIndex) => (
                 <div
-                  key={item.frontendId}
-                  className={`bg-white rounded-md border flex flex-col shadow-sm hover:shadow transition-shadow duration-200 overflow-hidden ${
-                    category.isEditing ? "border-primary" : "border-gray-200"
-                  }`}
+                  key={`${category.docId || category.frontendId}-${item.id || item.frontendId || `item-${itemIndex}`}`}
+                  className="w-full overflow-hidden bg-white rounded shadow-sm border border-gray-200 hover:shadow transition-shadow duration-200"
                 >
                   {category.isEditing ? (
                     <div className="p-3 space-y-3 w-full">
@@ -356,7 +355,7 @@ export default function CategoryItem({
                           <input
                             type="text"
                             name="name"
-                            value={item.name || item.itemName || ""}
+                            value={item.name || ""}
                             onChange={(e) =>
                               handleItemChange(
                                 catIndex,
@@ -365,18 +364,14 @@ export default function CategoryItem({
                                 e.target.value
                               )
                             }
-                            className={`w-full p-2.5 border ${
-                              itemErrors[`${item.id || item.frontendId}-name`]
-                                ? "border-red-500 focus:border-red-600 focus:ring-red-500/50"
-                                : "border-gray-300 focus:border-primary focus:ring-primary/50"
-                            } rounded-md shadow-sm focus:ring-2 focus:ring-offset-1 text-sm font-medium bg-white transition-all duration-150 hover:shadow-md`}
+                            className="text-sm font-semibold p-2 border border-gray-300 rounded-md w-full focus:ring-primary focus:border-primary shadow-sm overflow-x-auto"
                             placeholder="Item Name (e.g., Margherita Pizza)"
                             required
                             maxLength={CHARACTER_LIMITS.ITEM_NAME}
-                            onClick={(e) => e.stopPropagation()} // Prevent item input click from bubbling if category.isEditing makes items directly part of a clickable area
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <div className="text-xs text-gray-500 mt-0.5 text-right">
-                            {(item.name || item.itemName || "").length} /{" "}
+                            {(item.name || "").length} /{" "}
                             {CHARACTER_LIMITS.ITEM_NAME}
                           </div>
                         </div>
@@ -388,7 +383,7 @@ export default function CategoryItem({
                           <input
                             type="number"
                             name="priceAmount"
-                            value={item.price?.amount || item.itemPrice || 0}
+                            value={item.price?.amount || 0}
                             onChange={(e) =>
                               handleItemChange(
                                 catIndex,
@@ -402,7 +397,7 @@ export default function CategoryItem({
                             step="0.01"
                             min="0"
                             required
-                            onClick={(e) => e.stopPropagation()} // Prevent item input click from bubbling
+                            onClick={(e) => e.stopPropagation()}
                           />
                         </div>
                       </div>
@@ -413,7 +408,7 @@ export default function CategoryItem({
                         </label>
                         <textarea
                           name="description"
-                          value={item.description || item.itemDescription || ""}
+                          value={item.description || ""}
                           onChange={(e) =>
                             handleItemChange(
                               catIndex,
@@ -422,18 +417,15 @@ export default function CategoryItem({
                               e.target.value
                             )
                           }
-                          className="w-full p-2.5 border border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 text-xs text-gray-600 bg-white resize-none transition-all duration-150 hover:shadow-md h-20"
+                          className="text-xs p-2 border border-gray-300 rounded-md w-full focus:ring-primary focus:border-primary resize-none shadow-sm overflow-x-auto"
                           placeholder="Describe the item (optional)"
                           rows={2}
                           maxLength={CHARACTER_LIMITS.ITEM_DESCRIPTION}
-                          onClick={(e) => e.stopPropagation()} // Prevent item input click from bubbling
+                          onClick={(e) => e.stopPropagation()}
                         />
                         <div className="text-xs text-gray-500 mt-0.5 text-right">
-                          {
-                            (item.description || item.itemDescription || "")
-                              .length
-                          }{" "}
-                          / {CHARACTER_LIMITS.ITEM_DESCRIPTION}
+                          {(item.description || "").length} /{" "}
+                          {CHARACTER_LIMITS.ITEM_DESCRIPTION}
                         </div>
                       </div>
 
@@ -447,10 +439,35 @@ export default function CategoryItem({
                             icon={faPlus}
                             className="mr-1.5"
                             size="xs"
-                          />{" "}
+                          />
                           Manage Item Options
                         </button>
                       </div>
+
+                      {/* Display linked reusable extras */}
+                      {item.linkedReusableExtraIds && item.linkedReusableExtraIds.length > 0 && (
+                        <div className="mt-2">
+                          <h4 className="text-xs font-medium text-gray-700 mb-1">Linked Extras:</h4>
+                          <div className="space-y-1">
+                            {item.linkedReusableExtraIds.map((groupId) => {
+                              const extraGroup = reusableExtras.find(group => group.id === groupId);
+                              if (!extraGroup) return null;
+                              return (
+                                <div
+                                  key={groupId}
+                                  className="flex items-center text-xs bg-gray-50 px-2 py-1 rounded border border-gray-200"
+                                >
+                                  <FontAwesomeIcon
+                                    icon={faBoxesStacked}
+                                    className="h-3 w-3 text-gray-500 mr-1.5"
+                                  />
+                                  <span className="text-gray-600">{extraGroup.groupName}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="flex justify-end mt-2">
                         <button
@@ -458,7 +475,7 @@ export default function CategoryItem({
                             try {
                               const categoryId =
                                 category.docId || category.frontendId;
-                              const itemId = item.id || item.frontendId;
+                              const itemId = item.id;
                               if (!categoryId || !itemId) {
                                 console.error(
                                   "Cannot delete item: Missing IDs"
@@ -494,18 +511,18 @@ export default function CategoryItem({
                   ) : (
                     <>
                       <div className="p-3 flex-grow">
-                        <h5
-                          className="text-sm font-semibold text-gray-800 truncate"
-                          title={item.name || item.itemName || "Unnamed Item"}
+                        <h4
+                          className="text-base font-semibold text-gray-800 group-hover:text-primary transition-colors duration-150 truncate"
+                          title={item.name || "Unnamed Item"}
                         >
-                          {item.name || item.itemName || "Unnamed Item"}
-                        </h5>
-                        {(item.description || item.itemDescription) && (
+                          {item.name || "Unnamed Item"}
+                        </h4>
+                        {item.description && (
                           <p
                             className="text-xs text-gray-600 truncate mt-0.5"
-                            title={item.description || item.itemDescription}
+                            title={item.description}
                           >
-                            {item.description || item.itemDescription}
+                            {item.description}
                           </p>
                         )}
                       </div>
@@ -515,9 +532,7 @@ export default function CategoryItem({
                         </div>
                         <div className="text-primary font-bold text-sm">
                           $
-                          {(item.price?.amount || item.itemPrice || 0).toFixed(
-                            2
-                          )}
+                          {(item.price?.amount || 0).toFixed(2)}
                         </div>
                       </div>
                     </>
@@ -580,7 +595,8 @@ export default function CategoryItem({
                     />
                   </div>
                   <p className="text-sm font-medium text-gray-700 group-hover:text-primary-dark">
-                    Add New Item
+                    <FontAwesomeIcon icon={faPlus} className="mr-2 h-3 w-3" />
+                    <span className="truncate">Add Item to {category.categoryName || "Category"}</span>
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     to '{category.categoryName || "this category"}'

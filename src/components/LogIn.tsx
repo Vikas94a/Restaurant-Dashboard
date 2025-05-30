@@ -17,6 +17,9 @@ import { toast } from "sonner"; // Toast notification library for user feedback
 import Link from "next/link"; // Next.js Link component for navigation
 import { Loader2 } from "lucide-react"; // Loading spinner icon
 import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { setAuthPersistence, setRememberMe } from "@/store/features/authSlice";
+import { AppDispatch } from "@/store/store";
 
 // Props for controlling open state of the login modal
 export interface LogInProps {
@@ -31,8 +34,22 @@ export interface InputForm {
   error: string;
 }
 
+// Add error message mapping
+const ERROR_MESSAGES = {
+  'auth/invalid-email': 'Please enter a valid email address.',
+  'auth/user-disabled': 'This account has been disabled. Please contact support.',
+  'auth/user-not-found': 'No account found with this email address.',
+  'auth/wrong-password': 'Incorrect password. Please try again.',
+  'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
+  'auth/network-request-failed': 'Network error. Please check your connection.',
+  'auth/operation-not-allowed': 'Email/password sign in is not enabled.',
+  'auth/persistence-error': 'Unable to save login preferences. Please try again.',
+  'default': 'An unexpected error occurred. Please try again.'
+};
+
 export default function Login({ isOpen, setIsOpen }: LogInProps) {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
   // Form state to hold email, password, and any error message
   const [form, setForm] = useState<InputForm>({
     email: "",
@@ -45,6 +62,9 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
 
   // Ref for the email input to focus it automatically when modal opens
   const emailRef = useRef<HTMLInputElement>(null);
+
+  // Remember Me state
+  const [rememberMe, setRememberMeState] = useState(false);
 
   // Effect to autofocus email input when modal is opened
   useEffect(() => {
@@ -59,21 +79,51 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
     // Update the specific field and clear any previous error
   };
 
+  const handleRememberMeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRememberMeState(e.target.checked);
+  };
+
+  // Helper function to get user-friendly error message
+  const getErrorMessage = (error: any): string => {
+    const errorCode = error?.code || 'default';
+    return ERROR_MESSAGES[errorCode as keyof typeof ERROR_MESSAGES] || ERROR_MESSAGES.default;
+  };
+
   // Form submit handler for login
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Basic validation to check required fields
     if (!form.email || !form.password) {
-      setForm({ ...form, error: "Email and password are required." });
-      toast.error("Please fill in all fields");
+      const errorMsg = "Please fill in all fields";
+      setForm({ ...form, error: errorMsg });
+      toast.error(errorMsg);
       return;
     }
 
-    setLoading(true); // Show loading spinner
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      const errorMsg = "Please enter a valid email address";
+      setForm({ ...form, error: errorMsg });
+      toast.error(errorMsg);
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      // Attempt to sign in with Firebase auth
+      // First set the persistence based on remember me choice
+      try {
+        await dispatch(setAuthPersistence(rememberMe)).unwrap();
+        dispatch(setRememberMe(rememberMe));
+      } catch (persistenceError: any) {
+        console.error('Persistence error:', persistenceError);
+        toast.error('Unable to save login preferences. Please try again.');
+        return;
+      }
+
+      // Then attempt to sign in
       const response = await signInWithEmailAndPassword(
         auth,
         form.email,
@@ -82,16 +132,20 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
 
       if (response) {
         toast.success("Login successful");
-        setForm({ email: "", password: "", error: "" }); // Reset form on success
-        setIsOpen(false); // Close modal
+        setForm({ email: "", password: "", error: "" });
+        setIsOpen(false);
         router.push('/dashboard');
       }
     } catch (error: any) {
-      console.error(error);
-      setForm({ ...form, error: "Email or password is incorrect." }); // Show error on failure
-      toast.error("Email or password is incorrect");
+      console.error('Login error:', error);
+      const errorMessage = getErrorMessage(error);
+      setForm({ ...form, error: errorMessage });
+      toast.error(errorMessage);
+
+      // Clear password field on error for security
+      setForm(prev => ({ ...prev, password: "" }));
     } finally {
-      setLoading(false); // Hide loading spinner
+      setLoading(false);
     }
   };
 
@@ -167,6 +221,8 @@ export default function Login({ isOpen, setIsOpen }: LogInProps) {
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
+                checked={rememberMe}
+                onChange={handleRememberMeChange}
                 className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 transition"
               />
               Remember me

@@ -2,6 +2,7 @@
 
 import Sidebar from "@/components/Sidebar";
 import { AuthGuard } from "@/components/providers/AuthGuard";
+import { ProfileCompletionGuard } from "@/components/providers/ProfileCompletionGuard";
 
 export default function DashboardLayout({
   children,
@@ -10,12 +11,14 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthGuard>
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1 ml-56">
-          {children}
-        </main>
-      </div>
+      <ProfileCompletionGuard>
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <main className="flex-1 ml-56">
+            {children}
+          </main>
+        </div>
+      </ProfileCompletionGuard>
     </AuthGuard>
   );
 }

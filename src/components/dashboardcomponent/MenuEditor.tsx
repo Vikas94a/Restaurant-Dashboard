@@ -18,6 +18,7 @@ import ConfirmationDialog from "./menu/ConfirmationDialog";
 import ReusableExtrasManager from "./menu/ReusableExtrasManager";
 import { useState } from "react";
 import { toast } from "sonner";
+import ErrorBanner from "./menu/ErrorBanner";
 
 interface MenuEditorProps {
   restaurantId: string;
@@ -44,6 +45,8 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
     updateReusableExtraGroup,
     deleteReusableExtraGroup,
     updateItemLinkedExtras,
+    error,
+    setError,
   } = useMenuEditor(restaurantId);
 
   // Wrapper functions to handle type conversions
@@ -74,7 +77,7 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
     );
     if (categoryIndex !== -1) {
       const itemIndex = categories[categoryIndex].items.findIndex(
-        (item) => item.frontendId === itemId || item.id === itemId
+        (item) => item.id === itemId || item.id === itemId
       );
       if (itemIndex !== -1) {
         await handleDeleteItem(categoryIndex, itemIndex);
@@ -92,10 +95,10 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
     );
     if (categoryIndex !== -1) {
       const item = categories[categoryIndex].items.find(
-        (item) => item.frontendId === itemId || item.id === itemId
+        (item) => item.id === itemId || item.id === itemId
       );
       if (item) {
-        updateItemCustomizations(item.frontendId, customizations);
+        updateItemCustomizations(item.id, customizations);
       }
     }
   };
@@ -110,11 +113,11 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
     );
     if (categoryIndex !== -1) {
       const item = categories[categoryIndex].items.find(
-        (item) => item.frontendId === itemId || item.id === itemId
+        (item) => item.id === itemId || item.id === itemId
       );
       if (item) {
         const linkedGroupIds = Object.keys(linkedExtras);
-        await updateItemLinkedExtras(item.frontendId, linkedGroupIds);
+        await updateItemLinkedExtras(item.id, linkedGroupIds);
       }
     }
   };
@@ -135,17 +138,27 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
 
       <div className="flex h-full">
         {/* Main content area */}
-        <div key="main-content" className="flex-1 flex flex-col overflow-hidden pr-4">
-          <MenuHeader onAddCategory={handleAddCategory} restaurantId={restaurantId} />
+        <div
+          key="main-content"
+          className="flex-1 w-0 flex flex-col overflow-hidden min-w-0"
+        >
+          <MenuHeader
+            onAddCategory={handleAddCategory}
+            restaurantId={restaurantId}
+          />
+
+          {error && (
+            <ErrorBanner message={error} onDismiss={() => setError(null)} />
+          )}
 
           <div className="flex-1 overflow-y-auto mt-2">
-            <section className="space-y-8 pb-10">
+            <section className="space-y-8 pb-10 overflow-x-hidden px-4">
               {categories.length === 0 && !loading ? (
                 <EmptyMenuState onAddCategory={handleAddCategory} />
               ) : (
                 categories.map((category, catIndex) => (
                   <CategoryItem
-                    key={category.frontendId}
+                    key={category.docId || category.frontendId}
                     category={category}
                     catIndex={catIndex}
                     loading={loading}
@@ -167,7 +180,7 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
         </div>
 
         {/* Sidebar with reusable extras */}
-        <div key="sidebar" className="w-[300px] flex-shrink-0 h-full border-l border-gray-300 bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="w-[300px] flex-shrink-0 h-full border-l border-gray-300 bg-white rounded-lg shadow-md overflow-hidden">
           <section className="h-full flex flex-col">
             <header className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
               <h3 className="text-lg font-bold text-gray-800 flex items-center">
@@ -196,30 +209,35 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
   );
 }
 
-function MenuHeader({ onAddCategory, restaurantId }: { onAddCategory: () => void; restaurantId: string }) {
+function MenuHeader({
+  onAddCategory,
+  restaurantId,
+}: {
+  onAddCategory: () => void;
+  restaurantId: string;
+}) {
   const [orderLink, setOrderLink] = useState<string | null>(null);
 
   const handleGetOrderLink = () => {
     const generatedLink = `${window.location.origin}/restaurant/${restaurantId}/menu`;
     setOrderLink(generatedLink);
-    // console.log("Customer Order Link:", generatedLink); // Remove console log
   };
 
   const handleCopyLink = async () => {
     if (orderLink) {
       try {
         await navigator.clipboard.writeText(orderLink);
-        toast.success('Order link copied to clipboard!');
+        toast.success("Order link copied to clipboard!");
       } catch (err) {
-        console.error('Failed to copy link:', err);
-        toast.error('Failed to copy link.');
+        console.error("Failed to copy link:", err);
+        toast.error("Failed to copy link.");
       }
     }
   };
 
   return (
-    <header className="flex justify-between items-start bg-white p-4 rounded-lg shadow-md border border-gray-200 mb-4 flex-wrap gap-3">
-      <div className="flex-1 min-w-[200px]">
+    <header className="w-full overflow-hidden flex justify-between items-start bg-white p-4 rounded-lg shadow-md border border-gray-200 mb-4 flex-wrap gap-3">
+      <div className="flex-1 max-w-[200px]">
         <h2 className="text-xl font-bold text-gray-800 flex items-center">
           <span className="bg-primary text-white p-2 rounded-lg mr-3 shadow">
             <FontAwesomeIcon
@@ -229,9 +247,6 @@ function MenuHeader({ onAddCategory, restaurantId }: { onAddCategory: () => void
           </span>
           Menu Editor
         </h2>
-        <p className="text-sm text-gray-600 mt-1">
-          Organize your restaurant's offerings with categories and items.
-        </p>
       </div>
       <div className="flex items-center space-x-3 flex-shrink-0">
         <button
@@ -250,35 +265,34 @@ function MenuHeader({ onAddCategory, restaurantId }: { onAddCategory: () => void
       </div>
 
       {orderLink && (
-       <div className="w-full mt-4 flex flex-col justify-center sm:flex-row items-start sm:items-center gap-2 ">
-       <div className="w-full">
-         <label className="block text-xs font-medium text-gray-700 ">
-           Customer Order Link:
-         </label>
-         <div className="relative group">
-           <input
-             type="text"
-             readOnly
-             value={orderLink}
-             className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md bg-gray-100 text-gray-800 text-sm font-mono truncate cursor-pointer hover:bg-gray-200 transition-colors duration-150"
-             onClick={(e) => (e.target as HTMLInputElement).select()}
-             title="Click to select the full link"
-           />
-           <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 group-hover:text-gray-600 text-xs">
-             🔗
-           </span>
-         </div>
-       </div>
-     <div className="mt-4">
-       <button
-         onClick={handleCopyLink}
-         className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-all duration-200 text-sm"
-       >
-        Copy 
-       </button>
-       </div>
-     </div>
-     
+        <div className="w-full mt-4 flex flex-col justify-center sm:flex-row items-start sm:items-center gap-2 ">
+          <div className="w-full">
+            <label className="block text-xs font-medium text-gray-700 ">
+              Customer Order Link:
+            </label>
+            <div className="relative group">
+              <input
+                type="text"
+                readOnly
+                value={orderLink}
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md bg-gray-100 text-gray-800 text-sm font-mono truncate cursor-pointer hover:bg-gray-200 transition-colors duration-150"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+                title="Click to select the full link"
+              />
+              <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 group-hover:text-gray-600 text-xs">
+                🔗
+              </span>
+            </div>
+          </div>
+          <div className="mt-4">
+            <button
+              onClick={handleCopyLink}
+              className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-all duration-200 text-sm"
+            >
+              Copy
+            </button>
+          </div>
+        </div>
       )}
     </header>
   );

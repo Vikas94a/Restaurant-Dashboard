@@ -33,7 +33,7 @@ export default function MenuPage() {
   // Show error if restaurant not set
   if (!restaurantDetails?.restaurantId) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-gray-50 p-4">
+      <div className="h-screen max-w-7xl flex items-center justify-center bg-gray-50 p-4">
         <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-8">
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 bg-yellow-100 text-yellow-600 flex items-center justify-center rounded-full mb-4">

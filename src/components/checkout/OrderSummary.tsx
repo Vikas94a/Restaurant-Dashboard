@@ -1,5 +1,5 @@
-import React from 'react';
-import { CartItem, CustomerFormData } from '@/types/checkout';
+import React from "react";
+import { CartItem, CustomerFormData } from "@/types/checkout";
 
 interface OrderSummaryProps {
   cart: {
@@ -7,25 +7,29 @@ interface OrderSummaryProps {
     total: number;
   };
   handleSubmit: (e: React.FormEvent) => Promise<void>;
-  pickupOption: 'asap' | 'later';
+  pickupOption: "asap" | "later";
   formData: CustomerFormData;
   isAsapAvailable: boolean;
 }
 
-const OrderSummary: React.FC<OrderSummaryProps> = ({ 
-  cart, 
-  handleSubmit, 
-  pickupOption, 
-  formData, 
-  isAsapAvailable 
+const OrderSummary: React.FC<OrderSummaryProps> = ({
+  cart,
+  handleSubmit,
+  pickupOption,
+  formData,
+  isAsapAvailable,
 }) => {
   return (
     <div className="w-full lg:w-1/3 bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
-      <h2 className="text-xl font-semibold text-gray-700 mb-4">Order Summary</h2>
+      <h2 className="text-xl font-semibold text-gray-700 mb-4">
+        Order Summary
+      </h2>
       <div className="space-y-4">
         {cart.items.map((item: CartItem) => (
           <div key={item.id} className="flex justify-between items-center">
-            <span>{item.itemName} x {item.quantity}</span>
+            <span>
+              {item.itemName} x {item.quantity}
+            </span>
             <span>${(item.itemPrice * item.quantity).toFixed(2)}</span>
           </div>
         ))}
@@ -49,7 +53,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         type="submit"
         onClick={handleSubmit}
         className="mt-6 w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary-dark transition disabled:opacity-50"
-        disabled={(pickupOption === 'later' && formData.pickupTime === '') || !isAsapAvailable}
+        disabled={formData.pickupTime === ""}
       >
         Place Order
       </button>

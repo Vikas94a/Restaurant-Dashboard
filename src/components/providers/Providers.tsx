@@ -9,6 +9,7 @@ import ConditionalNavBar from "@/components/ConditionalNavBar";
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { logout } from '@/store/features/authSlice';
+import { SessionWarningModal } from '@/components/auth/SessionWarningModal';
 
 // Component to handle auto-logout on page load if needed
 const AutoLogoutHandler = ({ children }: { children: React.ReactNode }) => {
@@ -41,6 +42,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AutoLogoutHandler>
           <AuthProvider>
             <ConditionalNavBar>{children}</ConditionalNavBar>
+            <SessionWarningModal />
           </AuthProvider>
           <Toaster />
         </AutoLogoutHandler>
