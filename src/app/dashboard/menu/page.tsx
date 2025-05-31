@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 export default function MenuPage() {
   const router = useRouter();
-  const { restaurantDetails, loading: authLoading } = useAppSelector(
+  const { restaurantDetails, isLoading: authLoading } = useAppSelector(
     (state) => state.auth
   );
   const [isLoading, setIsLoading] = useState(false);

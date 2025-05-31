@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 export interface RestaurantHour {
   day: string;
@@ -9,48 +9,103 @@ export interface RestaurantHour {
   isClosed: boolean;
 }
 
+export interface RestaurantDetails {
+  id: string;
+  name: string;
+  description?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  logoUrl?: string;
+  coverImageUrl?: string;
+  openingHours: RestaurantHour[];
+  isOpen: boolean;
+  timezone: string;
+  currency: string;
+  taxRate?: number;
+  deliveryFee?: number;
+  minimumOrder?: number;
+  categories?: string[];
+  dietaryOptions?: string[];
+  paymentMethods?: string[];
+}
+
 export interface RestaurantState {
-  hours: RestaurantHour[];
+  details: RestaurantDetails | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
 }
 
 const initialState: RestaurantState = {
-  hours: [],
+  details: null,
   status: 'idle',
   error: null,
 };
 
-export const fetchRestaurantHours = createAsyncThunk(
-  'restaurant/fetchHours',
+export const fetchRestaurantDetails = createAsyncThunk(
+  'restaurant/fetchDetails',
   async (restaurantId: string) => {
     const restaurantDoc = await getDoc(doc(db, "restaurants", restaurantId));
     if (!restaurantDoc.exists()) {
       throw new Error('Restaurant not found');
     }
-    return restaurantDoc.data().openingHours || [];
+    return { id: restaurantId, ...restaurantDoc.data() } as RestaurantDetails;
+  }
+);
+
+export const updateRestaurantDetails = createAsyncThunk(
+  'restaurant/updateDetails',
+  async ({ restaurantId, details }: { restaurantId: string; details: Partial<RestaurantDetails> }) => {
+    const restaurantRef = doc(db, "restaurants", restaurantId);
+    await updateDoc(restaurantRef, details);
+    return { id: restaurantId, ...details };
   }
 );
 
 export const restaurantSlice = createSlice({
   name: 'restaurant',
   initialState,
-  reducers: {},
+  reducers: {
+    clearRestaurantState: (state) => {
+      state.details = null;
+      state.status = 'idle';
+      state.error = null;
+    },
+    setRestaurantStatus: (state, action) => {
+      state.status = action.payload;
+    }
+  },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchRestaurantHours.pending, (state) => {
+      // Fetch Restaurant Details
+      .addCase(fetchRestaurantDetails.pending, (state) => {
         state.status = 'loading';
         state.error = null;
       })
-      .addCase(fetchRestaurantHours.fulfilled, (state, action) => {
+      .addCase(fetchRestaurantDetails.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.hours = action.payload;
+        state.details = action.payload;
       })
-      .addCase(fetchRestaurantHours.rejected, (state, action) => {
+      .addCase(fetchRestaurantDetails.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.error.message || 'Failed to fetch restaurant hours';
+        state.error = action.error.message || 'Failed to fetch restaurant details';
+      })
+      // Update Restaurant Details
+      .addCase(updateRestaurantDetails.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(updateRestaurantDetails.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.details = { ...state.details, ...action.payload } as RestaurantDetails;
+      })
+      .addCase(updateRestaurantDetails.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || 'Failed to update restaurant details';
       });
   },
 });
 
+export const { clearRestaurantState, setRestaurantStatus } = restaurantSlice.actions;
 export default restaurantSlice.reducer;

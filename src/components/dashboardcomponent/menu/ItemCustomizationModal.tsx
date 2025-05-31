@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { NestedMenuItem, CustomizationGroup, CustomizationChoice, ReusableExtraGroup } from '@/hooks/useMenuEditor';
+import { NestedMenuItem, CustomizationGroup, CustomizationChoice, ReusableExtraGroup } from '@/utils/menuTypes';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faSave, faSpinner, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'sonner';
@@ -99,7 +99,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
       >
         <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-100">
           <h2 className="text-xl font-semibold text-gray-800">
-            Link Extras for <span className="text-primary">{item.itemName}</span>
+            Link Extras for <span className="text-primary">{item.name}</span>
           </h2>
           <button 
             onClick={onClose} 

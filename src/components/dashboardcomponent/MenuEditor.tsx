@@ -7,18 +7,15 @@ import {
   faUtensils,
 } from "@fortawesome/free-solid-svg-icons";
 import { LoadingSpinner } from "./LoadingSpinner";
-import {
-  useMenuEditor,
-  Category,
-  ReusableExtraGroup,
-  CustomizationGroup,
-} from "@/hooks/useMenuEditor";
+import { useMenuEditor } from "@/hooks/useMenuEditor";
+import { CustomizationGroup } from "@/utils/menuTypes";
 import CategoryItem from "./menu/CategoryItem";
 import ConfirmationDialog from "./menu/ConfirmationDialog";
 import ReusableExtrasManager from "./menu/ReusableExtrasManager";
 import { useState } from "react";
 import { toast } from "sonner";
 import ErrorBanner from "./menu/ErrorBanner";
+import { findCategoryIndex, findItemIndex, getCategoryId, getItemId, validateIds } from "@/utils/menuHelpers";
 
 interface MenuEditorProps {
   restaurantId: string;
@@ -49,57 +46,70 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
     setError,
   } = useMenuEditor(restaurantId);
 
-  // Wrapper functions to handle type conversions
-  const handleAddItemWrapper = async (categoryId: string) => {
-    const categoryIndex = categories.findIndex(
-      (cat) => cat.docId === categoryId || cat.frontendId === categoryId
-    );
-    if (categoryIndex !== -1) {
-      await handleAddItem(categoryIndex);
-    }
-  };
-
-  const handleDeleteCategoryWrapper = async (categoryId: string) => {
-    const categoryIndex = categories.findIndex(
-      (cat) => cat.docId === categoryId || cat.frontendId === categoryId
-    );
-    if (categoryIndex !== -1) {
-      await handleDeleteCategory(categoryIndex);
-    }
-  };
-
-  const handleDeleteItemWrapper = async (
+  // Generic wrapper for category operations
+  const withCategoryIndex = async (
     categoryId: string,
-    itemId: string
+    operation: (categoryIndex: number) => void | Promise<void>
   ) => {
-    const categoryIndex = categories.findIndex(
-      (cat) => cat.docId === categoryId || cat.frontendId === categoryId
-    );
+    const categoryIndex = findCategoryIndex(categories, categoryId);
     if (categoryIndex !== -1) {
-      const itemIndex = categories[categoryIndex].items.findIndex(
-        (item) => item.id === itemId || item.id === itemId
-      );
+      await operation(categoryIndex);
+    }
+  };
+
+  // Generic wrapper for item operations
+  const withItemIndex = async (
+    categoryId: string,
+    itemId: string,
+    operation: (categoryIndex: number, itemIndex: number) => void | Promise<void>
+  ) => {
+    const categoryIndex = findCategoryIndex(categories, categoryId);
+    if (categoryIndex !== -1) {
+      const itemIndex = findItemIndex(categories[categoryIndex], itemId);
       if (itemIndex !== -1) {
-        await handleDeleteItem(categoryIndex, itemIndex);
+        await operation(categoryIndex, itemIndex);
       }
     }
   };
 
-  const updateItemCustomizationsWrapper = (
+  // Wrapper functions using the generic helpers
+  const handleAddItemWrapper = async (categoryId: string) => {
+    await withCategoryIndex(categoryId, handleAddItem);
+  };
+
+  const handleDeleteCategoryWrapper = async (categoryId: string) => {
+    await withCategoryIndex(categoryId, handleDeleteCategory);
+  };
+
+  const handleDeleteItemWrapper = async (categoryId: string, itemId: string) => {
+    await withItemIndex(categoryId, itemId, handleDeleteItem);
+  };
+
+  const toggleEditCategoryWrapper = (categoryId: string) => {
+    const categoryIndex = findCategoryIndex(categories, categoryId);
+    if (categoryIndex !== -1) {
+      toggleEditCategory(categoryIndex);
+    }
+  };
+
+  const handleSaveCategoryWrapper = async (categoryId: string) => {
+    const categoryIndex = findCategoryIndex(categories, categoryId);
+    if (categoryIndex !== -1) {
+      await handleSaveCategory(categoryIndex);
+    }
+  };
+
+  const updateItemCustomizationsWrapper = async (
     categoryId: string,
     itemId: string,
     customizations: CustomizationGroup[]
   ) => {
-    const categoryIndex = categories.findIndex(
-      (cat) => cat.docId === categoryId || cat.frontendId === categoryId
+    if (!validateIds(categoryId, itemId)) return;
+    const item = categories[findCategoryIndex(categories, categoryId)]?.items.find(
+      item => item.id === itemId
     );
-    if (categoryIndex !== -1) {
-      const item = categories[categoryIndex].items.find(
-        (item) => item.id === itemId || item.id === itemId
-      );
-      if (item) {
-        updateItemCustomizations(item.id, customizations);
-      }
+    if (item) {
+      updateItemCustomizations(item.id, customizations);
     }
   };
 
@@ -108,48 +118,32 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
     itemId: string,
     linkedExtras: { [key: string]: string[] }
   ) => {
-    const categoryIndex = categories.findIndex(
-      (cat) => cat.docId === categoryId || cat.frontendId === categoryId
+    if (!validateIds(categoryId, itemId)) return;
+    const item = categories[findCategoryIndex(categories, categoryId)]?.items.find(
+      item => item.id === itemId
     );
-    if (categoryIndex !== -1) {
-      const item = categories[categoryIndex].items.find(
-        (item) => item.id === itemId || item.id === itemId
-      );
-      if (item) {
-        const linkedGroupIds = Object.keys(linkedExtras);
-        await updateItemLinkedExtras(item.id, linkedGroupIds);
-      }
+    if (item) {
+      const linkedGroupIds = Object.keys(linkedExtras);
+      await updateItemLinkedExtras(item.id, linkedGroupIds);
     }
   };
 
   return (
-    <div className="relative bg-gradient-to-b from-gray-200 to-white rounded-xl shadow-sm p-3 lg:p-6 overflow-hidden h-screen">
-      {loading && <LoadingSpinner />}
-
-      <ConfirmationDialog
-        isOpen={confirmDialog.isOpen}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-        onConfirm={confirmDialog.onConfirm}
-        onCancel={() =>
-          setConfirmDialog((prev) => ({ ...prev, isOpen: false }))
-        }
-      />
-
-      <div className="flex h-full">
-        {/* Main content area */}
-        <div
-          key="main-content"
-          className="flex-1 w-0 flex flex-col overflow-hidden min-w-0"
-        >
-          <MenuHeader
-            onAddCategory={handleAddCategory}
-            restaurantId={restaurantId}
-          />
-
-          {error && (
-            <ErrorBanner message={error} onDismiss={() => setError(null)} />
-          )}
+    <div className="p-6">
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+      
+      <div className="flex gap-6">
+        <div className="flex-1">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">Menu Editor</h1>
+            <button
+              onClick={handleAddCategory}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 transition-colors duration-200 flex items-center"
+            >
+              <FontAwesomeIcon icon={faPlus} className="mr-2" />
+              Add Category
+            </button>
+          </div>
 
           <div className="flex-1 overflow-y-auto mt-2">
             <section className="space-y-8 pb-10 overflow-x-hidden px-4">
@@ -158,15 +152,15 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
               ) : (
                 categories.map((category, catIndex) => (
                   <CategoryItem
-                    key={category.docId || category.frontendId}
+                    key={getCategoryId(category)}
                     category={category}
                     catIndex={catIndex}
                     loading={loading}
                     handleCategoryChange={handleCategoryChange}
                     handleItemChange={handleItemChange}
                     handleAddItem={handleAddItemWrapper}
-                    toggleEditCategory={toggleEditCategory}
-                    handleSaveCategory={handleSaveCategory}
+                    toggleEditCategory={toggleEditCategoryWrapper}
+                    handleSaveCategory={handleSaveCategoryWrapper}
                     handleDeleteCategory={handleDeleteCategoryWrapper}
                     handleDeleteItem={handleDeleteItemWrapper}
                     updateItemCustomizations={updateItemCustomizationsWrapper}
@@ -205,6 +199,14 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
           </section>
         </div>
       </div>
+
+      <ConfirmationDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog((prev: typeof confirmDialog) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

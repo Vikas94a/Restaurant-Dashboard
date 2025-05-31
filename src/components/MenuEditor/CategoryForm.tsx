@@ -1,5 +1,5 @@
 import React from 'react';
-import { Label } from "@radix-ui/react-label";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
 interface CategoryFormProps {

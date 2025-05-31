@@ -1,67 +1,79 @@
 import React, { useState, useEffect } from 'react';
-import { MenuItem, Category } from '@/services/menuService';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { addMenuItem, updateMenuItem } from '@/store/features/menuSlice';
+import { FrontendMenuItem } from '@/services/menuService';
+import { toast } from 'sonner';
 
 interface MenuItemFormProps {
-  categories: Category[];                 // List of categories to choose from in dropdown
-  initialData?: MenuItem;                 // Optional initial data when editing an existing item
-  onSubmit: (data: Omit<MenuItem, 'id'>) => void;  // Callback when form is submitted with new/updated data
-  onCancel: () => void;                   // Callback when cancel button is clicked
+  restaurantId: string;
+  categoryId: string;
+  initialData?: FrontendMenuItem;
+  onCancel: () => void;
 }
 
 const MenuItemForm: React.FC<MenuItemFormProps> = ({
-  categories,
+  restaurantId,
+  categoryId,
   initialData,
-  onSubmit,
   onCancel
 }) => {
-  // Form state to store inputs for all fields except id
-  const [formData, setFormData] = useState<Omit<MenuItem, 'id'>>({
-    name: '',
-    description: '',
-    price: 0,
-    category: '',
-    imageUrl: '',
-    isAvailable: true
+  const dispatch = useAppDispatch();
+  const { status, error } = useAppSelector(state => state.menu);
+
+  // Form state
+  const [formData, setFormData] = useState<Omit<FrontendMenuItem, 'frontendId' | 'categoryId'>>({
+    itemName: '',
+    itemDescription: '',
+    itemPrice: 0,
+    ...initialData
   });
 
-  // When initialData changes (like when editing), pre-fill form with that data
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        name: initialData.name,
-        description: initialData.description,
-        price: initialData.price,
-        category: initialData.category,
-        imageUrl: initialData.imageUrl || '',
-        isAvailable: initialData.isAvailable
-      });
-    }
-  }, [initialData]);
-
-  // Handle form submission: prevent default page reload and call onSubmit with formData
-  const handleSubmit = (e: React.FormEvent) => {
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    try {
+      if (initialData) {
+        await dispatch(updateMenuItem({
+          restaurantId,
+          categoryId,
+          oldMenuItem: {
+            itemName: initialData.itemName,
+            itemDescription: initialData.itemDescription,
+            itemPrice: initialData.itemPrice
+          },
+          newMenuItem: {
+            itemName: formData.itemName,
+            itemDescription: formData.itemDescription,
+            itemPrice: formData.itemPrice
+          }
+        })).unwrap();
+      } else {
+        await dispatch(addMenuItem({
+          restaurantId,
+          categoryId,
+          menuItem: {
+            itemName: formData.itemName,
+            itemDescription: formData.itemDescription,
+            itemPrice: formData.itemPrice
+          }
+        })).unwrap();
+      }
+      onCancel();
+    } catch (error) {
+      // Error is handled by the reducer
+      console.error('Failed to save menu item:', error);
+    }
   };
 
-  // Handle input changes for text, number, textarea, and select inputs
-  // Parse numbers correctly and update corresponding formData field
+  // Handle input changes
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'number' ? parseFloat(value) : value
-    }));
-  };
-
-  // Handle checkbox input changes separately since they use checked instead of value
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: checked
+      [name]: type === 'number' ? parseFloat(value) || 0 : value
     }));
   };
 
@@ -69,14 +81,14 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-lg bg-white">
       {/* Name input */}
       <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="itemName" className="block text-sm font-medium text-gray-700">
           Name
         </label>
         <input
           type="text"
-          id="name"
-          name="name"
-          value={formData.name}
+          id="itemName"
+          name="itemName"
+          value={formData.itemName}
           onChange={handleChange}
           required
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -85,15 +97,14 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
 
       {/* Description textarea */}
       <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="itemDescription" className="block text-sm font-medium text-gray-700">
           Description
         </label>
         <textarea
-          id="description"
-          name="description"
-          value={formData.description}
+          id="itemDescription"
+          name="itemDescription"
+          value={formData.itemDescription || ''}
           onChange={handleChange}
-          required
           rows={3}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
         />
@@ -101,14 +112,14 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
 
       {/* Price number input */}
       <div>
-        <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="itemPrice" className="block text-sm font-medium text-gray-700">
           Price
         </label>
         <input
           type="number"
-          id="price"
-          name="price"
-          value={formData.price}
+          id="itemPrice"
+          name="itemPrice"
+          value={formData.itemPrice}
           onChange={handleChange}
           required
           min="0"
@@ -117,73 +128,22 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
         />
       </div>
 
-      {/* Category select dropdown */}
-      <div>
-        <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-          Category
-        </label>
-        <select
-          id="category"
-          name="category"
-          value={formData.category}
-          onChange={handleChange}
-          required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        >
-          <option value="">Select a category</option>
-          {categories.map(category => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Image URL input */}
-      <div>
-        <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700">
-          Image URL
-        </label>
-        <input
-          type="url"
-          id="imageUrl"
-          name="imageUrl"
-          value={formData.imageUrl}
-          onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-        />
-      </div>
-
-      {/* Available checkbox */}
-      <div className="flex items-center">
-        <input
-          type="checkbox"
-          id="isAvailable"
-          name="isAvailable"
-          checked={formData.isAvailable}
-          onChange={handleCheckboxChange}
-          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-        <label htmlFor="isAvailable" className="ml-2 block text-sm text-gray-700">
-          Available
-        </label>
-      </div>
-
-      {/* Action buttons: Cancel and Submit (Add or Update) */}
+      {/* Action buttons */}
       <div className="flex justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          disabled={status === 'loading'}
+          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          disabled={status === 'loading'}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
         >
-          {/* Button text changes if editing or adding */}
-          {initialData ? 'Update' : 'Add'} Item
+          {status === 'loading' ? 'Saving...' : initialData ? 'Update' : 'Add'} Item
         </button>
       </div>
     </form>

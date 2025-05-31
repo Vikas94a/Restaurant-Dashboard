@@ -7,14 +7,15 @@ import { usePathname } from 'next/navigation';
 
 const ConditionalNavBar = ({ children }: { children: React.ReactNode }) => {
   const user = useAppSelector((state) => state.auth.user);
-  const loading = useAppSelector((state) => state.auth.loading);
+  const loading = useAppSelector((state) => state.auth.isLoading);
   const pathname = usePathname();
 
   if (loading) {
     return null;
   }
 
-  const showNavBar = pathname === '/' && !user;
+  // Show navbar on all public routes (not in dashboard)
+  const showNavBar = !pathname.startsWith('/dashboard') && !user;
 
   return (
     <>

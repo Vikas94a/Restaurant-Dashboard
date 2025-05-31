@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"; // Custom Dialog components (modal popup)
-import { Label } from "@radix-ui/react-label"; // Accessible label component
+import { Label } from "@/components/ui/label"; // Accessible label component
 import { Input } from "../ui/input"; // Custom input component
 import { Button } from "../ui/button"; // Custom button component
 import { db } from "@/lib/firebase"; // Firebase Firestore database instance

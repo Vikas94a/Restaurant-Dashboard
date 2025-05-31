@@ -1,0 +1,149 @@
+import { useState, useCallback, useEffect } from 'react';
+import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { toast } from 'sonner';
+import { ReusableExtraGroup } from '@/utils/menuTypes';
+
+interface UseReusableExtraOperationsProps {
+  restaurantId: string;
+  setError: (error: string | null) => void;
+  setLoading: (loading: boolean) => void;
+  setConfirmDialog: React.Dispatch<React.SetStateAction<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>>;
+}
+
+export const useReusableExtraOperations = ({
+  restaurantId,
+  setError,
+  setLoading,
+  setConfirmDialog,
+}: UseReusableExtraOperationsProps) => {
+  const [reusableExtras, setReusableExtras] = useState<ReusableExtraGroup[]>([]);
+  const [loadingExtras, setLoadingExtras] = useState(true);
+
+  const fetchReusableExtras = useCallback(async () => {
+    if (!restaurantId) {
+      setReusableExtras([]);
+      setLoadingExtras(false);
+      return;
+    }
+    setLoadingExtras(true);
+    try {
+      const restaurantRef = doc(db, "restaurants", restaurantId);
+      const restaurantDoc = await getDoc(restaurantRef);
+      
+      if (!restaurantDoc.exists()) {
+        console.warn("Restaurant document does not exist");
+        setReusableExtras([]);
+        return;
+      }
+
+      const extrasRef = collection(db, "restaurants", restaurantId, "reusableExtraGroups");
+      const querySnapshot = await getDocs(extrasRef);
+      
+      if (querySnapshot.empty) {
+        setReusableExtras([]);
+        return;
+      }
+
+      const fetchedExtras = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as ReusableExtraGroup));
+      
+      setReusableExtras(fetchedExtras);
+    } catch (error: any) {
+      console.error("Error fetching reusable extras:", error);
+      if (error.code !== 'permission-denied') {
+        toast.error("Failed to load reusable extras.");
+      }
+      setReusableExtras([]);
+    } finally {
+      setLoadingExtras(false);
+    }
+  }, [restaurantId]);
+
+  const addReusableExtraGroup = useCallback(async (groupData: Omit<ReusableExtraGroup, 'id'>) => {
+    if (!restaurantId) {
+      toast.error("Restaurant ID is missing.");
+      return null;
+    }
+    setLoadingExtras(true);
+    try {
+      const extrasRef = collection(db, "restaurants", restaurantId, "reusableExtraGroups");
+      const docRef = await addDoc(extrasRef, groupData);
+      const newGroup = { ...groupData, id: docRef.id };
+      setReusableExtras(prev => [...prev, newGroup]);
+      toast.success("Reusable extra group added successfully.");
+      return docRef.id;
+    } catch (error: any) {
+      console.error("Error adding reusable extra group:", error);
+      toast.error("Failed to add reusable extra group.");
+      return null;
+    } finally {
+      setLoadingExtras(false);
+    }
+  }, [restaurantId]);
+
+  const updateReusableExtraGroup = useCallback(async (groupId: string, groupData: Partial<Omit<ReusableExtraGroup, 'id'>>) => {
+    if (!restaurantId) {
+      toast.error("Restaurant ID is missing.");
+      return;
+    }
+    setLoadingExtras(true);
+    try {
+      const groupRef = doc(db, "restaurants", restaurantId, "reusableExtraGroups", groupId);
+      await updateDoc(groupRef, groupData);
+      setReusableExtras(prev => prev.map(g => g.id === groupId ? { ...g, ...groupData, id: groupId } : g));
+      toast.success("Reusable extra group updated successfully.");
+    } catch (error: any) {
+      console.error("Error updating reusable extra group:", error);
+      toast.error("Failed to update reusable extra group.");
+    } finally {
+      setLoadingExtras(false);
+    }
+  }, [restaurantId]);
+
+  const deleteReusableExtraGroup = useCallback(async (groupId: string) => {
+    if (!restaurantId) {
+      toast.error("Restaurant ID is missing.");
+      return;
+    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Delete Reusable Extra Group",
+      message: `Are you sure you want to delete this reusable extra group? This action cannot be undone and might affect items using it.`,
+      onConfirm: async () => {
+        setLoadingExtras(true);
+        try {
+          const groupRef = doc(db, "restaurants", restaurantId, "reusableExtraGroups", groupId);
+          await deleteDoc(groupRef);
+          setReusableExtras(prev => prev.filter(g => g.id !== groupId));
+          toast.success("Reusable extra group deleted successfully.");
+        } catch (error: any) {
+          console.error("Error deleting reusable extra group:", error);
+          toast.error("Failed to delete reusable extra group.");
+        } finally {
+          setLoadingExtras(false);
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        }
+      },
+    });
+  }, [restaurantId, setConfirmDialog]);
+
+  useEffect(() => {
+    fetchReusableExtras();
+  }, [fetchReusableExtras]);
+
+  return {
+    reusableExtras,
+    loadingExtras,
+    addReusableExtraGroup,
+    updateReusableExtraGroup,
+    deleteReusableExtraGroup,
+  };
+}; 

@@ -3,7 +3,7 @@
 // Import necessary hooks, libraries, and components
 import { useState } from "react";
 import Image from "next/image";
-import { Label } from "@radix-ui/react-label";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -96,7 +96,7 @@ function Signup() {
               <p className="mt-2 text-gray-600 text-base">
                 Join{" "}
                 <span className="font-medium text-blue-600">AI Eat Easy</span>{" "}
-                and elevate your restaurant’s experience.
+                and elevate your restaurant's experience.
               </p>
             </div>
 

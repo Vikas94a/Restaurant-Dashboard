@@ -1,8 +1,8 @@
 "use client";
 
 import Sidebar from "@/components/Sidebar";
-import { AuthGuard } from "@/components/providers/AuthGuard";
-import { ProfileCompletionGuard } from "@/components/providers/ProfileCompletionGuard";
+import { AuthGuard } from "@/providers/guards/AuthGuard";
+import { ProfileCompletionGuard } from "@/providers/guards/ProfileCompletionGuard";
 
 export default function DashboardLayout({
   children,

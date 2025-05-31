@@ -6,7 +6,7 @@ import { faShoppingCart, faXmark, faSpinner } from '@fortawesome/free-solid-svg-
 import { useCart } from '@/hooks/useCart';
 import CartItem from './Cart/CartItem';
 import { useRouter } from 'next/navigation';
-import { CartItem as CartItemType } from '@/store/features/cartSlice';
+import { CartItem as CartItemType } from '@/types/cart';
 
 interface CartProps {
   isOpen: boolean;

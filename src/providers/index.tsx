@@ -1,9 +1,7 @@
 "use client";
 
-import { Provider } from 'react-redux';
-import { PersistGate } from 'redux-persist/integration/react';
-import { store, persistor } from '@/store/store';
-import { AuthProvider } from "@/components/providers/AuthProvider";
+import { ReduxProvider } from "@/providers/ReduxProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
 import { Toaster } from "@/components/ui/sonner";
 import ConditionalNavBar from "@/components/ConditionalNavBar";
 import { useEffect } from 'react';
@@ -35,18 +33,16 @@ const AutoLogoutHandler = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <AutoLogoutHandler>
-          <AuthProvider>
-            <ConditionalNavBar>{children}</ConditionalNavBar>
-            <SessionWarningModal />
-          </AuthProvider>
-          <Toaster />
-        </AutoLogoutHandler>
-      </PersistGate>
-    </Provider>
+    <ReduxProvider>
+      <AutoLogoutHandler>
+        <AuthProvider>
+          <ConditionalNavBar>{children}</ConditionalNavBar>
+          <SessionWarningModal />
+        </AuthProvider>
+        <Toaster />
+      </AutoLogoutHandler>
+    </ReduxProvider>
   );
-}
+} 

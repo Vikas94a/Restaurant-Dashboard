@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Restaurant, OpeningHours, day } from "./RestaurantDialog";
 import { Input } from "../ui/input";
-import { Label } from "@radix-ui/react-label";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type RestaurantHoursProps = {

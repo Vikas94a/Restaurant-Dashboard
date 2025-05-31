@@ -1,244 +1,191 @@
-import React, { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+"use client";
+
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { collection, getDocs, DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useCart } from "@/hooks/useCart";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
+import { CartItem } from "../types/cart";
+import { useErrorHandler } from "@/hooks/useErrorHandler";
+import { withRetry, withTimeout, isNetworkError } from "@/utils/networkUtils";
+import { toast } from "sonner";
+import { MenuItem, MenuCategory, isMenuItem, isMenuCategory } from "@/types/menu";
 
-// Define the shape of a menu item (like a dish on the menu)
-interface Items {
-  description?: string;
-  name?: string;
-  price?: number;
-}
-
-// Define a category on the menu which contains multiple items
-interface MenuItem {
-  id: string;
-  categoryName: string; // e.g. "Starters", "Main Course", "Desserts"
-  categoryDescription: string; // description of the category
-  items: Items[]; // array of dishes in this category
-}
-
-// Props for this component: we need the restaurant's ID to fetch its menu
 interface RestaurantMenuProps {
   restaurantId: string;
 }
 
 export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
-  // State to store all categories with their items
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-
-  // Loading and error states to manage fetch status (common pattern)
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Track which category user has selected to display items for that category
+  const [menuData, setMenuData] = useState<MenuCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { handleAddToCart } = useCart();
+  const { handleError, resetError, isError, canRetry } = useErrorHandler();
 
-  const normalizeItem = (item: any) => ({
-    name: item.name || item.itemName || "",
-    description: item.description || item.itemDescription || "",
-    price: item.price ?? item.itemPrice ?? 0,
-  });
+  const parseMenuItem = useCallback((doc: DocumentData): MenuItem | null => {
+    const data = doc.data();
+    if (!data) return null;
 
-  const {
-    cart,
-    handleAddToCart,
-    handleIncreaseQuantity,
-    handleDecreaseQuantity,
-  } = useCart();
+    const item: MenuItem = {
+      id: doc.id,
+      name: data.name || '',
+      price: Number(data.price) || 0,
+      category: data.category || 'Uncategorized',
+      description: data.description,
+      imageUrl: data.imageUrl,
+      available: Boolean(data.available),
+      customizations: data.customizations || [],
+    };
 
-  // Fetch menu categories and items from Firestore when restaurantId changes
-  useEffect(() => {
-    async function fetchMenu() {
-      try {
-        setLoading(true);
-        setError(null);
+    return isMenuItem(item) ? item : null;
+  }, []);
 
-        // Firebase path to this restaurant's menu collection
-        const menuRef = collection(db, "restaurants", restaurantId, "menu");
+  const fetchMenuData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      resetError();
+      const menuRef = collection(db, "restaurants", restaurantId, "menu");
+      
+      const fetchWithRetry = () => withRetry(
+        () => withTimeout(getDocs(menuRef)),
+        3,
+        1000
+      );
 
-        // Get all documents (categories) inside that menu collection
-        const querySnapshot = await getDocs(menuRef);
+      const querySnapshot = await fetchWithRetry();
+      const categories = new Map<string, MenuItem[]>();
 
-        // Map documents into an array of MenuItem objects
-        const items = querySnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            categoryName: data.categoryName,
-            categoryDescription: data.categoryDescription,
-            items: (data.items || []).map(normalizeItem),
-          };
-        });
-        setMenuItems(items);
-
-        // Automatically select the first category when menu loads
-        if (items.length > 0) {
-          setSelectedCategory(items[0].categoryName);
+      querySnapshot.forEach((doc) => {
+        const item = parseMenuItem(doc);
+        if (item) {
+          const category = item.category;
+          if (!categories.has(category)) {
+            categories.set(category, []);
+          }
+          categories.get(category)?.push(item);
         }
-      } catch (err) {
-        console.error("Error fetching menu:", err);
-        setError("Failed to load menu");
-      } finally {
-        setLoading(false);
+      });
+
+      const formattedData: MenuCategory[] = Array.from(categories.entries())
+        .map(([name, items]) => ({
+          id: name,
+          name,
+          items,
+        }))
+        .filter(isMenuCategory);
+
+      setMenuData(formattedData);
+      if (formattedData.length > 0 && !selectedCategory) {
+        setSelectedCategory(formattedData[0].name);
       }
+    } catch (error) {
+      if (isNetworkError(error)) {
+        handleError(error as Error, "load menu");
+      } else {
+        console.error("Error fetching menu:", error);
+        toast.error("Failed to load menu. Please try again later.");
+      }
+    } finally {
+      setIsLoading(false);
     }
+  }, [restaurantId, selectedCategory, handleError, resetError, parseMenuItem]);
 
-    // Only fetch if we have a valid restaurant ID
-    if (restaurantId) {
-      fetchMenu();
-    }
-  }, [restaurantId]); // Re-run effect when restaurantId changes
+  useEffect(() => {
+    fetchMenuData();
+  }, [fetchMenuData]);
 
-  // Find the category object for the currently selected category
-  const selectedCategoryData = menuItems.find(
-    (category) => category.categoryName === selectedCategory
+  const selectedCategoryData = useMemo(
+    () => menuData.find((cat) => cat.name === selectedCategory),
+    [menuData, selectedCategory]
   );
 
-  // Debug log to see fetched menu structure in console
-  console.log(menuItems);
+  const handleAddItemToCart = useCallback((item: MenuItem) => {
+    if (!selectedCategoryData?.name) return;
+
+    const cartItem: Omit<CartItem, "id" | "quantity"> = {
+      restaurantId,
+      itemName: item.name,
+      itemPrice: item.price,
+      categoryName: selectedCategoryData.name,
+      customizations: item.customizations?.map(customization => ({
+        category: customization.name,
+        options: customization.options.map(option => ({
+          id: option.id,
+          name: option.name,
+          price: option.price,
+          category: customization.name
+        }))
+      })) || [],
+      totalPrice: item.price
+    };
+
+    handleAddToCart(cartItem);
+  }, [restaurantId, selectedCategoryData?.name, handleAddToCart]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
+  if (isError && !canRetry) {
+    return (
+      <div className="flex flex-col items-center justify-center p-4">
+        <p className="text-red-500 mb-4">Failed to load menu</p>
+        <button
+          onClick={fetchMenuData}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-[calc(100vh-80px)] bg-gray-50 rounded-2xl shadow-inner overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-60 bg-white border-r border-gray-200 flex flex-col">
-        <div className="px-6 py-5 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 className="text-xl font-bold text-gray-800">🍽️ Menu</h2>
-        </div>
-        <nav className="overflow-y-auto flex-1 custom-scroll">
-          {menuItems.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.categoryName)}
-              className={`w-full text-left px-6 py-4 transition-all duration-200 ease-in-out hover:bg-green-50 group ${
-                selectedCategory === category.categoryName
-                  ? "bg-green-100 border-l-4 border-green-500"
-                  : ""
-              }`}
+    <div className="p-4">
+      <div className="flex space-x-4 mb-4 overflow-x-auto">
+        {menuData.map((category) => (
+          <button
+            key={category.id}
+            onClick={() => setSelectedCategory(category.name)}
+            className={`px-4 py-2 rounded ${
+              selectedCategory === category.name
+                ? "bg-blue-500 text-white"
+                : "bg-gray-200"
+            }`}
+          >
+            {category.name}
+          </button>
+        ))}
+      </div>
+
+      {selectedCategoryData && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {selectedCategoryData.items.map((item) => (
+            <div
+              key={item.id}
+              className="border rounded p-4 flex flex-col justify-between"
             >
-              <h3 className="text-base font-semibold text-gray-800 group-hover:text-green-600 transition">
-                {category.categoryName}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1 truncate">
-                {category.categoryDescription}
-              </p>
-            </button>
+              <div>
+                <h3 className="font-bold">{item.name}</h3>
+                <p className="text-gray-600">${item.price.toFixed(2)}</p>
+                {item.description && (
+                  <p className="text-sm text-gray-500 mt-1">{item.description}</p>
+                )}
+              </div>
+              <button
+                onClick={() => handleAddItemToCart(item)}
+                className="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                disabled={!item.available}
+              >
+                {item.available ? 'Add to Cart' : 'Not Available'}
+              </button>
+            </div>
           ))}
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-10">
-        {selectedCategoryData ? (
-          <section>
-            {/* Header */}
-            <div className="mb-8">
-              <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                {selectedCategoryData.categoryName}
-              </h2>
-              {selectedCategoryData.categoryDescription && (
-                <p className="text-gray-600 mt-2 text-base max-w-2xl">
-                  {selectedCategoryData.categoryDescription}
-                </p>
-              )}
-            </div>
-
-            {/* Grid of Items */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {selectedCategoryData.items?.map((item, index) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-2xl shadow hover:shadow-lg transition-all border border-gray-100 p-5 flex flex-col justify-between"
-                >
-                  <div className="mb-3">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      {item.name}
-                    </h3>
-                    {item.description && (
-                      <p className="text-sm text-gray-500 mt-1">
-                        {item.description}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between mt-auto">
-                    <p className="text-green-600 font-bold text-lg">
-                      ${item.price?.toFixed(2)}
-                    </p>
-                    {/* Conditional rendering based on whether item is in cart */}
-                    {
-                      item.name &&
-                        item.price !== undefined &&
-                        selectedCategoryData?.categoryName &&
-                        restaurantId &&
-                        (() => {
-                          const itemId = `${restaurantId}-${item.name}`;
-                          const cartItem = cart.items.find(
-                            (cartItem) => cartItem.id === itemId
-                          );
-
-                          if (cartItem) {
-                            // Item is in cart, show quantity controls
-                            return (
-                              <div className="flex items-center ml-auto border border-gray-300 rounded-md overflow-hidden">
-                                <button
-                                  className="px-3 py-1 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                  onClick={() => handleDecreaseQuantity(itemId)}
-                                  disabled={cartItem.quantity <= 1}
-                                >
-                                  <FontAwesomeIcon
-                                    icon={faMinus}
-                                    className="w-3 h-3 text-gray-600"
-                                  />
-                                </button>
-                                <span className="px-4 py-1 bg-gray-100 text-sm font-medium text-gray-800">
-                                  {cartItem.quantity}
-                                </span>
-                                <button
-                                  className="px-3 py-1 hover:bg-gray-200 transition-colors"
-                                  onClick={() => handleIncreaseQuantity(itemId)}
-                                >
-                                  <FontAwesomeIcon
-                                    icon={faPlus}
-                                    className="w-3 h-3 text-gray-600"
-                                  />
-                                </button>
-                              </div>
-                            );
-                          } else {
-                            // Item is not in cart, show Add to Cart button
-                            return (
-                              <button
-                                className="btn btn-sm bg-primary text-white hover:bg-primary-dark px-4 py-2"
-                                onClick={() =>
-                                  handleAddToCart({
-                                    itemName: item.name as string,
-                                    itemPrice: item.price as number,
-                                    categoryName: selectedCategoryData.categoryName,
-                                    restaurantId: restaurantId,
-                                    customizations: [], // Add empty customizations array
-                                    totalPrice: item.price as number // Set initial total price same as item price
-                                  })
-                                }
-                              >
-                                Add to Cart
-                              </button>
-                            );
-                          }
-                        })() /* Immediately invoke the function */
-                    }
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : (
-          <div className="text-center text-gray-500 mt-32 text-lg">
-            👈 Select a category to view delicious items!
-          </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 }

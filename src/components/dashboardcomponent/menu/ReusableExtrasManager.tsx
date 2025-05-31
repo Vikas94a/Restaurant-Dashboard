@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { ReusableExtraGroup, ReusableExtraChoice } from '@/hooks/useMenuEditor';
+import { ReusableExtraGroup, ReusableExtraChoice } from '@/utils/menuTypes';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faEdit, faTrash, faSave, faTimes, faSpinner } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'sonner';
@@ -121,7 +121,7 @@ const ReusableExtrasManager: React.FC<ReusableExtrasManagerProps> = ({
     if (!editingGroup) return;
     setEditingGroup({
       ...editingGroup,
-      choices: editingGroup.choices.filter((_, index) => index !== choiceIndex),
+      choices: editingGroup.choices.filter((_: ReusableExtraChoice, index: number) => index !== choiceIndex),
     });
   };
   // --- End Choice Management --- 
@@ -175,7 +175,7 @@ const ReusableExtrasManager: React.FC<ReusableExtrasManagerProps> = ({
           </div>
 
           <h4 className={`font-semibold text-gray-700 mb-2 mt-4 ${isCompact ? 'text-base' : 'text-md'}`}>Choices:</h4>
-          {editingGroup.choices.map((choice, choiceIndex) => (
+          {editingGroup.choices.map((choice: ReusableExtraChoice, choiceIndex: number) => (
             <div key={choice.id || choiceIndex} className={`flex items-center space-x-2 mb-2 p-2 bg-white rounded border ${isCompact ? 'text-xs' : ''}`}>
               <input
                 type="text"

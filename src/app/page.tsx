@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAppSelector } from "@/store/hooks";
 import { ArrowRight, Info } from "lucide-react";
-import { PublicRouteGuard } from "@/components/providers/PublicRouteGuard";
+import { PublicRouteGuard } from "@/providers/guards/PublicRouteGuard";
 
 export default function Home() {
   const user = useAppSelector((state) => state.auth.user);

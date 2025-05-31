@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Restaurant } from "./RestaurantDialog"; // Importing the Restaurant type from another component
 import { Input } from "../ui/input"; // Custom Input component (probably from shadcn/ui or similar)
-import { Label } from "@radix-ui/react-label"; // Accessible Label component
+import { Label } from "@/components/ui/label"; // Accessible Label component
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMapMarkerAlt, faPhone } from '@fortawesome/free-solid-svg-icons';
 

@@ -1,10 +1,11 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { doc, getDoc, collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
-import { onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
+import { onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence, User as FirebaseUser } from "firebase/auth";
 import { Restaurant } from "@/components/dashboardcomponent/RestaurantDialog";
 import { store } from "../store";
 import { toast } from "sonner";
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 // Auto-logout timer variable and duration
 let autoLogoutTimer: ReturnType<typeof setTimeout> | null = null;
@@ -25,45 +26,83 @@ const logTimerStatus = (action: string) => {
     }`);
 };
 
-// Types
-interface User {
+// Define serializable user type
+interface SerializableUser {
   uid: string;
-  restaurantName?: string;
-  [key: string]: any;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  emailVerified: boolean;
+  isAnonymous: boolean;
+  metadata: {
+    creationTime?: string;
+    lastSignInTime?: string;
+  };
+  providerData: Array<{
+    providerId: string;
+    uid: string;
+    displayName: string | null;
+    email: string | null;
+    phoneNumber: string | null;
+    photoURL: string | null;
+  }>;
 }
 
+// Convert Firebase User to serializable format
+const serializeUser = (user: FirebaseUser | null): SerializableUser | null => {
+  if (!user) return null;
+  
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    emailVerified: user.emailVerified,
+    isAnonymous: user.isAnonymous,
+    metadata: {
+      creationTime: user.metadata.creationTime,
+      lastSignInTime: user.metadata.lastSignInTime,
+    },
+    providerData: user.providerData.map(provider => ({
+      providerId: provider.providerId,
+      uid: provider.uid,
+      displayName: provider.displayName,
+      email: provider.email,
+      phoneNumber: provider.phoneNumber,
+      photoURL: provider.photoURL,
+    })),
+  };
+};
+
+// Define a type for the serialized user data
+interface SerializedUserData extends SerializableUser {
+  restaurantName?: string;
+  [key: string]: any; // Allow additional properties from Firestore
+}
+
+// Types
 export interface AuthState {
-  user: User | null;
-  loading: boolean;
-  error: any;
+  user: SerializedUserData | null;
   restaurantDetails: Restaurant | undefined;
   restaurantName: string;
   isLogoutWarningModalVisible: boolean;
   warningTimerRemaining: number;
   rememberMe: boolean;
-  loadingStates: {
-    userData: boolean;
-    restaurantData: boolean;
-    persistence: boolean;
-    logout: boolean;
-  };
+  isLoading: boolean;
+  error: string | null;
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
 }
 
 const initialState: AuthState = {
   user: null,
-  loading: true,
-  error: null,
   restaurantDetails: undefined,
   restaurantName: "",
   isLogoutWarningModalVisible: false,
   warningTimerRemaining: 0,
   rememberMe: false,
-  loadingStates: {
-    userData: false,
-    restaurantData: false,
-    persistence: false,
-    logout: false
-  }
+  isLoading: false,
+  error: null,
+  status: 'idle'
 };
 
 // Helper function to convert Timestamp to string
@@ -159,42 +198,48 @@ const withRetry = async <T>(
 };
 
 // Async thunks
-export const fetchUserData = createAsyncThunk(
+export const fetchUserData = createAsyncThunk<SerializedUserData | null, FirebaseUser>(
   'auth/fetchUserData',
-  async (firebaseUser: any, { dispatch, rejectWithValue }) => {
+  async (firebaseUser, { rejectWithValue }) => {
     try {
-      console.log('[AutoLogout] fetchUserData called', { hasUser: !!firebaseUser?.uid });
-
       if (!firebaseUser || !firebaseUser.uid) {
-        console.log('[AutoLogout] No user or UID - clearing any existing timer');
         clearAllTimers();
         return null;
       }
 
-      // Clear any existing timers when user data is (re)fetched
       clearAllTimers();
 
-      const userData = await withRetry(async () => {
-        const refUserDoc = doc(db, "users", firebaseUser.uid);
-        const docSnapshot = await getDoc(refUserDoc);
+      const refUserDoc = doc(db, "users", firebaseUser.uid);
+      const docSnapshot = await getDoc(refUserDoc);
 
-        if (docSnapshot.exists()) {
-          const data = { uid: firebaseUser.uid, ...docSnapshot.data() } as User;
+      if (docSnapshot.exists()) {
+        const userData = docSnapshot.data();
+        // Create a serializable version of the user data
+        const serializedUser: SerializedUserData = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+          emailVerified: firebaseUser.emailVerified,
+          isAnonymous: firebaseUser.isAnonymous,
+          metadata: {
+            creationTime: firebaseUser.metadata?.creationTime,
+            lastSignInTime: firebaseUser.metadata?.lastSignInTime,
+          },
+          providerData: firebaseUser.providerData?.map((provider) => ({
+            providerId: provider.providerId,
+            uid: provider.uid,
+            displayName: provider.displayName,
+            email: provider.email,
+            phoneNumber: provider.phoneNumber,
+            photoURL: provider.photoURL,
+          })) || [],
+          ...userData, // Include additional user data from Firestore
+        };
+        return serializedUser;
+      }
 
-          // Start the auto-logout timer if user data is successfully fetched
-          console.log(`[AutoLogout] Setting new auto-logout timer for ${AUTO_LOGOUT_DURATION / 1000 / 60} minutes`);
-          
-          // Use the thunk to set up the timer
-          dispatch(resetAutoLogoutTimer());
-
-          return data;
-        }
-
-        console.log('[AutoLogout] User document not found - no timer set');
-        return null;
-      });
-
-      return userData;
+      return null;
     } catch (error: any) {
       console.error('[Auth] Error fetching user data:', error);
       return rejectWithValue(getAuthErrorMessage(error));
@@ -206,32 +251,28 @@ export const fetchRestaurantData = createAsyncThunk(
   'auth/fetchRestaurantData',
   async (userId: string, { rejectWithValue }) => {
     try {
-      const restaurantData = await withRetry(async () => {
-        const q = query(collection(db, "restaurants"), where("ownerId", "==", userId));
-        const querySnapshot = await getDocs(q);
+      const q = query(collection(db, "restaurants"), where("ownerId", "==", userId));
+      const querySnapshot = await getDocs(q);
 
-        if (!querySnapshot.empty) {
-          const restaurantDoc = querySnapshot.docs[0];
-          const data = restaurantDoc.data() as Restaurant;
-          data.restaurantId = restaurantDoc.id;
+      if (!querySnapshot.empty) {
+        const restaurantDoc = querySnapshot.docs[0];
+        const data = restaurantDoc.data() as Restaurant;
+        data.restaurantId = restaurantDoc.id;
 
-          // Convert Timestamps to strings
-          const createdAt = data.createdAt as unknown as Timestamp;
-          const updatedAt = data.updatedAt as unknown as Timestamp;
+        // Convert Timestamps to strings
+        const createdAt = data.createdAt as unknown as Timestamp;
+        const updatedAt = data.updatedAt as unknown as Timestamp;
 
-          if (createdAt && typeof createdAt.toDate === 'function') {
-            data.createdAt = convertTimestampToString(createdAt);
-          }
-          if (updatedAt && typeof updatedAt.toDate === 'function') {
-            data.updatedAt = convertTimestampToString(updatedAt);
-          }
-
-          return data;
+        if (createdAt && typeof createdAt.toDate === 'function') {
+          data.createdAt = convertTimestampToString(createdAt);
         }
-        return undefined;
-      });
+        if (updatedAt && typeof updatedAt.toDate === 'function') {
+          data.updatedAt = convertTimestampToString(updatedAt);
+        }
 
-      return restaurantData;
+        return data;
+      }
+      return undefined;
     } catch (error: any) {
       console.error('[Auth] Error fetching restaurant data:', error);
       return rejectWithValue(getAuthErrorMessage(error));
@@ -245,12 +286,10 @@ export const startAutoLogoutWarning = createAsyncThunk(
   async (_, { dispatch }) => {
     clearAllTimers();
     
-    // Start warning countdown
     warningTimer = setTimeout(() => {
       dispatch(logout());
     }, WARNING_DURATION);
     
-    // Update remaining time every second
     let startTime = Date.now();
     warningTimerInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -272,7 +311,6 @@ export const resetAutoLogoutTimer = createAsyncThunk(
   async (_, { dispatch }) => {
     clearAllTimers();
     
-    // Set new auto-logout timer
     autoLogoutTimer = setTimeout(() => {
       dispatch(showLogoutWarningModal(true));
       dispatch(startAutoLogoutWarning());
@@ -285,7 +323,7 @@ export const resetAutoLogoutTimer = createAsyncThunk(
 // New thunk for setting persistence
 export const setAuthPersistence = createAsyncThunk(
   'auth/setPersistence',
-  async (rememberMe: boolean, { dispatch, rejectWithValue }) => {
+  async (rememberMe: boolean, { rejectWithValue }) => {
     try {
       const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
       await setPersistence(auth, persistence);
@@ -302,33 +340,17 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setLoading: (state, action: PayloadAction<boolean>) => {
-      state.loading = action.payload;
+      state.isLoading = action.payload;
     },
-    setError: (state, action: PayloadAction<any>) => {
+    setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
     logout: (state) => {
       if (isLoggingOut) return;
       isLoggingOut = true;
 
-      // Ensure loadingStates exists before accessing it
-      if (!state.loadingStates) {
-        state.loadingStates = {
-          userData: false,
-          restaurantData: false,
-          persistence: false,
-          logout: false
-        };
-      }
-      
-      state.loadingStates.logout = true;
-
-      console.log('[AutoLogout] Logout action triggered');
-
-      // Clear all timers
       clearAllTimers();
 
-      // Clear Firebase auth state
       import('firebase/auth').then(({ signOut }) => {
         signOut(auth).catch((error) => {
           console.error('[Auth] Error during sign out:', error);
@@ -336,10 +358,8 @@ const authSlice = createSlice({
         });
       });
 
-      // Clear all auth data from localStorage
       const clearAuthData = () => {
         try {
-          // Clear Redux Persist data
           const persistedState = localStorage.getItem('persist:root');
           if (persistedState) {
             const parsed = JSON.parse(persistedState);
@@ -349,37 +369,30 @@ const authSlice = createSlice({
             }
           }
 
-          // Clear Firebase auth data
           localStorage.removeItem(`firebase:authUser:${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}:[DEFAULT]`);
 
-          // Clear any other Firebase-related data
           Object.keys(localStorage).forEach(key => {
             if (key.startsWith('firebase:') || key.startsWith('persist:')) {
               localStorage.removeItem(key);
             }
           });
 
-          // Clear session storage as well
           sessionStorage.clear();
 
-          // Reset state
           state.user = null;
           state.restaurantDetails = undefined;
           state.restaurantName = "";
-          state.loading = false;
+          state.isLoading = false;
           state.error = null;
-          state.loadingStates.logout = false;
 
         } catch (e) {
           console.error('[Auth] Error during logout cleanup:', e);
           toast.error('Error clearing session data. Please try again.');
-          state.loadingStates.logout = false;
         } finally {
           isLoggingOut = false;
         }
       };
 
-      // Execute cleanup
       clearAuthData();
     },
     showLogoutWarningModal: (state, action: PayloadAction<boolean>) => {
@@ -397,34 +410,34 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Handle fetchUserData
       .addCase(fetchUserData.pending, (state) => {
-        state.loadingStates.userData = true;
+        state.isLoading = true;
+        state.error = null;
       })
       .addCase(fetchUserData.fulfilled, (state, action) => {
         state.user = action.payload;
-        state.loadingStates.userData = false;
+        state.isLoading = false;
         if (action.payload?.restaurantName) {
           state.restaurantName = action.payload.restaurantName;
         }
       })
       .addCase(fetchUserData.rejected, (state, action) => {
-        state.error = action.payload;
-        state.loadingStates.userData = false;
+        state.error = action.payload as string;
+        state.isLoading = false;
         state.user = null;
         toast.error(typeof action.payload === 'string' ? action.payload : 'Failed to fetch user data');
       })
-      // Handle fetchRestaurantData
       .addCase(fetchRestaurantData.pending, (state) => {
-        state.loadingStates.restaurantData = true;
+        state.isLoading = true;
+        state.error = null;
       })
       .addCase(fetchRestaurantData.fulfilled, (state, action) => {
         state.restaurantDetails = action.payload;
-        state.loadingStates.restaurantData = false;
+        state.isLoading = false;
       })
       .addCase(fetchRestaurantData.rejected, (state, action) => {
-        state.error = action.payload;
-        state.loadingStates.restaurantData = false;
+        state.error = action.payload as string;
+        state.isLoading = false;
         toast.error(typeof action.payload === 'string' ? action.payload : 'Failed to load restaurant details');
       })
       .addCase(startAutoLogoutWarning.fulfilled, (state, action) => {
@@ -435,15 +448,16 @@ const authSlice = createSlice({
         state.warningTimerRemaining = 0;
       })
       .addCase(setAuthPersistence.pending, (state) => {
-        state.loadingStates.persistence = true;
+        state.isLoading = true;
+        state.error = null;
       })
       .addCase(setAuthPersistence.fulfilled, (state, action) => {
         state.rememberMe = action.payload;
-        state.loadingStates.persistence = false;
+        state.isLoading = false;
       })
       .addCase(setAuthPersistence.rejected, (state, action) => {
-        state.error = action.payload;
-        state.loadingStates.persistence = false;
+        state.error = action.payload as string;
+        state.isLoading = false;
         toast.error(typeof action.payload === 'string' ? action.payload : AUTH_ERROR_MESSAGES.default);
       });
   },
@@ -510,4 +524,5 @@ export const {
   updateWarningTimer,
   setRememberMe 
 } = authSlice.actions;
+
 export default authSlice.reducer; 

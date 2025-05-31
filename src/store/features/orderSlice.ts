@@ -1,39 +1,19 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, doc, updateDoc, onSnapshot, QuerySnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Order } from '@/types/checkout';
+import { CartItem } from '@/types/cart';
 
 // Types
-export interface OrderItem {
-  itemId: string;
-  itemName: string;
-  quantity: number;
-  price: number;
-}
-
-export interface Order {
-  id: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string;
-  items: OrderItem[];
-  total: number;
-  pickupTime: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'completed';
-  createdAt: string;
-  updatedAt: string;
-  restaurantId: string;
-  estimatedPickupTime?: string | null;
-}
-
 export interface OrderState {
   orders: Order[];
-  loading: boolean;
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
 }
 
 const initialState: OrderState = {
   orders: [],
-  loading: false,
+  status: 'idle',
   error: null,
 };
 
@@ -50,28 +30,31 @@ const convertTimestampToString = (timestamp: Timestamp | { seconds: number, nano
 
 // Async thunks
 export const createOrder = createAsyncThunk(
-  'orders/createOrder',
-  async (orderData: Omit<Order, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
-    try {
-      const orderRef = collection(db, `restaurants/${orderData.restaurantId}/orders`);
-      const newOrder = {
-        ...orderData,
-        status: 'pending' as const,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      };
-      
-      const docRef = await addDoc(orderRef, newOrder);
-      return { 
-        id: docRef.id, 
-        ...newOrder,
-        createdAt: newOrder.createdAt.toDate().toISOString(),
-        updatedAt: newOrder.updatedAt.toDate().toISOString(),
-      } as Order;
-    } catch (error: any) {
-      console.error('Error creating order:', error);
-      throw error;
-    }
+  'orders/create',
+  async (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const orderRef = await addDoc(collection(db, 'orders'), {
+      ...orderData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // Create a new order with all required fields
+    const newOrder: Order = {
+      id: orderRef.id,
+      status: 'pending',
+      customerName: orderData.customerName,
+      customerPhone: orderData.customerPhone,
+      customerEmail: orderData.customerEmail,
+      items: orderData.items,
+      total: orderData.total,
+      pickupTime: orderData.pickupTime,
+      restaurantId: orderData.restaurantId,
+      estimatedPickupTime: orderData.estimatedPickupTime,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    return newOrder;
   }
 );
 
@@ -133,7 +116,7 @@ export const subscribeToRestaurantOrders = (restaurantId: string) => (dispatch: 
             ...data,
             createdAt: createdAt,
             updatedAt: updatedAt,
-            items: Array.isArray(data.items) ? data.items as OrderItem[] : [],
+            items: Array.isArray(data.items) ? data.items as CartItem[] : [],
             estimatedPickupTime: data.estimatedPickupTime || undefined,
           } as Order;
         });
@@ -149,42 +132,42 @@ export const subscribeToRestaurantOrders = (restaurantId: string) => (dispatch: 
     return unsubscribe;
 };
 
-const orderSlice = createSlice({
+export const orderSlice = createSlice({
   name: 'orders',
   initialState,
   reducers: {
     setOrders: (state, action: PayloadAction<Order[]>) => {
       state.orders = action.payload;
-      state.loading = false;
+      state.status = 'succeeded';
       state.error = null;
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
-       state.loading = action.payload;
-       state.error = null;
+      state.status = action.payload ? 'loading' : 'idle';
+      state.error = null;
     },
     setOrdersError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
-      state.loading = false;
+      state.status = 'failed';
     },
     clearOrders: (state) => {
       state.orders = [];
       state.error = null;
-      state.loading = false;
+      state.status = 'idle';
     },
   },
   extraReducers: (builder) => {
     builder
       // Create Order
       .addCase(createOrder.pending, (state) => {
-        state.loading = true;
+        state.status = 'loading';
         state.error = null;
       })
       .addCase(createOrder.fulfilled, (state, action: PayloadAction<Order>) => {
-        state.loading = false;
+        state.status = 'succeeded';
         state.orders.unshift(action.payload);
       })
       .addCase(createOrder.rejected, (state, action) => {
-        state.loading = false;
+        state.status = 'failed';
         state.error = action.error.message || 'Failed to create order';
       })
       // Update Order Status
@@ -206,5 +189,5 @@ const orderSlice = createSlice({
   },
 });
 
-export const { setOrders, setOrdersError, clearOrders, setLoading } = orderSlice.actions;
+export const { setOrders, setLoading, setOrdersError, clearOrders } = orderSlice.actions;
 export default orderSlice.reducer; 

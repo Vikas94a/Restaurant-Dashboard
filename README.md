@@ -122,8 +122,6 @@ Next.js App Router uses a folder-based routing structure:
 - `useAuth.ts`: Authentication hook (wrapper for AuthContext)
 - `useCart.ts`: Cart management hook (wrapper for CartContext)
 - `useRestaurant.ts`: Hook for fetching restaurant data
-- `useMenu.ts`: Hook for menu operations
-- `useOrders.ts`: Hook for order operations
 
 ### `/src/types/` - TypeScript Type Definitions
 

@@ -61,4 +61,4 @@ export const isAsapPickupAvailable = (
   closingTime: Date
 ): boolean => {
   return Boolean(todayHours && !todayHours.closed && nowWithBuffer >= openingTime && nowWithBuffer < closingTime);
-};
+}; 

@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { toast } from 'sonner';
+import { CartItem } from '@/types/cart';
 
 // Define types for item customizations
 export interface ItemOption {
@@ -19,23 +20,12 @@ export interface SpecialInstructions {
   timestamp: number;
 }
 
-// Define the cart item type
-export interface CartItem {
-  id: string;           // Unique identifier for the cart item
-  itemName: string;     // Name of the menu item
-  itemPrice: number;    // Base price of the item
-  quantity: number;     // Quantity in cart
-  categoryName: string; // Category the item belongs to
-  restaurantId: string; // ID of the restaurant
-  customizations: ItemCustomization[]; // Selected customizations
-  specialInstructions?: SpecialInstructions; // Special instructions for the item
-  totalPrice: number;   // Total price including customizations
-}
-
 // Define the cart state type
 export interface CartState {
   items: CartItem[];
   total: number;
+  status: 'idle' | 'loading' | 'succeeded' | 'failed';
+  error: string | null;
 }
 
 // Error messages for cart operations
@@ -102,6 +92,8 @@ const isValidCartState = (data: any): data is CartState => {
 const getInitialCartState = (): CartState => ({
   items: [],
   total: 0,
+  status: 'idle',
+  error: null
 });
 
 // Initial state

@@ -1,26 +1,80 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { toast } from "sonner";
 import { Restaurant, OpeningHours, day } from "@/components/dashboardcomponent/RestaurantDialog";
 
+// Types
+interface UseRestaurantSetupProps {
+  restaurantDetails: Restaurant | null;
+  userId: string;
+}
+
+interface UseRestaurantSetupReturn {
+  editableDetails: Partial<Restaurant>;
+  editableHours: OpeningHours[];
+  isSaving: boolean;
+  isEditing: boolean;
+  handleDetailsChange: (details: Partial<Restaurant>) => void;
+  toggleEdit: () => void;
+  handleSaveChanges: () => Promise<void>;
+  setEditableHours: React.Dispatch<React.SetStateAction<OpeningHours[]>>;
+}
+
+// Validation functions
+const validateOpeningHours = (hours: OpeningHours[]): boolean => {
+  return hours.every(hour => {
+    if (hour.closed) return true;
+    if (!hour.open || !hour.close) return false;
+    return true;
+  });
+};
+
+const validateRestaurantDetails = (details: Partial<Restaurant>): boolean => {
+  const requiredFields = ['restaurantName', 'address'] as const;
+  return requiredFields.every(field => {
+    const value = details[field as keyof Restaurant];
+    return typeof value === 'string' && value.trim().length > 0;
+  });
+};
+
 // Custom hook to manage editing and saving restaurant details including opening hours
-export const useRestaurantSetup = (
-  restaurantDetails: Restaurant | null,
-  userId: string | undefined
-) => {
-  // Editable restaurant details state (partial because editing might not include all fields)
+export const useRestaurantSetup = ({
+  restaurantDetails,
+  userId,
+}: UseRestaurantSetupProps): UseRestaurantSetupReturn => {
+  // Editable restaurant details state
   const [editableDetails, setEditableDetails] = useState<Partial<Restaurant>>({});
-  // Editable opening hours state, an array representing each day's open/close info
   const [editableHours, setEditableHours] = useState<OpeningHours[]>([]);
-  // Flag to track saving state during update
   const [isSaving, setIsSaving] = useState(false);
-  // Flag to track whether currently in edit mode or not
   const [isEditing, setIsEditing] = useState(false);
-  // Store original restaurant details to revert changes if editing is canceled
   const [originalDetails, setOriginalDetails] = useState<Partial<Restaurant>>({});
-  // Store original opening hours to revert if needed
   const [originalHours, setOriginalHours] = useState<OpeningHours[]>([]);
+
+  // Memoized function to initialize opening hours
+  const initializeOpeningHours = useCallback((hoursData: OpeningHours[]) => {
+    if (hoursData.length === 0) {
+      return day.map(dayName => ({
+        day: dayName,
+        open: "",
+        close: "",
+        closed: true,
+      }));
+    }
+
+    const existingDays = hoursData.map(h => h.day.toLowerCase());
+    return [
+      ...hoursData,
+      ...day
+        .filter(dayName => !existingDays.includes(dayName.toLowerCase()))
+        .map(dayName => ({
+          day: dayName,
+          open: "",
+          close: "",
+          closed: true,
+        }))
+    ];
+  }, []);
 
   // Effect to sync editable state when restaurantDetails change
   useEffect(() => {
@@ -32,66 +86,49 @@ export const useRestaurantSetup = (
       return;
     }
 
-    // Initialize editable details with a copy of original
     setEditableDetails({ ...restaurantDetails });
     setOriginalDetails({ ...restaurantDetails });
 
-    // Initialize opening hours or default all days as closed if none provided
-    let hoursData = restaurantDetails.openingHours || [];
+    const hoursData = restaurantDetails.openingHours || [];
+    const initializedHours = initializeOpeningHours(hoursData);
+    
+    setEditableHours(initializedHours);
+    setOriginalHours([...initializedHours]);
+  }, [restaurantDetails, initializeOpeningHours]);
 
-    if (hoursData.length === 0) {
-      // Create default closed hours for all days
-      hoursData = day.map(dayName => ({
-        day: dayName,
-        open: "",
-        close: "",
-        closed: true,
-      }));
-    } else {
-      // Ensure every day of the week is present, add missing days as closed
-      const existingDays = hoursData.map(h => h.day.toLowerCase());
-      day.forEach(dayName => {
-        if (!existingDays.includes(dayName.toLowerCase())) {
-          hoursData.push({
-            day: dayName,
-            open: "",
-            close: "",
-            closed: true,
-          });
-        }
-      });
-    }
-
-    setEditableHours(hoursData);
-    setOriginalHours([...hoursData]);
-  }, [restaurantDetails]);
-
-  // Update editable restaurant details state when user edits form fields
-  const handleDetailsChange = (details: Partial<Restaurant>) => {
+  // Memoized handlers
+  const handleDetailsChange = useCallback((details: Partial<Restaurant>) => {
     setEditableDetails(details);
-  };
+  }, []);
 
-  // Toggle edit mode on/off.
-  // If turning edit off (cancel), revert changes to original details and hours.
-  const toggleEdit = () => {
+  const toggleEdit = useCallback(() => {
     if (isEditing) {
       setEditableDetails({ ...originalDetails });
       setEditableHours([...originalHours]);
     }
     setIsEditing(!isEditing);
-  };
+  }, [isEditing, originalDetails, originalHours]);
 
-  // Save changes to Firestore database
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = useCallback(async () => {
     if (!userId || !restaurantDetails?.restaurantId) {
       toast.error("User not authenticated or restaurant not found");
+      return;
+    }
+
+    // Validate data before saving
+    if (!validateRestaurantDetails(editableDetails)) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (!validateOpeningHours(editableHours)) {
+      toast.error("Please provide valid opening hours for all days");
       return;
     }
 
     setIsSaving(true);
 
     try {
-      // Normalize opening hours: clear open/close times if marked as closed
       const validHours = editableHours.map(hour => ({
         ...hour,
         open: hour.closed ? "" : hour.open || "",
@@ -100,32 +137,30 @@ export const useRestaurantSetup = (
 
       const restaurantRef = doc(db, "restaurants", restaurantDetails.restaurantId);
 
-      // Prepare update payload including updatedAt timestamp
       const firestoreUpdate = {
         ...editableDetails,
         openingHours: validHours,
         updatedAt: serverTimestamp(),
       };
 
-      // Update document in Firestore
       await updateDoc(restaurantRef, firestoreUpdate);
 
-      // Update originals after successful save and exit edit mode
       setOriginalDetails({ ...editableDetails });
       setOriginalHours([...validHours]);
 
       toast.success("Restaurant details updated successfully!");
     } catch (error) {
       console.error("Error updating restaurant:", error);
-      toast.error("Failed to update restaurant details. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to update restaurant details";
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
       setIsEditing(false);
     }
-  };
+  }, [userId, restaurantDetails?.restaurantId, editableDetails, editableHours]);
 
-  // Return state and handlers for component consumption
-  return {
+  // Memoize the return value
+  return useMemo(() => ({
     editableDetails,
     editableHours,
     isSaving,
@@ -134,5 +169,13 @@ export const useRestaurantSetup = (
     toggleEdit,
     handleSaveChanges,
     setEditableHours,
-  };
+  }), [
+    editableDetails,
+    editableHours,
+    isSaving,
+    isEditing,
+    handleDetailsChange,
+    toggleEdit,
+    handleSaveChanges,
+  ]);
 };

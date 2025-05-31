@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"; // Custom Dialog components for modal
-import { Label } from "@radix-ui/react-label"; // Accessible label component
+import { Label } from "@/components/ui/label"; // Accessible label component
 import { signInWithEmailAndPassword } from "firebase/auth"; // Firebase auth function to sign in user
 import { auth } from "@/lib/firebase"; // Firebase auth instance
 import { Input } from "./ui/input"; // Custom styled Input component

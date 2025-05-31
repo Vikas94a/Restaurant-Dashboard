@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Input } from "../ui/input";
-import { Label } from "@radix-ui/react-label";
+import { Label } from "@/components/ui/label";
 import { Restaurant } from "./RestaurantDialog";
 
 type RestaurantTypeProps = {
