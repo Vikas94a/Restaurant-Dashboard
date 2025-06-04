@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { collection, query, where, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
+import { Order } from '@/types/checkout';
 
 // Types
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
@@ -12,8 +13,11 @@ interface OrderStatusState {
   error: string | null;
 }
 
-interface UseOrderStatusReturn extends OrderStatusState {
-  updateStatus: (newStatus: OrderStatus) => Promise<void>;
+export interface UseOrderStatusReturn {
+  showOrderStatus: boolean;
+  setShowOrderStatus: (show: boolean) => void;
+  placedOrder: Order | null;
+  setPlacedOrder: (order: Order | null) => void;
 }
 
 // Error message mapping for order operations
@@ -45,115 +49,15 @@ const isValidOrderStatus = (status: string): status is OrderStatus => {
 /**
  * Hook for managing and listening to order status changes
  */
-export const useOrderStatus = (orderId: string): UseOrderStatusReturn => {
-  const [state, setState] = useState<OrderStatusState>({
-    status: null,
-    loading: true,
-    error: null
-  });
-
-  // Update state with proper type safety
-  const updateState = useCallback((updates: Partial<OrderStatusState>) => {
-    setState(prev => ({ ...prev, ...updates }));
-  }, []);
-
-  useEffect(() => {
-    if (!orderId) {
-      updateState({
-        error: 'Order ID is required',
-        loading: false
-      });
-      return;
-    }
-
-    let unsubscribe: (() => void) | undefined;
-
-    const setupOrderListener = async () => {
-      try {
-        updateState({ loading: true, error: null });
-
-        const orderRef = doc(db, 'orders', orderId);
-        unsubscribe = onSnapshot(
-          orderRef,
-          (doc) => {
-            if (doc.exists()) {
-              const data = doc.data();
-              const status = data.status;
-              
-              if (isValidOrderStatus(status)) {
-                updateState({ status, loading: false });
-              } else {
-                const errorMessage = ORDER_ERROR_MESSAGES['invalid-data'];
-                updateState({ error: errorMessage, loading: false });
-                toast.error(errorMessage);
-              }
-            } else {
-              const errorMessage = ORDER_ERROR_MESSAGES['not-found'];
-              updateState({ error: errorMessage, loading: false });
-              toast.error(errorMessage);
-            }
-          },
-          (error) => {
-            console.error('[Order] Error fetching order status:', error);
-            const errorMessage = getOrderErrorMessage(error);
-            updateState({ error: errorMessage, loading: false });
-            toast.error(errorMessage);
-          }
-        );
-      } catch (error) {
-        console.error('[Order] Error setting up order status listener:', error);
-        const errorMessage = getOrderErrorMessage(error);
-        updateState({ error: errorMessage, loading: false });
-        toast.error(errorMessage);
-      }
-    };
-
-    setupOrderListener();
-
-    // Cleanup subscription
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [orderId, updateState]);
-
-  const updateStatus = useCallback(async (newStatus: OrderStatus) => {
-    if (!orderId) {
-      toast.error('Order ID is required');
-      return;
-    }
-
-    if (!isValidOrderStatus(newStatus)) {
-      const errorMessage = ORDER_ERROR_MESSAGES['invalid-status'];
-      updateState({ error: errorMessage });
-      toast.error(errorMessage);
-      return;
-    }
-
-    try {
-      updateState({ loading: true, error: null });
-
-      const orderRef = doc(db, 'orders', orderId);
-      await updateDoc(orderRef, {
-        status: newStatus,
-        updatedAt: serverTimestamp()
-      });
-
-      toast.success('Order status updated successfully');
-    } catch (error) {
-      console.error('[Order] Error updating order status:', error);
-      const errorMessage = getOrderErrorMessage(error);
-      updateState({ error: errorMessage });
-      toast.error(errorMessage);
-    } finally {
-      updateState({ loading: false });
-    }
-  }, [orderId, updateState]);
+export const useOrderStatus = (restaurantId: string | null): UseOrderStatusReturn => {
+  const [showOrderStatus, setShowOrderStatus] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
 
   return {
-    ...state,
-    updateStatus
+    showOrderStatus,
+    setShowOrderStatus,
+    placedOrder,
+    setPlacedOrder
   };
 };
 

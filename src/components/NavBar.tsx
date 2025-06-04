@@ -1,17 +1,28 @@
 "use client"; // Next.js directive to mark this file as client-side only
 
 import Link from "next/link";
-import { useAppSelector } from "@/store/hooks";
-import { useAppDispatch } from "@/store/hooks";
 import { Button } from "./ui/button";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Login from "./LogIn";
+import { useAuth } from "@/providers/AuthProvider";
 
-const NavBar = () => {
-  const user = useAppSelector((state) => state.auth.user);
-  const dispatch = useAppDispatch();
+export default function NavBar() {
+  const { user } = useAuth();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+
+  const handleLoginClose = useCallback(() => {
+    setIsLoginOpen(false);
+  }, []);
+
+  const handleLoginOpen = useCallback(() => {
+    setIsLoginOpen(true);
+  }, []);
+
+  // Don't render NavBar if user is authenticated
+  if (user) {
+    return null;
+  }
 
   return (
     <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
@@ -31,12 +42,13 @@ const NavBar = () => {
 
           {/* Nav Buttons */}
           <div className="flex items-center space-x-4">
-            <Button 
-              onClick={() => setIsLoginOpen(true)}
-              className="px-6 py-2 rounded-full text-sm font-medium text-gray-800 bg-gray-100 hover:bg-gray-200 transition-all duration-200"
+            <button
+              onClick={handleLoginOpen}
+              type="button"
+              className="px-6 py-2 rounded-full text-sm font-medium text-gray-800 bg-gray-100 hover:bg-gray-200 transition-all duration-200 cursor-pointer"
             >
               Login
-            </Button>
+            </button>
 
             <Link href="/signup">
               <Button className="px-6 py-2 rounded-full text-sm font-medium text-white bg-black hover:bg-gray-900 transition-all duration-200 shadow-md">
@@ -48,9 +60,10 @@ const NavBar = () => {
       </div>
 
       {/* Login Dialog */}
-      <Login isOpen={isLoginOpen} setIsOpen={setIsLoginOpen} />
+      <Login
+        isOpen={isLoginOpen}
+        onClose={handleLoginClose}
+      />
     </nav>
   );
-};
-
-export default NavBar;
+}

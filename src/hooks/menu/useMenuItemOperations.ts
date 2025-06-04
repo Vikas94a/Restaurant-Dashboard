@@ -48,21 +48,9 @@ export const useMenuItemOperations = ({
     updatedCategories[catIndex].items.push(newItem);
     setCategories(updatedCategories);
 
-    const category = updatedCategories[catIndex];
-    if (category.docId) {
-      try {
-        const categoryRef = doc(db, "restaurants", restaurantId, "menu", category.docId);
-        await updateDoc(categoryRef, {
-          items: category.items.map(cleanItemForFirestore)
-        });
-        toast.success("Item added successfully");
-      } catch (error) {
-        console.error("[MenuEditor] Error adding item:", error);
-        setError("Failed to add item. Please try again.");
-        toast.error("Failed to add item");
-      }
-    }
-  }, [categories, restaurantId, cleanItemForFirestore, setCategories, setError]);
+    // Don't save to database until item is properly filled
+    // The item will be saved when the category is saved
+  }, [categories, setCategories]);
 
   const handleItemChange = useCallback((
     catIndex: number,
@@ -102,7 +90,17 @@ export const useMenuItemOperations = ({
               : [];
         }
 
-        newCategories[catIndex].items[itemIndex] = itemToUpdate;
+        // Check if the item is empty (no name, description, or price)
+        const isEmpty = !itemToUpdate.name?.trim() && 
+                       !itemToUpdate.description?.trim() && 
+                       (!itemToUpdate.price?.amount || itemToUpdate.price.amount === 0);
+
+        if (isEmpty) {
+          // Remove the empty item
+          newCategories[catIndex].items.splice(itemIndex, 1);
+        } else {
+          newCategories[catIndex].items[itemIndex] = itemToUpdate;
+        }
       }
       return newCategories;
     });

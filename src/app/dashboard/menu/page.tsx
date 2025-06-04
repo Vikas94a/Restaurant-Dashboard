@@ -71,7 +71,7 @@ export default function MenuPage() {
 
   // Main layout
   return (
-    <main className="h-screen w-full bg-gray-100 overflow-hidden">
+    <main className="h-screen w-full bg-gray-100">
       <div className="h-full flex flex-col">
         <header className="px-6 py-4 border-b border-gray-200 bg-white shadow-sm">
           <h1 className="text-xl font-semibold text-gray-800">
@@ -79,7 +79,7 @@ export default function MenuPage() {
           </h1>
         </header>
 
-        <section className="flex-1 overflow-hidden">
+        <section className="flex-1 overflow-y-auto">
           <MenuEditor restaurantId={restaurantDetails.restaurantId} />
         </section>
       </div>

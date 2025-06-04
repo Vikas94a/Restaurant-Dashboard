@@ -21,22 +21,21 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
   const { handleAddToCart } = useCart();
   const { handleError, resetError, isError, canRetry } = useErrorHandler();
 
-  const parseMenuItem = useCallback((doc: DocumentData): MenuItem | null => {
-    const data = doc.data();
-    if (!data) return null;
+  const parseMenuItem = useCallback((item: any, categoryId: string, itemIndex: number): MenuItem | null => {
+    if (!item) return null;
 
-    const item: MenuItem = {
-      id: doc.id,
-      name: data.name || '',
-      price: Number(data.price) || 0,
-      category: data.category || 'Uncategorized',
-      description: data.description,
-      imageUrl: data.imageUrl,
-      available: Boolean(data.available),
-      customizations: data.customizations || [],
+    const parsedItem: MenuItem = {
+      id: item.id || `item-${categoryId}-${itemIndex}-${Date.now()}`,
+      name: item.name || '',
+      price: typeof item.price?.amount === 'number' ? item.price.amount : 0,
+      category: item.category || 'Uncategorized',
+      description: item.description || '',
+      imageUrl: item.imageUrl || '',
+      available: Boolean(item.isAvailable),
+      customizations: item.customizations || [],
     };
 
-    return isMenuItem(item) ? item : null;
+    return isMenuItem(parsedItem) ? parsedItem : null;
   }, []);
 
   const fetchMenuData = useCallback(async () => {
@@ -52,30 +51,27 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
       );
 
       const querySnapshot = await fetchWithRetry();
-      const categories = new Map<string, MenuItem[]>();
+      const categories: MenuCategory[] = [];
 
       querySnapshot.forEach((doc) => {
-        const item = parseMenuItem(doc);
-        if (item) {
-          const category = item.category;
-          if (!categories.has(category)) {
-            categories.set(category, []);
-          }
-          categories.get(category)?.push(item);
+        const data = doc.data();
+        const items = (data.items || []).map((item: any, index: number) => 
+          parseMenuItem(item, doc.id, index)
+        ).filter(Boolean) as MenuItem[];
+        
+        if (items.length > 0) {
+          categories.push({
+            id: doc.id,
+            name: data.categoryName || 'Uncategorized',
+            description: data.categoryDescription,
+            items: items
+          });
         }
       });
 
-      const formattedData: MenuCategory[] = Array.from(categories.entries())
-        .map(([name, items]) => ({
-          id: name,
-          name,
-          items,
-        }))
-        .filter(isMenuCategory);
-
-      setMenuData(formattedData);
-      if (formattedData.length > 0 && !selectedCategory) {
-        setSelectedCategory(formattedData[0].name);
+      setMenuData(categories);
+      if (categories.length > 0 && !selectedCategory) {
+        setSelectedCategory(categories[0].name);
       }
     } catch (error) {
       if (isNetworkError(error)) {
@@ -143,49 +139,82 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
     );
   }
 
+  if (menuData.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-4">
+        <p className="text-gray-600">No menu items available</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4">
-      <div className="flex space-x-4 mb-4 overflow-x-auto">
-        {menuData.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => setSelectedCategory(category.name)}
-            className={`px-4 py-2 rounded ${
-              selectedCategory === category.name
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200"
-            }`}
-          >
-            {category.name}
-          </button>
-        ))}
-      </div>
-
-      {selectedCategoryData && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {selectedCategoryData.items.map((item) => (
-            <div
-              key={item.id}
-              className="border rounded p-4 flex flex-col justify-between"
-            >
-              <div>
-                <h3 className="font-bold">{item.name}</h3>
-                <p className="text-gray-600">${item.price.toFixed(2)}</p>
-                {item.description && (
-                  <p className="text-sm text-gray-500 mt-1">{item.description}</p>
-                )}
-              </div>
+      <div className="grid grid-cols-12 gap-6">
+        {/* Categories Sidebar */}
+        <div className="col-span-3 bg-white rounded-lg shadow-sm p-4">
+          <h2 className="text-lg font-semibold mb-4 text-gray-800">Categories</h2>
+          <div className="space-y-2">
+            {menuData.map((category) => (
               <button
-                onClick={() => handleAddItemToCart(item)}
-                className="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                disabled={!item.available}
+                key={category.id}
+                onClick={() => setSelectedCategory(category.name)}
+                className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 ${
+                  selectedCategory === category.name
+                    ? "bg-blue-500 text-white shadow-md"
+                    : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                }`}
               >
-                {item.available ? 'Add to Cart' : 'Not Available'}
+                {category.name}
               </button>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      )}
+
+        {/* Items Display */}
+        <div className="col-span-9">
+          {selectedCategoryData ? (
+            <div>
+              <h2 className="text-2xl font-bold mb-6 text-gray-800">{selectedCategoryData.name}</h2>
+              {selectedCategoryData.description && (
+                <p className="text-gray-600 mb-6">{selectedCategoryData.description}</p>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {selectedCategoryData.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow duration-200"
+                  >
+                    <div className="flex flex-col h-full">
+                      <div className="flex-grow">
+                        <h3 className="font-bold text-lg text-gray-800 mb-2">{item.name}</h3>
+                        <p className="text-blue-600 font-semibold mb-2">${item.price.toFixed(2)}</p>
+                        {item.description && (
+                          <p className="text-gray-600 text-sm mb-4">{item.description}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleAddItemToCart(item)}
+                        className={`mt-4 w-full py-2 px-4 rounded-lg transition-colors duration-200 ${
+                          item.available
+                            ? "bg-blue-500 text-white hover:bg-blue-600"
+                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        }`}
+                        disabled={!item.available}
+                      >
+                        {item.available ? 'Add to Cart' : 'Not Available'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500">Select a category to view items</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

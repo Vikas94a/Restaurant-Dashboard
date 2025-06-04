@@ -1,6 +1,28 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+
+// Utility function to convert Firebase Timestamp to ISO string
+const convertTimestampToString = (timestamp: Timestamp): string => {
+  return timestamp.toDate().toISOString();
+};
+
+// Utility function to convert Firebase data to serializable format
+const convertToSerializable = (data: any): any => {
+  if (!data) return data;
+  
+  const result = { ...data };
+  
+  // Convert Timestamps to ISO strings
+  if (result.createdAt instanceof Timestamp) {
+    result.createdAt = convertTimestampToString(result.createdAt);
+  }
+  if (result.updatedAt instanceof Timestamp) {
+    result.updatedAt = convertTimestampToString(result.updatedAt);
+  }
+  
+  return result;
+};
 
 export interface RestaurantHour {
   day: string;
@@ -50,7 +72,9 @@ export const fetchRestaurantDetails = createAsyncThunk(
     if (!restaurantDoc.exists()) {
       throw new Error('Restaurant not found');
     }
-    return { id: restaurantId, ...restaurantDoc.data() } as RestaurantDetails;
+    const data = restaurantDoc.data();
+    const serializedData = convertToSerializable(data);
+    return { id: restaurantId, ...serializedData } as RestaurantDetails;
   }
 );
 

@@ -19,9 +19,11 @@ import {
   CustomizationGroup,
   ReusableExtraGroup,
   ItemChangeField,
-} from "@/hooks/useMenuEditor";
+} from "@/utils/menuTypes";
 import ItemCustomizationModal from "./ItemCustomizationModal";
 import { toast } from "sonner";
+import CategoryHeader from './CategoryHeader';
+import ItemList from './ItemList';
 
 const CHARACTER_LIMITS = {
   CATEGORY_NAME: 80,
@@ -42,7 +44,7 @@ interface CategoryItemProps {
   handleItemChange: (
     catIndex: number,
     itemIndex: number,
-    field: ItemChangeField,
+    field: string,
     value: string | number | boolean | string[]
   ) => void;
   handleAddItem: (categoryId: string) => Promise<void>;
@@ -129,481 +131,43 @@ export default function CategoryItem({
 
   return (
     <>
-      <div className="block w-full max-w-full min-w-0 mb-4 bg-white rounded-md shadow overflow-hidden transition-all duration-300 hover:shadow-md border border-gray-200">
-        <div
-          className={`w-full overflow-hidden px-4 py-3 ${
-            category.isEditing
-              ? "bg-gray-50 border-b border-gray-200"
-              : "bg-white border-l-4 border-orange-400"
-          } flex justify-between items-center ${
-            !category.isEditing ? "cursor-pointer hover:bg-gray-50" : ""
-          } transition-colors duration-150`}
-          onClick={!category.isEditing ? handleCategoryClick : undefined} // Refined: Only clickable when not editing
-        >
-          {category.isEditing ? (
-            <div className="flex-1 min-w-0 mr-3 space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Category Name*
-                </label>
-                <input
-                  type="text"
-                  name="categoryName"
-                  value={category.categoryName}
-                  onChange={(e) =>
-                    handleCategoryChange(
-                      catIndex,
-                      "categoryName",
-                      e.target.value
-                    )
-                  }
-                  className="text-lg font-semibold px-3.5 py-2.5 border border-gray-300 rounded-md focus:border-primary focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 w-full outline-none shadow-sm transition-colors duration-150 overflow-x-auto"
-                  placeholder="Category Name"
-                  required
-                  maxLength={CHARACTER_LIMITS.CATEGORY_NAME}
-                  onClick={(e) => e.stopPropagation()} // Prevent category click
-                />
-                <div className="text-xs text-gray-500 mt-1.5 text-right pr-1">
-                  {category.categoryName.length} /{" "}
-                  {CHARACTER_LIMITS.CATEGORY_NAME}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Description
-                </label>
-                <textarea
-                  name="categoryDescription"
-                  value={category.categoryDescription || ""}
-                  onChange={(e) =>
-                    handleCategoryChange(
-                      catIndex,
-                      "categoryDescription",
-                      e.target.value
-                    )
-                  }
-                  className="text-sm text-gray-700 px-3.5 py-2.5 border border-gray-300 rounded-md focus:border-primary focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 w-full outline-none resize-none shadow-sm transition-colors duration-150 overflow-x-auto"
-                  placeholder="Category Description (Optional)"
-                  rows={2}
-                  maxLength={CHARACTER_LIMITS.CATEGORY_DESCRIPTION}
-                  onClick={(e) => e.stopPropagation()} // Prevent category click
-                />
-                <div className="text-xs text-gray-500 mt-1.5 text-right pr-1">
-                  {(category.categoryDescription || "").length} /{" "}
-                  {CHARACTER_LIMITS.CATEGORY_DESCRIPTION}
-                </div>
-              </div>
-            </div>
-          ) : (
-            // Display mode for category header (clickable part)
-            <div className="flex-1 flex items-center min-w-0 overflow-hidden">
-              <div className="flex-shrink-0 mr-3 w-8 h-8 bg-primary bg-opacity-10 rounded flex items-center justify-center text-primary">
-                <FontAwesomeIcon icon={faUtensils} className="h-4 w-4" />
-              </div>
-              <div className="flex-grow min-w-0 overflow-hidden"> 
-                <h3
-                  className="text-lg font-semibold text-gray-800 truncate overflow-wrap-anywhere max-w-full"
-                  title={category.categoryName || "Unnamed Category"}
-                >
-                  {category.categoryName || "Unnamed Category"}
-                </h3>
-                {category.categoryDescription && (
-                  <p
-                    className="text-xs text-gray-600 truncate overflow-wrap-anywhere max-w-full"
-                    title={category.categoryDescription}
-                  >
-                    {category.categoryDescription}
-                  </p>
-                )}
-              </div>
-              {/* Chevron and item count only shown when not editing */}
-              <div className="ml-2 flex-shrink-0 flex items-center bg-gray-50 px-2 py-0.5 rounded text-gray-600 border border-gray-200">
-                <span className="font-medium text-xs">
-                  {category.items.length}
-                </span>
-                <span className="ml-0.5 text-xs">
-                  item{category.items.length === 1 ? "" : "s"}
-                </span>
-                <FontAwesomeIcon
-                  icon={isExpanded ? faChevronUp : faChevronDown}
-                  className="ml-1.5 text-gray-400 transition-transform text-xs"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Action buttons container */}
-          <div
-            className="flex items-center space-x-2 pl-2 flex-shrink-0"
-            onClick={(e) => e.stopPropagation()} // Prevent actions from triggering category click
-          >
-            {category.isEditing ? (
-              <>
-                <button
-                  onClick={() =>
-                    // No stopPropagation needed here as parent div handles it
-                    handleSaveCategory(category.docId || category.frontendId!)
-                  }
-                  className="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 transition-colors duration-200 flex items-center shadow-sm disabled:opacity-75"
-                  disabled={loading}
-                >
-                  <FontAwesomeIcon icon={faSave} className="mr-1.5 h-5 w-5" />
-                  Save
-                </button>
-                {category.docId && (
-                  <button
-                    onClick={() =>
-                      // No stopPropagation needed here
-                      toggleEditCategory(category.docId || category.frontendId!)
-                    }
-                    className="p-2 text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-500/70 focus:ring-offset-1 transition-colors duration-200 disabled:opacity-75"
-                    disabled={loading}
-                    title="Cancel"
-                  >
-                    <FontAwesomeIcon icon={faTimes} className="h-5 w-5" />
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={(e) => {
-                    // e is not used here for stopPropagation, parent div handles it
-                    toggleEditCategory(category.docId || category.frontendId!);
-                  }}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-600/70 focus:ring-offset-1 transition-colors duration-200 disabled:opacity-75"
-                  disabled={loading}
-                  title="Edit Category"
-                >
-                  <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={async (e) => {
-                    // e is not used here for stopPropagation
-                    const categoryId = category.docId || category.frontendId;
-                    if (!categoryId) {
-                      console.error(
-                        "Cannot delete category: No valid ID found"
-                      );
-                      return;
-                    }
-                    try {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to delete this category? This action cannot be undone."
-                        )
-                      ) {
-                        await handleDeleteCategory(categoryId);
-                      }
-                    } catch (error) {
-                      console.error("Error deleting category:", error);
-                      toast.error(
-                        "Failed to delete category. Please check your permissions and try again."
-                      );
-                    }
-                  }}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-full focus:outline-none focus:ring-2 focus:ring-red-600/70 focus:ring-offset-1 transition-colors duration-200 disabled:opacity-75"
-                  disabled={loading}
-                  title="Delete Category"
-                >
-                  <FontAwesomeIcon icon={faTrash} className="h-5 w-5" />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+      <div className="block w-160 max-w-full min-w-0 mb-4 bg-white rounded-md shadow transition-all duration-300 hover:shadow-md border border-gray-200">
+        <CategoryHeader
+          category={category}
+          catIndex={catIndex}
+          loading={loading}
+          handleCategoryChange={handleCategoryChange}
+          toggleEditCategory={toggleEditCategory}
+          handleSaveCategory={handleSaveCategory}
+          handleDeleteCategory={handleDeleteCategory}
+          handleCategoryClick={handleCategoryClick}
+          isExpanded={isExpanded}
+        />
 
         {/* Expandable content area */}
         <div
-          className={`transition-all duration-300 ease-in-out overflow-hidden ${
-            isExpanded ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
+          className={`transition-all duration-300 ease-in-out ${
+            isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
           }`}
         >
           <div className="p-3 border-t border-gray-200 bg-gray-50">
-            {!category.isEditing && category.items.length > 0 && (
-              <div className="mb-3 pb-2 border-b border-gray-200 flex justify-between items-center">
-                <h4 className="text-xs font-semibold text-gray-700 flex items-center">
-                  <span className="h-3 w-1 bg-primary rounded mr-2"></span>
-                  Menu Items
-                </h4>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Keep stopPropagation here if this button is outside the main action buttonstopPropagation logic
-                    toggleEditCategory(category.docId || category.frontendId!);
-                  }}
-                  className="flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-600/70 focus:ring-offset-1"
-                >
-                  <FontAwesomeIcon icon={faEdit} className="mr-1 h-3 w-3" />
-                  Edit Items
-                </button>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-4">
-              {category.items.map((item, itemIndex) => (
-                <div
-                  key={`${category.docId || category.frontendId}-${item.id || item.frontendId || `item-${itemIndex}`}`}
-                  className="w-full overflow-hidden bg-white rounded shadow-sm border border-gray-200 hover:shadow transition-shadow duration-200"
-                >
-                  {category.isEditing ? (
-                    <div className="p-3 space-y-3 w-full">
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <div className="flex-1">
-                          <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            Item Name*
-                          </label>
-                          <input
-                            type="text"
-                            name="name"
-                            value={item.name || ""}
-                            onChange={(e) =>
-                              handleItemChange(
-                                catIndex,
-                                itemIndex,
-                                "name",
-                                e.target.value
-                              )
-                            }
-                            className="text-sm font-semibold p-2 border border-gray-300 rounded-md w-full focus:ring-primary focus:border-primary shadow-sm overflow-x-auto"
-                            placeholder="Item Name (e.g., Margherita Pizza)"
-                            required
-                            maxLength={CHARACTER_LIMITS.ITEM_NAME}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div className="text-xs text-gray-500 mt-0.5 text-right">
-                            {(item.name || "").length} /{" "}
-                            {CHARACTER_LIMITS.ITEM_NAME}
-                          </div>
-                        </div>
-
-                        <div className="sm:w-1/4 w-1/2">
-                          <label className="block text-xs font-semibold text-gray-600 mb-1">
-                            Price ($)*
-                          </label>
-                          <input
-                            type="number"
-                            name="priceAmount"
-                            value={item.price?.amount || 0}
-                            onChange={(e) =>
-                              handleItemChange(
-                                catIndex,
-                                itemIndex,
-                                "priceAmount",
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className="w-full p-2.5 border border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 text-sm text-gray-700 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all duration-150 hover:shadow-md"
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
-                            required
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">
-                          Description
-                        </label>
-                        <textarea
-                          name="description"
-                          value={item.description || ""}
-                          onChange={(e) =>
-                            handleItemChange(
-                              catIndex,
-                              itemIndex,
-                              "description",
-                              e.target.value
-                            )
-                          }
-                          className="text-xs p-2 border border-gray-300 rounded-md w-full focus:ring-primary focus:border-primary resize-none shadow-sm overflow-x-auto"
-                          placeholder="Describe the item (optional)"
-                          rows={2}
-                          maxLength={CHARACTER_LIMITS.ITEM_DESCRIPTION}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <div className="text-xs text-gray-500 mt-0.5 text-right">
-                          {(item.description || "").length} /{" "}
-                          {CHARACTER_LIMITS.ITEM_DESCRIPTION}
-                        </div>
-                      </div>
-
-                      <div className="mt-2">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCustomizationModal(item)}
-                          className="w-full px-2 py-1.5 text-xs font-medium text-primary-dark border border-primary-light rounded hover:bg-primary-light hover:text-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-1 transition-colors duration-150"
-                        >
-                          <FontAwesomeIcon
-                            icon={faPlus}
-                            className="mr-1.5"
-                            size="xs"
-                          />
-                          Manage Item Options
-                        </button>
-                      </div>
-
-                      {/* Display linked reusable extras */}
-                      {item.linkedReusableExtraIds && item.linkedReusableExtraIds.length > 0 && (
-                        <div className="mt-2">
-                          <h4 className="text-xs font-medium text-gray-700 mb-1">Linked Extras:</h4>
-                          <div className="space-y-1">
-                            {item.linkedReusableExtraIds.map((groupId) => {
-                              const extraGroup = reusableExtras.find(group => group.id === groupId);
-                              if (!extraGroup) return null;
-                              return (
-                                <div
-                                  key={groupId}
-                                  className="flex items-center text-xs bg-gray-50 px-2 py-1 rounded border border-gray-200"
-                                >
-                                  <FontAwesomeIcon
-                                    icon={faBoxesStacked}
-                                    className="h-3 w-3 text-gray-500 mr-1.5"
-                                  />
-                                  <span className="text-gray-600">{extraGroup.groupName}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex justify-end mt-2">
-                        <button
-                          onClick={async () => {
-                            try {
-                              const categoryId =
-                                category.docId || category.frontendId;
-                              const itemId = item.id;
-                              if (!categoryId || !itemId) {
-                                console.error(
-                                  "Cannot delete item: Missing IDs"
-                                );
-                                return;
-                              }
-                              if (
-                                window.confirm(
-                                  "Are you sure you want to remove this item? This action cannot be undone."
-                                )
-                              ) {
-                                await handleDeleteItem(categoryId, itemId);
-                              }
-                            } catch (error) {
-                              console.error("Error deleting item:", error);
-                              toast.error(
-                                "Failed to delete item. Please check your permissions and try again."
-                              );
-                            }
-                          }}
-                          className="flex items-center text-red-600 hover:text-red-700 text-xs font-medium px-2 py-1 hover:bg-red-50 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-600/70 focus:ring-offset-1 disabled:opacity-75"
-                          disabled={loading}
-                          title="Remove Item"
-                        >
-                          <FontAwesomeIcon
-                            icon={faTrash}
-                            className="mr-1 h-3 w-3"
-                          />
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="p-3 flex-grow">
-                        <h4
-                          className="text-base font-semibold text-gray-800 group-hover:text-primary transition-colors duration-150 truncate"
-                          title={item.name || "Unnamed Item"}
-                        >
-                          {item.name || "Unnamed Item"}
-                        </h4>
-                        {item.description && (
-                          <p
-                            className="text-xs text-gray-600 truncate mt-0.5"
-                            title={item.description}
-                          >
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
-                      <div className="p-3 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
-                        <div className="flex items-center text-gray-500">
-                          <span className="text-xs">Price</span>
-                        </div>
-                        <div className="text-primary font-bold text-sm">
-                          $
-                          {(item.price?.amount || 0).toFixed(2)}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-
-              {category.items.length === 0 &&
-                !category.isEditing &&
-                isExpanded && (
-                  <div className="text-center py-6 px-4 bg-white rounded border border-dashed border-gray-300">
-                    <FontAwesomeIcon
-                      icon={faUtensils}
-                      className="h-6 w-6 text-gray-300 mb-2"
-                    />
-                    <p className="text-gray-600 text-sm mb-1">
-                      No items in this category yet.
-                    </p>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation(); // Keep stopPropagation here
-                        toggleEditCategory(
-                          category.docId || category.frontendId!
-                        );
-                      }}
-                      className="mt-2 text-xs text-primary hover:text-primary-dark font-medium py-1 px-2 rounded hover:bg-primary-lightest transition-colors focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-1"
-                    >
-                      Add First Item
-                    </button>
-                  </div>
-                )}
-              {category.items.length === 0 && category.isEditing && (
-                <div className="text-center py-5 px-4 bg-gray-50 rounded border border-dashed border-gray-300">
-                  <FontAwesomeIcon
-                    icon={faUtensils}
-                    className="h-6 w-6 text-gray-300 mb-2"
-                  />
-                  <p className="text-gray-600 text-sm mb-1">
-                    This category is empty.
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Click "Add New Item" to get started.
-                  </p>
-                </div>
-              )}
-
-              {category.isEditing && (
-                <div
-                  className="border border-dashed border-gray-300 bg-white rounded p-3 min-h-[120px] flex flex-col items-center justify-center text-center hover:border-primary hover:bg-gray-50 transition-all duration-200 cursor-pointer group"
-                  onClick={() =>
-                    // This click is for adding an item, not category expansion.
-                    handleAddItem(category.docId || category.frontendId!)
-                  }
-                  title="Add a new item to this category"
-                >
-                  <div className="p-2 bg-primary bg-opacity-10 rounded mb-2 transition-transform duration-200 group-hover:scale-110">
-                    <FontAwesomeIcon
-                      icon={faPlus}
-                      className="h-4 w-4 text-primary"
-                    />
-                  </div>
-                  <p className="text-sm font-medium text-gray-700 group-hover:text-primary-dark">
-                    <FontAwesomeIcon icon={faPlus} className="mr-2 h-3 w-3" />
-                    <span className="truncate">Add Item to {category.categoryName || "Category"}</span>
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    to '{category.categoryName || "this category"}'
-                  </p>
-                </div>
-              )}
-            </div>
+            <ItemList
+              category={category}
+              catIndex={catIndex}
+              loading={loading}
+              handleItemChange={handleItemChange}
+              handleAddItem={handleAddItem}
+              handleDeleteItem={handleDeleteItem}
+              updateItemCustomizations={updateItemCustomizations}
+              reusableExtras={reusableExtras}
+              updateItemLinkedExtras={updateItemLinkedExtras}
+              isExpanded={isExpanded}
+              onOpenCustomizationModal={(item) => {
+                setSelectedItemForCustomization(item);
+                setIsCustomizationModalOpen(true);
+              }}
+              toggleEditCategory={toggleEditCategory}
+            />
           </div>
         </div>
       </div>
@@ -611,15 +175,15 @@ export default function CategoryItem({
       {selectedItemForCustomization && (
         <ItemCustomizationModal
           isOpen={isCustomizationModalOpen}
-          onClose={handleCloseCustomizationModal}
+          onClose={() => {
+            setSelectedItemForCustomization(null);
+            setIsCustomizationModalOpen(false);
+          }}
           item={selectedItemForCustomization}
           reusableExtras={reusableExtras}
           onSaveLinkedExtras={(itemIdFromModal, linkedGroupIds) => {
             const categoryId = category.docId || category.frontendId;
-            const currentItemId =
-              itemIdFromModal ||
-              selectedItemForCustomization?.id ||
-              selectedItemForCustomization?.frontendId;
+            const currentItemId = itemIdFromModal || selectedItemForCustomization?.id || selectedItemForCustomization?.frontendId;
             if (categoryId && currentItemId) {
               const transformedLinkedExtras = linkedGroupIds.reduce(
                 (acc, groupId) => {
@@ -628,13 +192,10 @@ export default function CategoryItem({
                 },
                 {} as { [key: string]: string[] }
               );
-              updateItemLinkedExtras(
-                categoryId,
-                currentItemId,
-                transformedLinkedExtras
-              );
+              updateItemLinkedExtras(categoryId, currentItemId, transformedLinkedExtras);
             }
-            handleCloseCustomizationModal();
+            setSelectedItemForCustomization(null);
+            setIsCustomizationModalOpen(false);
           }}
         />
       )}

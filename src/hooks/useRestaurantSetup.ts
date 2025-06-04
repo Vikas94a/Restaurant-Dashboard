@@ -30,13 +30,13 @@ const validateOpeningHours = (hours: OpeningHours[]): boolean => {
   });
 };
 
-const validateRestaurantDetails = (details: Partial<Restaurant>): boolean => {
-  const requiredFields = ['restaurantName', 'address'] as const;
-  return requiredFields.every(field => {
-    const value = details[field as keyof Restaurant];
-    return typeof value === 'string' && value.trim().length > 0;
-  });
-};
+  const validateRestaurantDetails = (details: Partial<Restaurant>): boolean => {
+    const requiredFields = ['streetName', 'zipCode', 'city', 'phoneNumber'] as const;
+    return requiredFields.every(field => {
+      const value = details[field as keyof Restaurant];
+      return typeof value === 'string' && value.trim().length > 0;
+    });
+  };
 
 // Custom hook to manage editing and saving restaurant details including opening hours
 export const useRestaurantSetup = ({

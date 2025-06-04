@@ -2,17 +2,14 @@ import { CartItem } from './cart';
 
 export interface Order {
   id: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'completed';
-  estimatedPickupTime?: string | null;
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string;
+  restaurantId: string;
+  customerDetails: CustomerFormData;
   items: CartItem[];
   total: number;
+  status: 'pending' | 'confirmed' | 'ready' | 'completed' | 'cancelled';
+  createdAt: string;
   pickupTime: string;
-  restaurantId: string;
-  createdAt?: any;
-  updatedAt?: any;
+  pickupOption: 'asap' | 'later';
 }
 
 export interface CustomerFormData {
@@ -32,4 +29,5 @@ export interface RestaurantHours {
 export interface RestaurantDetails {
   restaurantId: string;
   openingHours?: RestaurantHours[];
+  name?: string;
 }

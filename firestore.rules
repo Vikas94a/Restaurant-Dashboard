@@ -28,7 +28,7 @@ service cloud.firestore {
 
       // Orders subcollection rules
       match /orders/{orderId} {
-        allow create: if isAuthenticated();  // Any authenticated user can create an order
+        allow create: if true;  // Anyone can create an order
         allow read: if isRestaurantOwner(restaurantId);  // Only restaurant owner can read orders
         allow update: if isRestaurantOwner(restaurantId);  // Only restaurant owner can update order status
         allow delete: if false;  // No one can delete orders

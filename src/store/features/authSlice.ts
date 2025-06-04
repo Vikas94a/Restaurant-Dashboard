@@ -5,7 +5,7 @@ import { onAuthStateChanged, setPersistence, browserLocalPersistence, browserSes
 import { Restaurant } from "@/components/dashboardcomponent/RestaurantDialog";
 import { store } from "../store";
 import { toast } from "sonner";
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+// import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
 // Auto-logout timer variable and duration
 let autoLogoutTimer: ReturnType<typeof setTimeout> | null = null;

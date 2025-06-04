@@ -6,12 +6,13 @@ import Image from "next/image";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification  } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
 // Define the structure of the form state
 export interface inputForm {
@@ -24,6 +25,7 @@ export interface inputForm {
 
 function Signup() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   // Form state for input values
   const [form, setForm] = useState<inputForm>({
@@ -45,6 +47,7 @@ function Signup() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     const db = getFirestore();
 
     // Basic validation check
@@ -55,6 +58,7 @@ function Signup() {
       !form.restaurantName
     ) {
       toast.error("Please fill in all required fields.");
+      setIsLoading(false);
       return;
     }
 
@@ -67,6 +71,8 @@ function Signup() {
       );
       const userID = userCredential.user.uid;
 
+      await sendEmailVerification(userCredential.user)
+
       // Store user details in Firestore
       await setDoc(doc(db, "users", userID), {
         restaurantName: form.restaurantName,
@@ -75,10 +81,12 @@ function Signup() {
         email: form.email,
       });
 
-      toast.success("Signup successful!");
-      router.push("/dashboard/overview"); // Redirect to dashboard after successful signup
+      toast.success("Signup successful! Please check your email to verify your account.");
+      router.push("/verify-email"); // Redirect to verification page
     } catch (error: any) {
       toast.error(error.message || "Signup failed. Try again."); // Show error if signup fails
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -108,7 +116,7 @@ function Signup() {
                   htmlFor="restaurantName"
                   className="text-sm font-medium text-gray-700"
                 >
-                  Restaurant Name
+                  Restaurant Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="restaurantName"
@@ -122,13 +130,13 @@ function Signup() {
               </div>
 
               {/* First & Last Name */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label
                     htmlFor="firstName"
                     className="text-sm font-medium text-gray-700"
                   >
-                    First Name
+                    First Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="firstName"
@@ -145,7 +153,7 @@ function Signup() {
                     htmlFor="lastName"
                     className="text-sm font-medium text-gray-700"
                   >
-                    Last Name
+                    Last Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="lastName"
@@ -153,6 +161,7 @@ function Signup() {
                     placeholder="Doe"
                     value={form.lastName}
                     onChange={handleInput}
+                    required
                     className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   />
                 </div>
@@ -164,7 +173,7 @@ function Signup() {
                   htmlFor="email"
                   className="text-sm font-medium text-gray-700"
                 >
-                  Email
+                  Email <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="email"
@@ -184,7 +193,7 @@ function Signup() {
                   htmlFor="password"
                   className="text-sm font-medium text-gray-700"
                 >
-                  Password
+                  Password <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="password"
@@ -208,9 +217,17 @@ function Signup() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                className="w-full py-3 text-white bg-blue-600 hover:bg-blue-700 text-lg font-semibold rounded-xl transition-all duration-200"
+                disabled={isLoading}
+                className="w-full py-3 text-white bg-blue-600 hover:bg-blue-700 text-lg font-semibold rounded-xl transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Create Account
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Creating Account...
+                  </span>
+                ) : (
+                  "Create Account"
+                )}
               </Button>
             </form>
 

@@ -16,6 +16,7 @@ import {
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { logout } from "@/store/features/authSlice";
 import { useRouter } from "next/navigation";
+import { Button } from "@headlessui/react";
 
 const Sidebar = () => {
   const user = useAppSelector((state) => state.auth.user);
@@ -23,9 +24,19 @@ const Sidebar = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
 
-  const handleSignOut = () => {
-    dispatch(logout());
-    router.push('/');
+  const handleSignOut = async () => {
+    try {
+      // First, redirect to home page
+      router.replace('/');
+      
+      // Then perform logout
+      await dispatch(logout());
+      
+      // Force a hard refresh to clear all state
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error during sign out:', error);
+    }
   };
 
   return (
@@ -150,7 +161,7 @@ const Sidebar = () => {
 
       {/* Sign Out Button */}
       <div className="px-4 py-2 border-t border-gray-200">
-        <button
+        <Button
           onClick={handleSignOut}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-red-100 hover:text-red-700 transition duration-150 ease-in-out group"
         >
@@ -160,7 +171,7 @@ const Sidebar = () => {
             aria-hidden="true"
           />
           Sign Out
-        </button>
+        </Button>
       </div>
 
       {/* User Profile */}

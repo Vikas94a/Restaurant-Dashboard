@@ -1,15 +1,14 @@
 "use client"; 
 // Tells Next.js that this component should be rendered on the client side (not server-side rendered)
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"; // Custom Dialog components (modal popup)
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label"; // Accessible label component
 import { Input } from "../ui/input"; // Custom input component
 import { Button } from "../ui/button"; // Custom button component
@@ -18,8 +17,9 @@ import { collection, addDoc, Timestamp } from "firebase/firestore"; // Firestore
 import { toast } from "sonner"; // Toast notifications library
 import RestaurantType from "./RestaurantType"; // Subcomponent for selecting restaurant type
 import RestaurantTiming from "./RestaurantTiming"; // Subcomponent for setting opening hours
-import { useAppSelector } from '@/store/hooks';
-
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { AlertCircle } from "lucide-react";
+import { fetchRestaurantData } from "@/store/features/authSlice";
 
 // Interface to define opening hours for each day
 export interface OpeningHours {
@@ -38,6 +38,7 @@ export interface Restaurant {
   streetName: string;
   phoneNumber: string;
   restaurantType: string;
+  name: string;          // Restaurant name from user data
   openingHours: OpeningHours[]; // Array of opening hours for each day
   logoUrl?: string;             // Optional logo image URL
   createdAt?: string;           // Timestamp when created
@@ -60,6 +61,7 @@ export const day = [
 interface RestaurantDialogProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  isMandatory?: boolean;
 }
 
 /**
@@ -72,12 +74,28 @@ interface RestaurantDialogProps {
  *  - isOpen: boolean to control visibility of the dialog
  *  - setIsOpen: function to update visibility (open/close dialog)
  */
-function RestaurantDialog({ isOpen, setIsOpen }: RestaurantDialogProps) {
-  // Define all steps of the dialog to control navigation
+function RestaurantDialog({ isOpen, setIsOpen, isMandatory = false }: RestaurantDialogProps) {
   const steps = ["Address", "TypeOfRestaurant", "Timing"];
-
-  // Current step index, starting at 0 (Address)
   const [step, setStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(isOpen);
+  const dispatch = useAppDispatch();
+
+  // Update internal state when prop changes
+  React.useEffect(() => {
+    setInternalOpen(isOpen);
+  }, [isOpen]);
+
+  // Handle sheet state changes
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (!open && isMandatory && !isFormValid()) {
+      setShowError(true);
+      return;
+    }
+    setInternalOpen(open);
+    setIsOpen(open);
+  }, [isMandatory, setIsOpen]);
 
   // Initialize openingHours state with one entry per day, defaulting to closed
   const [openingHours, setOpeningHours] = useState<OpeningHours[]>(
@@ -89,6 +107,11 @@ function RestaurantDialog({ isOpen, setIsOpen }: RestaurantDialogProps) {
     }))
   );
 
+  // Use AppSelector to get user authentication info and restaurant name
+  const user = useAppSelector((state) => state.auth.user);
+  const restaurantName = useAppSelector((state) => state.auth.restaurantName);
+  const isLoading = useAppSelector((state) => state.auth.isLoading);
+
   // Restaurant data state holding all inputs from the form
   const [restaurantData, setRestaurantData] = useState<Restaurant>({
     restaurantId: "",
@@ -98,22 +121,27 @@ function RestaurantDialog({ isOpen, setIsOpen }: RestaurantDialogProps) {
     streetName: "",
     phoneNumber: "",
     restaurantType: "",
-    openingHours: openingHours, // Initially the default opening hours
+    name: restaurantName || "", // Initialize with restaurant name from user data
+    openingHours: openingHours,
     logoUrl: "",
   });
 
-  // Use AppSelector to get user authentication info
-  const user = useAppSelector((state) => state.auth.user);
-  if (!user) {
-    // If no user available (e.g. user not logged in), log error and render nothing
-    console.log("User is null");
-    return null;
-  }
+  // Validate required fields
+  const isFormValid = () => {
+    return (
+      restaurantData.city.trim() !== "" &&
+      restaurantData.zipCode.trim() !== "" &&
+      restaurantData.streetName.trim() !== "" &&
+      restaurantData.phoneNumber.trim() !== "" &&
+      restaurantData.restaurantType.trim() !== ""
+    );
+  };
 
   // Handle input changes on form fields (city, zipCode, etc.)
   const handleForm = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Update the corresponding field in restaurantData state
     setRestaurantData({ ...restaurantData, [e.target.name]: e.target.value });
+    setShowError(false);
   };
 
   /**
@@ -121,147 +149,206 @@ function RestaurantDialog({ isOpen, setIsOpen }: RestaurantDialogProps) {
    * Save restaurant data to Firestore database.
    */
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent default form submission behavior (page reload)
+    e.preventDefault();
+    
+    if (!isFormValid()) {
+      setShowError(true);
+      return;
+    }
 
+    setIsSubmitting(true);
     try {
       // Add a new document to 'restaurants' collection in Firestore
       const refRestaurantCollection = await addDoc(
         collection(db, "restaurants"),
         {
-          ...restaurantData,        // Spread all current restaurant data fields
-          ownerId: user.uid,        // Attach current user ID as owner
-          openingHours: openingHours, // Make sure openingHours state is saved
-          createdAt: Timestamp.now(), // Firestore timestamp for creation
-          updatedAt: Timestamp.now(), // Firestore timestamp for update
+          ...restaurantData,
+          ownerId: user?.uid,
+          name: restaurantName, // Include restaurant name from user data
+          openingHours: openingHours,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
         }
       );
 
       // If document added successfully
       if (refRestaurantCollection) {
-        setIsOpen(false); // Close the dialog modal
-        toast.success("Restaurant information updated successfully"); // Show success notification
+        // Fetch the updated restaurant data to update Redux store
+        if (user?.uid) {
+          await dispatch(fetchRestaurantData(user.uid)).unwrap();
+        }
+        
+        setIsOpen(false);
+        toast.success("Restaurant information updated successfully");
       }
     } catch (error) {
-      // Log any errors during saving
       console.error("Error saving restaurant:", error);
       toast.error("Failed to save restaurant information");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   console.log(restaurantData); // Debug: log current form state on each render
 
+  if (isLoading || !user) {
+    return null;
+  }
+
   return (
-    <div className="">
-      {/* Dialog component from UI library */}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            {/* Dialog title */}
-            <DialogTitle className="text-center font-bold  text-2xl text-gray-900">
-              Restaurant details
-            </DialogTitle>
+    <Sheet open={internalOpen} onOpenChange={handleOpenChange}>
+      <SheetContent 
+        side="right" 
+        className="w-full sm:max-w-[600px] overflow-y-auto bg-white"
+        onPointerDownOutside={(event) => {
+          if (isMandatory && !isFormValid()) {
+            event.preventDefault();
+            setShowError(true);
+          }
+        }}
+        onEscapeKeyDown={(event) => {
+          if (isMandatory && !isFormValid()) {
+            event.preventDefault();
+            setShowError(true);
+          }
+        }}
+      >
+        <SheetHeader className="mb-8">
+          <SheetTitle className="text-2xl font-bold text-gray-900">
+            Restaurant Setup
+          </SheetTitle>
+          {isMandatory && (
+            <SheetDescription className="text-base text-gray-600 mt-2">
+              Please complete all required fields to continue. This information is essential for your restaurant's profile.
+            </SheetDescription>
+          )}
+        </SheetHeader>
 
-            {/* Form element with submit handler */}
-            <form className="flex flex-col space-y-5" onSubmit={handleSubmit}>
-              
-              {/* Step 0: Address fields */}
-              {step === 0 && (
-                <>
-                  {/* City input */}
-                  <div>
-                    <Label className="text-sm font-medium text-gray-700">
-                      City
-                    </Label>
-                    <Input
-                      name="city"
-                      value={restaurantData.city}
-                      onChange={handleForm}
-                      placeholder="City name*"
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                    />
-                  </div>
+        <form className="flex flex-col space-y-6" onSubmit={handleSubmit}>
+          {step === 0 && (
+            <>
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                    City <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="city"
+                    value={restaurantData.city}
+                    onChange={handleForm}
+                    placeholder="Enter your city"
+                    required
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 ${
+                      showError && !restaurantData.city ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
 
-                  {/* Zip Code input */}
-                  <div>
-                    <Label>Zip Code</Label>
-                    <Input
-                      name="zipCode"
-                      value={restaurantData.zipCode}
-                      onChange={handleForm}
-                      placeholder="0000*"
-                      required
-                    />
-                  </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                    Zip Code <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="zipCode"
+                    value={restaurantData.zipCode}
+                    onChange={handleForm}
+                    placeholder="Enter zip code"
+                    required
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 ${
+                      showError && !restaurantData.zipCode ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
 
-                  {/* Street Name input */}
-                  <div>
-                    <Label>Street Name</Label>
-                    <Input
-                      name="streetName"
-                      value={restaurantData.streetName}
-                      onChange={handleForm}
-                      placeholder="Street Name*"
-                      required
-                    />
-                  </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                    Street Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="streetName"
+                    value={restaurantData.streetName}
+                    onChange={handleForm}
+                    placeholder="Enter street name"
+                    required
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 ${
+                      showError && !restaurantData.streetName ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
 
-                  {/* Phone Number input */}
-                  <div>
-                    <Label>Phone Number</Label>
-                    <Input
-                      name="phoneNumber"
-                      value={restaurantData.phoneNumber}
-                      onChange={handleForm}
-                      placeholder="00000000*"
-                      required
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Step 1: Restaurant Type selector component */}
-              {step === 1 && (
-                <RestaurantType
-                  restaurantData={restaurantData}
-                  setRestaurantData={setRestaurantData}
-                  handleForm={handleForm}
-                />
-              )}
-
-              {/* Step 2: Opening hours selector component */}
-              {step === 2 && (
-                <RestaurantTiming
-                  openingHours={openingHours}
-                  setOpeningHours={setOpeningHours}
-                />
-              )}
-
-              {/* Navigation buttons for the multi-step form */}
-              <div className="flex justify-between">
-                {/* Back button: disabled on first step */}
-                <Button
-                  type="button"
-                  disabled={step === 0}
-                  onClick={() => setStep(step - 1)}
-                >
-                  Back
-                </Button>
-
-                {/* Next button or Submit button depending on step */}
-                {step < steps.length - 1 ? (
-                  <Button type="button" onClick={() => setStep(step + 1)}>
-                    Next
-                  </Button>
-                ) : (
-                  <Button type="submit">Submit</Button>
-                )}
+                <div>
+                  <Label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                    Phone Number <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    name="phoneNumber"
+                    value={restaurantData.phoneNumber}
+                    onChange={handleForm}
+                    placeholder="Enter phone number"
+                    required
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200 ${
+                      showError && !restaurantData.phoneNumber ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
               </div>
-            </form>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
-    </div>
+            </>
+          )}
+
+          {showError && (
+            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+              <AlertCircle className="w-4 h-4" />
+              <span>Please fill in all required fields to continue</span>
+            </div>
+          )}
+
+          {step === 1 && (
+            <RestaurantType
+              restaurantData={restaurantData}
+              setRestaurantData={setRestaurantData}
+              handleForm={handleForm}
+            />
+          )}
+
+          {step === 2 && (
+            <RestaurantTiming
+              openingHours={openingHours}
+              setOpeningHours={setOpeningHours}
+            />
+          )}
+
+          <div className="flex justify-between pt-6 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep(step - 1)}
+              disabled={step === 0}
+              className="px-6"
+            >
+              Previous
+            </Button>
+
+            {step < steps.length - 1 ? (
+              <Button
+                type="button"
+                onClick={() => setStep(step + 1)}
+                className="ml-auto px-6"
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="ml-auto px-6"
+              >
+                {isSubmitting ? "Saving..." : "Complete Setup"}
+              </Button>
+            )}
+          </div>
+        </form>
+      </SheetContent>
+    </Sheet>
   );
 }
 

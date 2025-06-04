@@ -8,14 +8,24 @@ import { faInfoCircle, faClock } from "@fortawesome/free-solid-svg-icons";
 import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
 import { SetupHeader } from "@/components/dashboardcomponent/SetupHeader";
 import { useRestaurantSetup } from "@/hooks/useRestaurantSetup";
+import { useEffect } from "react";
+import { useAppDispatch } from "@/store/hooks";
+import { fetchRestaurantData } from "@/store/features/authSlice";
 
 export default function RestaurantSetup() {
-  // Get data from Redux store
-  const { user, restaurantDetails, loading } = useAppSelector(
+  const dispatch = useAppDispatch();
+  const { user, restaurantDetails, status } = useAppSelector(
     (state) => state.auth
   );
 
-  // Use custom hook to manage form state and actions - always call this hook
+  // Fetch restaurant details if not available
+  useEffect(() => {
+    if (user?.uid && !restaurantDetails) {
+      dispatch(fetchRestaurantData(user.uid));
+    }
+  }, [user?.uid, restaurantDetails, dispatch]);
+
+  // Use custom hook to manage form state and actions
   const {
     editableDetails,
     editableHours,
@@ -25,10 +35,13 @@ export default function RestaurantSetup() {
     toggleEdit,
     handleSaveChanges,
     setEditableHours,
-  } = useRestaurantSetup(restaurantDetails || null, user?.uid);
+  } = useRestaurantSetup({
+    restaurantDetails: restaurantDetails || null,
+    userId: user?.uid || ""
+  });
 
   // Show loading spinner while data is loading
-  if (loading) {
+  if (status === 'loading') {
     return <LoadingSpinner />;
   }
 
@@ -45,7 +58,7 @@ export default function RestaurantSetup() {
     <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Header with Edit and Save controls */}
       <SetupHeader
-        restaurantName={user?.restaurantName || "Restaurant"}
+        restaurantName={restaurantDetails.restaurantType || "Restaurant"}
         isEditing={isEditing}
         isSaving={isSaving}
         onEdit={toggleEdit}
