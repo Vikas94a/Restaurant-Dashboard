@@ -6,6 +6,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { NestedMenuItem, CustomizationGroup, ReusableExtraGroup } from "@/utils/menuTypes";
 import { toast } from "sonner";
+import { useState, useRef } from "react";
 
 const CHARACTER_LIMITS = {
   ITEM_NAME: 100,
@@ -28,6 +29,12 @@ interface ItemCardProps {
   handleDeleteItem: (categoryId: string, itemId: string) => Promise<void>;
   onOpenCustomizationModal: (item: NestedMenuItem) => void;
   reusableExtras: ReusableExtraGroup[];
+  handleImageChange?: (
+    catIndex: number,
+    itemIndex: number,
+    file: File
+  ) => void;
+  isUploading?: boolean;
 }
 
 export default function ItemCard({
@@ -41,12 +48,43 @@ export default function ItemCard({
   handleDeleteItem,
   onOpenCustomizationModal,
   reusableExtras,
+  handleImageChange,
+  isUploading
 }: ItemCardProps) {
+
+  const localFileInputRef = useRef<HTMLInputElement>(null);
+  const [hovered, setHovered] = useState(false);
+
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    catIndex: number,
+    itemIndex: number
+  ) => {
+    const file = e.target.files?.[0];
+    if (file && handleImageChange) {
+      handleImageChange(catIndex, itemIndex, file);
+    }
+  };
+
+  const triggerFileSelect = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    localFileInputRef.current?.click();
+  };
+
   return (
     <div
       key={`${categoryId}-${item.id || item.frontendId || `item-${itemIndex}`}`}
-      className="w-full bg-white rounded shadow-sm border border-gray-200 hover:shadow transition-shadow duration-200"
+      className="relative w-full bg-white rounded shadow-sm border border-gray-200 hover:shadow transition-shadow duration-200"
     >
+      {isUploading && (
+        <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-20">
+          <svg className="animate-spin h-6 w-6 text-primary" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+          </svg>
+          <span className="ml-2 text-xs text-gray-600">Uploading image...</span>
+        </div>
+      )}
       {isEditing ? (
         <div className="p-3 space-y-3 w-full">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -84,13 +122,13 @@ export default function ItemCard({
               <input
                 type="number"
                 name="priceAmount"
-                value={item.price?.amount || 0}
+                value={item.price?.amount }
                 onChange={(e) =>
                   handleItemChange(
                     catIndex,
                     itemIndex,
                     "priceAmount",
-                    parseFloat(e.target.value) || 0
+                    parseFloat(e.target.value) 
                   )
                 }
                 className="w-full p-2.5 border border-gray-300 rounded-md shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 text-sm text-gray-700 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all duration-150 hover:shadow-md"
@@ -101,6 +139,47 @@ export default function ItemCard({
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
+              Item Image
+            </label>
+            {item.imageUrl ? (
+              <div
+                className="relative mt-2 h-24 w-full max-w-xs cursor-pointer group"
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+                onClick={triggerFileSelect}
+              >
+                <img
+                  src={item.imageUrl}
+                  alt="Item"
+                  className="h-24 w-full object-cover rounded shadow"
+                />
+                {hovered && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded">
+                    <span className="text-white text-xs font-semibold">Change Image</span>
+                  </div>
+                )}
+                {/* hidden input */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={localFileInputRef}
+                  className="hidden"
+                  onChange={e => handleFileChange(e, catIndex, itemIndex)}
+                />
+              </div>
+            ) : (
+              <input
+                type="file"
+                accept="image/*"
+                className="block w-full text-xs text-gray-600 file:mr-4 file:py-1.5 file:px-2 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-primary-light file:text-primary-dark hover:file:bg-primary/20"
+                onClick={e => e.stopPropagation()}
+                onChange={e => handleFileChange(e, catIndex, itemIndex)}
+              />
+            )}
           </div>
 
           <div>
@@ -235,4 +314,4 @@ export default function ItemCard({
       )}
     </div>
   );
-} 
+}

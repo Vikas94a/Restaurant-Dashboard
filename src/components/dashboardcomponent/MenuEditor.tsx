@@ -6,7 +6,7 @@ import {
   faPlus,
   faUtensils,
 } from "@fortawesome/free-solid-svg-icons";
-import { LoadingSpinner } from "./LoadingSpinner";
+// import { LoadingSpinner } from "./LoadingSpinner";
 import { useMenuEditor } from "@/hooks/useMenuEditor";
 import { CustomizationGroup } from "@/utils/menuTypes";
 import CategoryItem from "./menu/CategoryItem";

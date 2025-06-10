@@ -22,6 +22,28 @@ export const CartItem: React.FC<CartItemProps> = ({
     <div className="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-100">
       <div className="flex-1 pr-4">
         <h3 className="font-medium text-gray-800">{item.itemName}</h3>
+        {/* Show customizations/extras if any */}
+        {item.customizations && item.customizations.length > 0 && (
+          <div className="mt-1 text-xs text-gray-600 space-y-1">
+            {item.customizations.map((customization) => (
+              <div key={customization.category}>
+                <span className="font-semibold">{customization.category}:</span>{" "}
+                {customization.options.length === 0 ? (
+                  <span className="italic text-gray-400">None</span>
+                ) : (
+                  customization.options.map((option) => (
+                    <span key={option.id} className="inline-block mr-2">
+                      {option.name}
+                      {option.price > 0 && (
+                        <span className="text-primary ml-1">+${option.price.toFixed(2)}</span>
+                      )}
+                    </span>
+                  ))
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {/* Optional: Display category name if needed */}
         {/* <p className="text-sm text-gray-500">{item.categoryName}</p> */}
         <div className="flex items-center mt-2">

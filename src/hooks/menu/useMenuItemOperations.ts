@@ -88,6 +88,8 @@ export const useMenuItemOperations = ({
             : typeof value === 'string'
               ? value.split(',').map(tag => tag.trim()).filter(tag => tag)
               : [];
+        } else if (field === 'imageUrl') {
+          itemToUpdate.imageUrl = String(value);
         }
 
         // Check if the item is empty (no name, description, or price)

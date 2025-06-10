@@ -9,6 +9,10 @@ import {
 import { Category, NestedMenuItem, CustomizationGroup, ReusableExtraGroup } from "@/utils/menuTypes";
 import { toast } from "sonner";
 import ItemCard from "./ItemCard";
+import { replaceImage } from "@/utils/uploadImage"
+import { useState } from "react";
+// import { CloudCog } from "lucide-react";
+import { doc } from "firebase/firestore";
 
 const CHARACTER_LIMITS = {
   ITEM_NAME: 100,
@@ -41,6 +45,7 @@ interface ItemListProps {
   isExpanded: boolean;
   onOpenCustomizationModal: (item: NestedMenuItem) => void;
   toggleEditCategory: (categoryId: string) => void;
+  handleSaveCategory: (categoryId: string) => Promise<void>;
 }
 
 export default function ItemList({
@@ -56,7 +61,37 @@ export default function ItemList({
   isExpanded,
   onOpenCustomizationModal,
   toggleEditCategory,
+  handleSaveCategory,
 }: ItemListProps) {
+  const [uploadingItemIndex, setUploadingItemIndex] = useState<number | null>(null);
+
+  // Function to handle changes to item properties
+  const handleImageChange = async (catIndex: number, itemIndex: number, file: File) => {
+    const item = category.items[itemIndex];
+    if (!item || !file) return;
+    const itemId = item.id;
+    if (!itemId) return;
+  
+    try {
+      setUploadingItemIndex(itemIndex);
+      const oldImageUrl = item.imageUrl; // Get current image URL
+      const imageUrl = await replaceImage(file, itemId, oldImageUrl); // Delete old and upload new
+      handleItemChange(catIndex, itemIndex, "imageUrl", imageUrl);
+      console.log("imageUrl", imageUrl);
+      // Save the category to persist the image URL
+      if (category.docId || category.frontendId) {
+        await handleSaveCategory(category.docId || category.frontendId!);
+      }
+      
+      toast.success("Image uploaded successfully!");
+    } catch (error) {
+      toast.error("Failed to upload image.");
+      console.error(error);
+    } finally {
+      setUploadingItemIndex(null);
+    }
+  };
+
   return (
     <>
       {!category.isEditing && category.items.length > 0 && (
@@ -80,6 +115,7 @@ export default function ItemList({
 
       <div className="flex flex-col gap-4">
         {category.items.map((item, itemIndex) => (
+          
           <ItemCard
             key={`${category.docId || category.frontendId}-${item.id || item.frontendId || `item-${itemIndex}`}`}
             item={item}
@@ -87,11 +123,13 @@ export default function ItemList({
             catIndex={catIndex}
             categoryId={category.docId || category.frontendId!}
             loading={loading}
-            isEditing={category.isEditing}
+            isEditing={category.isEditing ?? false}
             handleItemChange={handleItemChange}
             handleDeleteItem={handleDeleteItem}
             onOpenCustomizationModal={onOpenCustomizationModal}
             reusableExtras={reusableExtras}
+            handleImageChange={handleImageChange}
+            isUploading={uploadingItemIndex === itemIndex}
           />
         ))}
 
@@ -143,4 +181,4 @@ export default function ItemList({
       </div>
     </>
   );
-} 
+}

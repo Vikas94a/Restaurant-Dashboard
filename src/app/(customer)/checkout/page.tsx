@@ -169,6 +169,11 @@ export default function CheckoutPage() {
         pickupOption
       };
 
+      // Ensure all fields are defined before calling setDoc
+      if (!order.customerDetails || !order.items || order.total === undefined || !order.status || !order.createdAt || !order.pickupTime || !order.pickupOption) {
+        throw new Error("Order data is incomplete. Please check all required fields.");
+      }
+
       // Create order in restaurant's orders subcollection
       const orderRef = doc(db, "restaurants", restaurantId, "orders", order.id);
       await setDoc(orderRef, order);

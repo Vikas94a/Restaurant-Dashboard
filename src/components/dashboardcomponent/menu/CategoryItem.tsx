@@ -21,7 +21,7 @@ import {
   ItemChangeField,
 } from "@/utils/menuTypes";
 import ItemCustomizationModal from "./ItemCustomizationModal";
-import { toast } from "sonner";
+;
 import CategoryHeader from './CategoryHeader';
 import ItemList from './ItemList';
 
@@ -86,6 +86,11 @@ export default function CategoryItem({
   const [selectedItemForCustomization, setSelectedItemForCustomization] =
     useState<NestedMenuItem | null>(null);
   const [itemErrors, setItemErrors] = useState<{ [key: string]: string }>({});
+
+
+
+  
+
 
   const handleCategoryClick = useCallback(() => {
     if (!category.isEditing) {
@@ -167,6 +172,7 @@ export default function CategoryItem({
                 setIsCustomizationModalOpen(true);
               }}
               toggleEditCategory={toggleEditCategory}
+              handleSaveCategory={handleSaveCategory}
             />
           </div>
         </div>

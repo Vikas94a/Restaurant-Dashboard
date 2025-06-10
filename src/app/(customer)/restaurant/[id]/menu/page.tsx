@@ -87,30 +87,41 @@ export default function MenuPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Add custom styles for scrollbar hiding */}
+      <style jsx global>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+      `}</style>
+
       {/* Floating Cart Button */}
       <CartButton isOpen={isCartOpen} onOpen={() => setIsCartOpen(true)} />
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Enhanced Restaurant Name Header */}
-        <div className="text-center mb-12 bg-white rounded-lg shadow-sm p-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+      {/* Header with Restaurant Name */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <h1 className="text-2xl font-bold text-gray-900">
             {isLoading ? (
-              <div className="animate-pulse bg-gray-200 h-12 w-64 mx-auto rounded"></div>
+              <div className="animate-pulse bg-gray-200 h-6 w-48 rounded"></div>
             ) : (
               restaurantName
             )}
           </h1>
-          <div className="w-24 h-1 bg-blue-500 mx-auto rounded-full mb-4"></div>
-          <div className="text-gray-600 text-lg">
-            {isLoading ? (
-              <div className="animate-pulse bg-gray-200 h-4 w-48 mx-auto rounded"></div>
-            ) : (
-              "Explore our delicious menu"
-            )}
-          </div>
         </div>
+      </div>
 
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto">
         <RestaurantMenu restaurantId={restaurantId} />
       </div>
 

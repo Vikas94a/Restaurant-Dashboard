@@ -48,13 +48,14 @@ service cloud.firestore {
 
       // Rules for the 'reusableExtraGroups' subcollection
       match /reusableExtraGroups/{groupId} {
-        // Collection-level access (for listing all groups)
-        allow list: if isAuthenticated();  // Any authenticated user can list groups
-        // Document-level access (for individual group operations)
-        allow get: if isAuthenticated();  // Any authenticated user can read groups
-        allow create: if isRestaurantOwner(restaurantId);  // Only owner can create groups
-        allow update: if isRestaurantOwner(restaurantId);  // Only owner can update groups
-        allow delete: if isRestaurantOwner(restaurantId);  // Only owner can delete groups
+        allow list, get: if true; // Anyone can read
+        allow create, update, delete: if isRestaurantOwner(restaurantId); // Only owner can write
+      }
+
+      // Rules for the 'reusableExtras' subcollection
+      match /reusableExtras/{extraId} {
+        allow list, get: if true;
+        allow create, update, delete: if isRestaurantOwner(restaurantId);
       }
     }
 

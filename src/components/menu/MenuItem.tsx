@@ -2,7 +2,7 @@ import React from "react";
 import { MenuItemProps } from "@/types/menu";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import { Edit, Trash2, Eye, EyeOff, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
 
 export const MenuItem: React.FC<MenuItemProps> = ({
@@ -13,14 +13,21 @@ export const MenuItem: React.FC<MenuItemProps> = ({
 }) => {
   return (
     <Card className="p-4 flex gap-4">
-      {/* Image container with fixed size, using Next.js Image for optimized loading */}
-      <div className="relative w-24 h-24 flex-shrink-0">
-        <Image
-          src={item.image}            // Image URL of the menu item
-          alt={item.name}             // Alt text for accessibility
-          fill                        // Makes image fill the container
-          className="object-cover rounded-md" // Styling: cover image and rounded corners
-        />
+      {/* Image container with fixed size */}
+      <div className="relative w-24 h-24 flex-shrink-0 bg-gray-100 rounded-md flex items-center justify-center">
+        {item.image ? (
+          <Image
+            src={item.image}            // Image URL of the menu item
+            alt={item.name}             // Alt text for accessibility
+            fill                        // Makes image fill the container
+            className="object-cover rounded-md" // Styling: cover image and rounded corners
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center text-gray-400">
+            <ImageIcon size={24} />
+            <span className="text-xs mt-1">No image</span>
+          </div>
+        )}
       </div>
 
       {/* Main content area grows to fill available space */}

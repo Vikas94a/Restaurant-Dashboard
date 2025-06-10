@@ -91,4 +91,5 @@ export type ItemChangeField =
   | 'isAvailable'
   | 'isPopular'
   | 'dietaryTags'
-  | 'itemType';
+  | 'itemType'
+  | 'imageUrl';
