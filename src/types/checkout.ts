@@ -10,6 +10,7 @@ export interface Order {
   createdAt: string;
   pickupTime: string;
   pickupOption: 'asap' | 'later';
+  estimatedPickupTime: string | null;
 }
 
 export interface CustomerFormData {
@@ -17,6 +18,8 @@ export interface CustomerFormData {
   phone: string;
   email: string;
   pickupTime: string;
+  pickupDate: string;
+  specialInstructions: string;
 }
 
 export interface RestaurantHours {

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useMenuEditor } from '@/hooks/useMenuEditor';
 import VirtualizedMenuList from '@/components/VirtualizedMenuList';
-import { NestedMenuItem } from '@/hooks/useMenuEditor';
+import { NestedMenuItem } from '@/utils/menuTypes';
 
 export default function MenuPage() {
   const params = useParams();

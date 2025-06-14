@@ -11,7 +11,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
 // Separate client component for the cart button
-function CartButton({ isOpen, onOpen }: { isOpen: boolean; onOpen: () => void }) {
+function CartButton({  onOpen }: { isOpen: boolean; onOpen: () => void }) {
   const { cart } = useCart();
   const [mounted, setMounted] = useState(false);
   const [itemCount, setItemCount] = useState(0);

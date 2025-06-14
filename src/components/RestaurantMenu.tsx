@@ -37,7 +37,7 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
       name: item.name || '',
       price: {
         amount: typeof item.price?.amount === 'number' ? item.price.amount : 0,
-        currency: item.price?.currency || 'USD'
+        currency: item.price?.currency || 'NOK'
       },
       category: item.category || 'Uncategorized',
       description: item.description || '',
@@ -106,7 +106,7 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
   }, [menuData, selectedCategory]);
 
   const openAddToCartModal = useCallback(async (item: NestedMenuItem) => {
-    let extras: ReusableExtraGroup[] = [];
+    const extras: ReusableExtraGroup[] = [];
     if (item.linkedReusableExtraIds && item.linkedReusableExtraIds.length > 0) {
       for (const id of item.linkedReusableExtraIds) {
         const ref = doc(db, "restaurants", restaurantId, "reusableExtraGroups", id);
@@ -164,7 +164,6 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
     };
 
     handleAddToCart(cartItem);
-    toast.success(`${item.name} added to cart!`);
     setIsModalOpen(false);
     setSelectedItemForModal(null);
   }, [restaurantId, menuData, modalExtras, handleAddToCart, selectedItemForModal]);
@@ -280,7 +279,7 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
 
                     <div className="flex items-center justify-between">
                       <span className="text-2xl font-bold text-primary">
-                        ${item.price.amount.toFixed(2)}
+                        {item.price.amount.toFixed(2)} Kr
                       </span>
                       
                       <button

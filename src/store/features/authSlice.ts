@@ -3,7 +3,6 @@ import { doc, getDoc, collection, query, where, getDocs, Timestamp } from "fireb
 import { db, auth } from "@/lib/firebase";
 import { onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence, User as FirebaseUser } from "firebase/auth";
 import { Restaurant } from "@/components/dashboardcomponent/RestaurantDialog";
-import { store } from "../store";
 import { toast } from "sonner";
 // import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
@@ -290,7 +289,7 @@ export const startAutoLogoutWarning = createAsyncThunk(
       dispatch(logout());
     }, WARNING_DURATION);
     
-    let startTime = Date.now();
+    const startTime = Date.now();
     warningTimerInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const remaining = Math.max(0, WARNING_DURATION - elapsed);

@@ -22,7 +22,7 @@ export interface CartItem {
   itemPrice: number;
   categoryName: string;
   customizations: ItemCustomization[];
-  specialInstructions?: SpecialInstructions;
+  specialInstructions?: SpecialInstructions | null;
   totalPrice: number;
   quantity: number;
   // Additional fields for checkout

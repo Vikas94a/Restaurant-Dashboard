@@ -1,7 +1,7 @@
 "use client";
 
 import ReusableExtrasManager from "./menu/ReusableExtrasManager";
-import { ReusableExtraGroup } from "@/hooks/useMenuEditor";
+import { ReusableExtraGroup } from "@/utils/menuTypes";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBoxesStacked } from '@fortawesome/free-solid-svg-icons';
 

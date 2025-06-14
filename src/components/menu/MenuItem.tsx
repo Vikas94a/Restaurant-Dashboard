@@ -15,9 +15,9 @@ export const MenuItem: React.FC<MenuItemProps> = ({
     <Card className="p-4 flex gap-4">
       {/* Image container with fixed size */}
       <div className="relative w-24 h-24 flex-shrink-0 bg-gray-100 rounded-md flex items-center justify-center">
-        {item.image ? (
+        {item.imageUrl ? (
           <Image
-            src={item.image}            // Image URL of the menu item
+            src={item.imageUrl}            // Image URL of the menu item
             alt={item.name}             // Alt text for accessibility
             fill                        // Makes image fill the container
             className="object-cover rounded-md" // Styling: cover image and rounded corners

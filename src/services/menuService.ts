@@ -49,7 +49,7 @@ export const menuService = {
   async getMenuItems(restaurantId: string): Promise<FrontendMenuItem[]> {
     const categoriesRef = collection(db, 'restaurants', restaurantId, 'categories');
     const snapshot = await getDocs(categoriesRef);
-    let allMenuItems: FrontendMenuItem[] = [];
+    const allMenuItems: FrontendMenuItem[] = [];
 
     snapshot.docs.forEach(doc => {
       const categoryId = doc.id;

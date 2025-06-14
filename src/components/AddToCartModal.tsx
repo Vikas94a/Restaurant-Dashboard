@@ -52,7 +52,7 @@ export default function AddToCartModal({
     let extrasTotal = 0;
     for (const group of extras) {
       const selectedChoices = selected[group.id] || new Set();
-      for (const choiceId of selectedChoices) {
+      for (const choiceId of Array.from(selectedChoices)) {
         const choice = group.choices.find(c => c.id === choiceId);
         if (choice) extrasTotal += choice.price;
       }
@@ -147,7 +147,7 @@ export default function AddToCartModal({
                           className="accent-primary"
                         />
                         <span className="flex-1">{choice.name}</span>
-                        <span className="text-gray-600">+{choice.price.toFixed(2)}</span>
+                        <span className="text-gray-600">+{choice.price.toFixed(2)} kr</span>
                       </label>
                     ))}
                   </div>
@@ -159,7 +159,7 @@ export default function AddToCartModal({
           {/* Price & Add to Cart */}
           <div className="flex items-center justify-between mt-6">
             <div className="text-lg font-semibold text-gray-900">
-              Total: <span className="text-primary">${total.toFixed(2)}</span>
+              Total: <span className="text-primary">{total.toFixed(2)} Kr</span>
             </div>
             <button
               className="bg-primary text-white px-6 py-2 rounded-lg font-bold hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-1 transition-colors text-base"
@@ -170,7 +170,7 @@ export default function AddToCartModal({
                 onAddToCart({ selectedExtras, specialRequest, totalPrice: total });
               }}
             >
-              Add to Cart · ${total.toFixed(2)}
+              Add to Cart · {total.toFixed(2)} kr
             </button>
           </div>
         </div>

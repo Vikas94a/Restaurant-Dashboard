@@ -42,16 +42,14 @@ export const createOrder = createAsyncThunk(
     const newOrder: Order = {
       id: orderRef.id,
       status: 'pending',
-      customerName: orderData.customerName,
-      customerPhone: orderData.customerPhone,
-      customerEmail: orderData.customerEmail,
+      customerDetails: orderData.customerDetails,
       items: orderData.items,
       total: orderData.total,
       pickupTime: orderData.pickupTime,
       restaurantId: orderData.restaurantId,
+      pickupOption: orderData.pickupOption,
       estimatedPickupTime: orderData.estimatedPickupTime,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
     };
 
     return newOrder;
@@ -113,11 +111,15 @@ export const subscribeToRestaurantOrders = (restaurantId: string) => (dispatch: 
 
           return {
             id: doc.id,
-            ...data,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
+            restaurantId: data.restaurantId,
+            customerDetails: data.customerDetails,
             items: Array.isArray(data.items) ? data.items as CartItem[] : [],
-            estimatedPickupTime: data.estimatedPickupTime || undefined,
+            total: data.total,
+            status: data.status,
+            createdAt: createdAt,
+            pickupTime: data.pickupTime,
+            pickupOption: data.pickupOption,
+            estimatedPickupTime: data.estimatedPickupTime || null,
           } as Order;
         });
         // Dispatch action to update orders in the state

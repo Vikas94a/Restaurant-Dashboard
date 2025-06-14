@@ -42,7 +42,7 @@ export default function Cart({ isOpen, onClose, className = '' }: CartProps) {
   return (
     <>
         <div 
-        className={`fixed inset-0 z-40 backdrop-blur-sm bg-white/30 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-40  transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
           onClick={onClose}
           role="presentation"
           aria-label="Close cart"
@@ -94,7 +94,7 @@ export default function Cart({ isOpen, onClose, className = '' }: CartProps) {
         <div className="p-4 border-t bg-gray-50">
           <div className="flex justify-between items-center text-lg font-semibold mb-4">
             <span>Total:</span>
-            <span className="text-xl text-primary">${cart.total.toFixed(2)}</span>
+            <span className="text-xl text-primary">{cart.total.toFixed(2)} kr</span>
           </div>
           <button 
             onClick={handleProceedToCheckout}

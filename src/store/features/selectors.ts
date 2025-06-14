@@ -33,7 +33,7 @@ export const selectOrderStatus = (state: RootState) => state.orders.status;
 export const selectOrderError = (state: RootState) => state.orders.error;
 export const selectActiveOrder = createSelector(
   selectOrders,
-  (orders) => orders.find(order => order.status === 'pending' || order.status === 'accepted')
+  (orders) => orders.find(order => order.status === 'pending' || order.status === 'confirmed')
 );
 
 // Auth Selectors
