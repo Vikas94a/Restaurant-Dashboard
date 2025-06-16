@@ -81,14 +81,12 @@ export default function OrdersPage() {
         return;
       }
 
-      const estimatedPickupTime =
-        newStatus === "accepted" ? estimatedTimes[orderId] : undefined;
+      const order = orders.find(o => o.id === orderId);
+      const isAsapOrder = order?.pickupOption === 'asap';
+      const estimatedPickupTime = isAsapOrder && newStatus === "accepted" ? estimatedTimes[orderId] : undefined;
 
-      if (
-        newStatus === "accepted" &&
-        (!estimatedPickupTime || estimatedPickupTime.trim() === "")
-      ) {
-        toast.error("Please provide an estimated pickup time.");
+      if (isAsapOrder && newStatus === "accepted" && (!estimatedPickupTime || estimatedPickupTime.trim() === "")) {
+        toast.error("Please provide an estimated pickup time for ASAP orders.");
         return;
       }
 
@@ -206,7 +204,7 @@ function OrderCard({
   estimatedTime,
   onEstimatedTimeChange,
   onStatusChange,
-}: OrderCardProps) {
+}: OrderCardProps): React.ReactElement {
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-50 border-yellow-200 hover:bg-yellow-100/50",
     confirmed: "bg-green-50 border-green-200 hover:bg-green-100/50",
@@ -229,6 +227,23 @@ function OrderCard({
   };
 
   const uiStatus = backendToUIStatus(order.status);
+  const isAsapOrder = order.pickupOption === 'asap';
+
+  const formatPickupTime = () => {
+    if (isAsapOrder) return 'ASAP';
+    
+    const pickupDate = new Date(order.customerDetails.pickupDate);
+    const today = new Date();
+    const isToday = pickupDate.toDateString() === today.toDateString();
+    
+    if (isToday) {
+      return `Today at ${order.pickupTime}`;
+    } else {
+      const day = pickupDate.getDate();
+      const weekday = pickupDate.toLocaleDateString('en-US', { weekday: 'long' });
+      return `${day} ${weekday} at ${order.pickupTime}`;
+    }
+  };
 
   return (
     <div
@@ -334,20 +349,22 @@ function OrderCard({
       <div className="flex items-center justify-between text-sm mb-4">
         <span className="text-gray-600 flex items-center">
           <FontAwesomeIcon icon={faClock} className="mr-2 text-gray-400" />
-          Pickup: {order.pickupTime}
+          Pickup: {formatPickupTime()}
         </span>
       </div>
 
       {/* Action Buttons */}
       {uiStatus === "pending" && (
         <div className="space-y-3">
-          <input
-            type="text"
-            placeholder="Estimated preparation time (e.g. 20-30 mins)"
-            value={estimatedTime || ""}
-            onChange={(e) => onEstimatedTimeChange(order.id, e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
-          />
+          {isAsapOrder && (
+            <input
+              type="text"
+              placeholder="Estimated preparation time (e.g. 20-30 mins)"
+              value={estimatedTime || ""}
+              onChange={(e) => onEstimatedTimeChange(order.id, e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+            />
+          )}
           <div className="flex gap-2">
             <button
               onClick={() => onStatusChange(order.id, uiToBackendStatus("confirmed"))}
@@ -369,16 +386,12 @@ function OrderCard({
 
       {uiStatus === "confirmed" && (
         <div className="space-y-3">
-          {order.estimatedPickupTime ? (
+          {isAsapOrder && order.estimatedPickupTime ? (
             <p className="text-sm text-green-700 font-medium flex items-center">
               <FontAwesomeIcon icon={faClock} className="mr-2" />
               Ready in: {order.estimatedPickupTime}
             </p>
-          ) : (
-            <p className="text-sm text-gray-500 italic">
-              No estimated pickup time provided
-            </p>
-          )}
+          ) : null}
           <button
             onClick={() => onStatusChange(order.id, uiToBackendStatus("completed"))}
             className="w-full bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"

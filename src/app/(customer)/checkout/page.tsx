@@ -64,45 +64,44 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate required fields
     if (!formData.name || !formData.phone || !formData.email) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    // Validate pickup time based on restaurant hours
-    const todayHours = getTodayHours();
-    if (!todayHours) {
-      toast.error('Restaurant hours not available');
-      return;
-    }
+    if (pickupOption === 'asap') {
+      const todayHours = getTodayHours();
+      if (!todayHours) {
+        toast.error('Restaurant hours not available');
+        return;
+      }
 
-    if (todayHours.closed) {
-      toast.error('Restaurant is closed today');
-      return;
-    }
+      if (todayHours.closed) {
+        toast.error('Restaurant is closed today');
+        return;
+      }
 
-    if (pickupOption === 'later') {
+      if (!isAsapAvailable) {
+        toast.error('ASAP pickup is not available at this time');
+        return;
+      }
+    } else {
+      // For scheduled orders
       if (!formData.pickupDate || !formData.pickupTime) {
         toast.error('Please select a pickup date and time');
         return;
       }
 
-      // Validate selected date is open
       if (!isDateOpen(formData.pickupDate)) {
         toast.error('Restaurant is closed on selected date');
         return;
       }
 
-      // Validate selected time is available
       const availableTimes = getPickupTimeSlots(formData.pickupDate);
       if (!availableTimes.includes(formData.pickupTime)) {
         toast.error('Selected pickup time is not available');
         return;
       }
-    } else if (pickupOption === 'asap' && !isAsapAvailable) {
-      toast.error('ASAP pickup is not available at this time');
-      return;
     }
 
     setIsSubmitting(true);
@@ -155,13 +154,13 @@ export default function CheckoutPage() {
     router.push(`/restaurant/${restaurantId || ''}`);
   };
 
-  // --- Restaurant hours logic ---
   const getTodayHours = () => {
     if (!restaurantDetails?.openingHours) return null;
     const today = new Date();
     const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     return restaurantDetails.openingHours.find(hour => hour.day.toLowerCase() === dayOfWeek) || null;
   };
+
   const isAsapAvailable = (() => {
     const todayHours = getTodayHours();
     if (!todayHours || todayHours.closed) return false;
@@ -176,6 +175,7 @@ export default function CheckoutPage() {
     nowWithBuffer.setMinutes(nowWithBuffer.getMinutes() + 15);
     return nowWithBuffer >= openingTime && nowWithBuffer < closingTime;
   })();
+
   const getNextOpenDate = () => {
     if (!restaurantDetails?.openingHours) return new Date().toISOString().split('T')[0];
     const today = new Date();
@@ -190,6 +190,7 @@ export default function CheckoutPage() {
     }
     return today.toISOString().split('T')[0];
   };
+
   const isDateOpen = (dateStr: string) => {
     if (!restaurantDetails?.openingHours) return true;
     const date = new Date(dateStr);
@@ -197,25 +198,17 @@ export default function CheckoutPage() {
     const dayHours = restaurantDetails.openingHours.find(hour => hour.day.toLowerCase() === dayOfWeek);
     return !!dayHours && !dayHours.closed;
   };
+
   const getPickupTimeSlots = (selectedDate: string) => {
     if (!restaurantDetails?.openingHours) return [];
     const date = new Date(selectedDate);
     const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const dayHours = restaurantDetails.openingHours.find(hour => hour.day.toLowerCase() === dayOfWeek);
     
-    // Debug log
-    console.log('Selected Date:', selectedDate);
-    console.log('Day of Week:', dayOfWeek);
-    console.log('Day Hours:', dayHours);
-    
     if (!dayHours || dayHours.closed) return [];
     
     const [openHour, openMinute] = dayHours.open.split(':').map(Number);
     const [closeHour, closeMinute] = dayHours.close.split(':').map(Number);
-    
-    // Debug log
-    console.log('Opening Time:', `${openHour}:${openMinute}`);
-    console.log('Closing Time:', `${closeHour}:${closeMinute}`);
     
     const slots = [];
     const startTime = new Date(date);
@@ -223,26 +216,17 @@ export default function CheckoutPage() {
     const endTime = new Date(date);
     endTime.setHours(closeHour, closeMinute, 0, 0);
 
-    // For future dates, use the full opening hours
     if (date.toDateString() !== new Date().toDateString()) {
-      // Round up to next 30-minute interval from opening time
       startTime.setMinutes(Math.ceil(startTime.getMinutes() / 30) * 30);
     } else {
-      // For today, start from current time + 30 minutes
       const now = new Date();
       now.setMinutes(now.getMinutes() + 30);
       if (now > startTime) {
         startTime.setTime(now.getTime());
       }
-      // Round up to next 30-minute interval
       startTime.setMinutes(Math.ceil(startTime.getMinutes() / 30) * 30);
     }
 
-    // Debug log
-    console.log('Start Time:', startTime);
-    console.log('End Time:', endTime);
-
-    // Generate time slots
     const currentTime = new Date(startTime);
     while (currentTime < endTime) {
       const timeString = currentTime.toLocaleTimeString('en-US', {
@@ -254,19 +238,17 @@ export default function CheckoutPage() {
       currentTime.setMinutes(currentTime.getMinutes() + 30);
     }
 
-    // Debug log
-    console.log('Generated Slots:', slots);
-
     return slots;
   };
+
   const availablePickupTimes = useMemo(() => getPickupTimeSlots(formData.pickupDate), [formData.pickupDate, restaurantDetails?.openingHours]);
+
   useEffect(() => {
     if (!isDateOpen(formData.pickupDate)) {
       setFormData(prev => ({ ...prev, pickupDate: getNextOpenDate() }));
     }
   }, [restaurantDetails?.openingHours]);
 
-  // Set initial pickup option based on restaurant hours
   useEffect(() => {
     const todayHours = getTodayHours();
     if (!todayHours || todayHours.closed) {
@@ -279,13 +261,9 @@ export default function CheckoutPage() {
     }
   }, [isAsapAvailable]);
 
-  // Update available pickup times when date changes
   useEffect(() => {
     if (!formData.pickupDate) return;
-    
     const times = getPickupTimeSlots(formData.pickupDate);
-    console.log('Available Times for Selected Date:', times);
-    
     if (times.length > 0) {
       setFormData(prev => ({ ...prev, pickupTime: times[0] }));
     } else {
@@ -321,6 +299,7 @@ export default function CheckoutPage() {
       </div>
     );
   }
+
   if (!restaurantDetails) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -331,6 +310,7 @@ export default function CheckoutPage() {
       </div>
     );
   }
+
   return (
     <div className="bg-gray-50 py-12">
       <div className="max-w-screen-lg mx-auto px-4 sm:px-6 lg:px-8">
@@ -424,7 +404,6 @@ export default function CheckoutPage() {
                 )}
               </div>
 
-              {/* Place Order Button */}
               <button
                 type="submit"
                 disabled={isSubmitting}

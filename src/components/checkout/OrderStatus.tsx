@@ -12,7 +12,7 @@ interface OrderStatusProps {
 const OrderStatus: React.FC<OrderStatusProps> = ({
   placedOrder,
   showOrderStatus,
- 
+  onReturnToMenu
 }) => {
   const isAsapOrder = placedOrder.customerDetails.pickupTime === 'asap';
 
@@ -24,9 +24,14 @@ const OrderStatus: React.FC<OrderStatusProps> = ({
     const dateObj = new Date(dateStr);
     const today = new Date();
     const isToday = dateObj.toDateString() === today.toDateString();
-    const options: Intl.DateTimeFormatOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-    const dateFormatted = isToday ? 'Today' : dateObj.toLocaleDateString(undefined, options);
-    return `Pickup time: ${dateFormatted} at ${time}`;
+    
+    if (isToday) {
+      return `Pickup time: Today at ${time}`;
+    } else {
+      const day = dateObj.getDate();
+      const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+      return `Pickup time: ${day} ${weekday} at ${time}`;
+    }
   }, [isAsapOrder, placedOrder.customerDetails.pickupDate, placedOrder.customerDetails.pickupTime]);
 
   if (!showOrderStatus) return null;
@@ -35,27 +40,23 @@ const OrderStatus: React.FC<OrderStatusProps> = ({
     <div className="fixed inset-0 backdrop-filter backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
         <div className="text-center space-y-4">
-          {/* ASAP ORDER FLOW */}
-          {isAsapOrder && (
-            <>
-              <FontAwesomeIcon icon={faCheck} className="text-4xl text-green-500 mx-auto" />
-              <h3 className="text-xl font-semibold">Thank you for ordering from us!</h3>
-              <p className="text-gray-700">
-                You will receive an email shortly with your order status and pickup time.
-              </p>
-            
-            </>
+          <FontAwesomeIcon icon={faCheck} className="text-4xl text-green-500 mx-auto" />
+          <h3 className="text-xl font-semibold">
+            {isAsapOrder ? 'Thank you for ordering from us!' : 'Your order has been received.'}
+          </h3>
+          {isAsapOrder ? (
+            <p className="text-gray-700">
+              You will receive an email shortly with your order status and pickup time.
+            </p>
+          ) : (
+            pickupLabel && <p className="text-gray-700">{pickupLabel}</p>
           )}
-
-          {/* SCHEDULED ORDER FLOW */}
-          {!isAsapOrder && (
-            <>
-              <FontAwesomeIcon icon={faCheck} className="text-4xl text-green-500 mx-auto" />
-              <h3 className="text-xl font-semibold">Your order has been received.</h3>
-              {pickupLabel && <p className="text-gray-700">{pickupLabel}</p>}
-              
-            </>
-          )}
+          <button
+            onClick={onReturnToMenu}
+            className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
+          >
+            Return to Menu
+          </button>
         </div>
       </div>
     </div>
