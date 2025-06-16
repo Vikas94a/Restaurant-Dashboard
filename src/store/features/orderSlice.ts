@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, doc, updateDoc, onSnapshot, QuerySnapshot, getDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, doc, updateDoc, onSnapshot, QuerySnapshot, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Order } from '@/types/checkout';
 import { CartItem } from '@/types/cart';
@@ -28,6 +28,31 @@ const convertTimestampToString = (timestamp: Timestamp | { seconds: number, nano
   }
   return '';
 };
+
+type BackendOrderStatus = 'pending' | 'accepted' | 'rejected' | 'completed';
+type UIOrderStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+
+function backendToUIStatus(status: BackendOrderStatus): UIOrderStatus {
+  switch (status) {
+    case 'accepted':
+      return 'confirmed';
+    case 'rejected':
+      return 'cancelled';
+    default:
+      return status;
+  }
+}
+
+function uiToBackendStatus(status: UIOrderStatus): BackendOrderStatus {
+  switch (status) {
+    case 'confirmed':
+      return 'accepted';
+    case 'cancelled':
+      return 'rejected';
+    default:
+      return status;
+  }
+}
 
 // Async thunks
 export const createOrder = createAsyncThunk(
@@ -58,38 +83,44 @@ export const createOrder = createAsyncThunk(
 );
 
 export const updateOrderStatus = createAsyncThunk(
-  'orders/updateOrderStatus',
-  async ({ orderId, restaurantId, newStatus, estimatedPickupTime }: 
-  { orderId: string; restaurantId: string; newStatus: 'accepted' | 'rejected' | 'completed'; estimatedPickupTime?: string | null }) => {
+  'orders/updateStatus',
+  async ({ orderId, restaurantId, newStatus, estimatedPickupTime }: {
+    orderId: string;
+    restaurantId: string;
+    newStatus: BackendOrderStatus;
+    estimatedPickupTime?: string;
+  }) => {
     try {
-      const orderRef = doc(db, `restaurants/${restaurantId}/orders`, orderId);
-      
+      const orderRef = doc(db, 'restaurants', restaurantId, 'orders', orderId);
+      const orderDoc = await getDoc(orderRef);
+
+      if (!orderDoc.exists()) {
+        throw new Error('Order not found');
+      }
+
+      const orderData = orderDoc.data();
       const updateData: any = {
         status: newStatus,
-        updatedAt: Timestamp.now(),
+        updatedAt: serverTimestamp(),
       };
 
-      // Only add estimatedPickupTime if status is accepted and a value is provided
-      if (newStatus === 'accepted' && estimatedPickupTime !== undefined) {
-         updateData.estimatedPickupTime = estimatedPickupTime;
+      if (estimatedPickupTime) {
+        updateData.estimatedPickupTime = estimatedPickupTime;
+      }
+
+      // Send confirmation email when order is accepted
+      if (newStatus === 'accepted') {
+        const order = { id: orderId, ...orderData } as Order;
+        await sendOrderConfirmationEmail(order);
+      }
+
+      if (newStatus === 'completed') {
+        updateData.completedAt = serverTimestamp();
       }
 
       await updateDoc(orderRef, updateData);
-      
-      // Get the updated order data
-      const orderDoc = await getDoc(orderRef);
-      const orderData = orderDoc.data() as Order;
-
-      // Send appropriate email based on status
-      if (newStatus === 'accepted') {
-        await sendOrderConfirmationEmail(orderData);
-      } else if (newStatus === 'rejected') {
-        await sendOrderRejectionEmail(orderData);
-      }
-      
-      // Return serializable data, including the estimated time if set
-      return { orderId, newStatus, estimatedPickupTime: newStatus === 'accepted' ? estimatedPickupTime : undefined };
-    } catch (error: any) {
+      return { orderId, newStatus, estimatedPickupTime };
+    } catch (error) {
       console.error('Error updating order status:', error);
       throw error;
     }
@@ -188,12 +219,13 @@ export const orderSlice = createSlice({
       .addCase(updateOrderStatus.pending, (state) => {
         state.error = null;
       })
-      .addCase(updateOrderStatus.fulfilled, (state, action: PayloadAction<{ orderId: string; newStatus: string; estimatedPickupTime?: string | null }>) => {
-        const order = state.orders.find(o => o.id === action.payload.orderId);
+      .addCase(updateOrderStatus.fulfilled, (state, action) => {
+        const { orderId, newStatus, estimatedPickupTime } = action.payload;
+        const order = state.orders.find(o => o.id === orderId);
         if (order) {
-          order.status = action.payload.newStatus as Order['status'];
-          if (action.payload.estimatedPickupTime !== undefined) {
-            order.estimatedPickupTime = action.payload.estimatedPickupTime;
+          order.status = backendToUIStatus(newStatus);
+          if (estimatedPickupTime) {
+            order.estimatedPickupTime = estimatedPickupTime;
           }
         }
       })
