@@ -114,6 +114,34 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 - Role-based access control
 - Protected routes for restaurant owners
 
+## Important Time Format Requirements
+
+### Restaurant Hours
+
+- All restaurant hours must be entered in 24-hour format (HH:mm)
+- Example: "09:00" for 9 AM, "14:30" for 2:30 PM, "23:00" for 11 PM
+- Time format validation uses the pattern: `^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$`
+
+### Pickup Time Slots
+
+- Time slots are generated in 30-minute intervals
+- For ASAP orders:
+  - A 15-minute buffer is added to the current time
+  - Only available if the restaurant is currently open
+  - Must be at least 30 minutes before closing time
+- For scheduled orders:
+  - Available up to 7 days in advance
+  - Only shows slots for days when the restaurant is open
+  - Time slots are rounded up to the next 30-minute interval
+  - Displayed in 12-hour format with AM/PM for customer view
+
+### Time Validation
+
+- Opening and closing times must be in valid 24-hour format
+- Closing time must be after opening time
+- System automatically validates time formats and prevents invalid entries
+- Restaurant can be marked as closed for specific days
+
 ## Development
 
 ### Code Style

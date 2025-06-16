@@ -112,7 +112,7 @@ export default function OrdersPage() {
   if (status === 'loading' && orders.length === 0) return <LoadingSpinner />;
 
   if (error) {
-    return (
+    return (   
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-6">
         <div className="bg-white rounded shadow p-6 max-w-md w-full text-center">
           <h2 className="text-xl font-semibold text-red-600 mb-2">
@@ -168,11 +168,6 @@ export default function OrdersPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {orders.length === 0 && status !== 'loading' && !error ? (
           <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-lg shadow-sm border border-gray-200">
-            <img
-              src="/empty-orders.svg"
-              alt="No orders"
-              className="w-32 h-32 mb-4 opacity-50"
-            />
             <h3 className="text-xl font-semibold text-gray-700">
               No Active Orders
             </h3>

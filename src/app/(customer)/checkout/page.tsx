@@ -63,15 +63,48 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name?.trim()) { toast.error("Please enter your name"); return; }
-    if (!formData.phone?.trim()) { toast.error("Please enter your phone number"); return; }
-    if (!formData.email?.trim()) { toast.error("Please enter your email"); return; }
-    if (pickupOption === 'later' && !formData.pickupTime) { toast.error("Please select a pickup time"); return; }
-    await handleOrderSubmission();
-  };
+    
+    // Validate required fields
+    if (!formData.name || !formData.phone || !formData.email) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
-  const handleOrderSubmission = async () => {
-    if (!restaurantId) { toast.error("No restaurant selected"); return; }
+    // Validate pickup time based on restaurant hours
+    const todayHours = getTodayHours();
+    if (!todayHours) {
+      toast.error('Restaurant hours not available');
+      return;
+    }
+
+    if (todayHours.closed) {
+      toast.error('Restaurant is closed today');
+      return;
+    }
+
+    if (pickupOption === 'later') {
+      if (!formData.pickupDate || !formData.pickupTime) {
+        toast.error('Please select a pickup date and time');
+        return;
+      }
+
+      // Validate selected date is open
+      if (!isDateOpen(formData.pickupDate)) {
+        toast.error('Restaurant is closed on selected date');
+        return;
+      }
+
+      // Validate selected time is available
+      const availableTimes = getPickupTimeSlots(formData.pickupDate);
+      if (!availableTimes.includes(formData.pickupTime)) {
+        toast.error('Selected pickup time is not available');
+        return;
+      }
+    } else if (pickupOption === 'asap' && !isAsapAvailable) {
+      toast.error('ASAP pickup is not available at this time');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const orderItems = cart.items.map(item => ({
@@ -169,32 +202,61 @@ export default function CheckoutPage() {
     const date = new Date(selectedDate);
     const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const dayHours = restaurantDetails.openingHours.find(hour => hour.day.toLowerCase() === dayOfWeek);
+    
+    // Debug log
+    console.log('Selected Date:', selectedDate);
+    console.log('Day of Week:', dayOfWeek);
+    console.log('Day Hours:', dayHours);
+    
     if (!dayHours || dayHours.closed) return [];
+    
     const [openHour, openMinute] = dayHours.open.split(':').map(Number);
     const [closeHour, closeMinute] = dayHours.close.split(':').map(Number);
+    
+    // Debug log
+    console.log('Opening Time:', `${openHour}:${openMinute}`);
+    console.log('Closing Time:', `${closeHour}:${closeMinute}`);
+    
     const slots = [];
     const startTime = new Date(date);
     startTime.setHours(openHour, openMinute, 0, 0);
     const endTime = new Date(date);
     endTime.setHours(closeHour, closeMinute, 0, 0);
-    if (date.toDateString() === new Date().toDateString()) {
+
+    // For future dates, use the full opening hours
+    if (date.toDateString() !== new Date().toDateString()) {
+      // Round up to next 30-minute interval from opening time
+      startTime.setMinutes(Math.ceil(startTime.getMinutes() / 30) * 30);
+    } else {
+      // For today, start from current time + 30 minutes
       const now = new Date();
       now.setMinutes(now.getMinutes() + 30);
       if (now > startTime) {
         startTime.setTime(now.getTime());
       }
+      // Round up to next 30-minute interval
+      startTime.setMinutes(Math.ceil(startTime.getMinutes() / 30) * 30);
     }
-    startTime.setMinutes(Math.ceil(startTime.getMinutes() / 30) * 30);
-    while (startTime < endTime) {
-      slots.push(
-        startTime.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        })
-      );
-      startTime.setMinutes(startTime.getMinutes() + 30);
+
+    // Debug log
+    console.log('Start Time:', startTime);
+    console.log('End Time:', endTime);
+
+    // Generate time slots
+    const currentTime = new Date(startTime);
+    while (currentTime < endTime) {
+      const timeString = currentTime.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      slots.push(timeString);
+      currentTime.setMinutes(currentTime.getMinutes() + 30);
     }
+
+    // Debug log
+    console.log('Generated Slots:', slots);
+
     return slots;
   };
   const availablePickupTimes = useMemo(() => getPickupTimeSlots(formData.pickupDate), [formData.pickupDate, restaurantDetails?.openingHours]);
@@ -203,6 +265,54 @@ export default function CheckoutPage() {
       setFormData(prev => ({ ...prev, pickupDate: getNextOpenDate() }));
     }
   }, [restaurantDetails?.openingHours]);
+
+  // Set initial pickup option based on restaurant hours
+  useEffect(() => {
+    const todayHours = getTodayHours();
+    if (!todayHours || todayHours.closed) {
+      setPickupOption('later');
+      setFormData(prev => ({ ...prev, pickupDate: getNextOpenDate() }));
+    } else if (isAsapAvailable) {
+      setPickupOption('asap');
+    } else {
+      setPickupOption('later');
+    }
+  }, [isAsapAvailable]);
+
+  // Update available pickup times when date changes
+  useEffect(() => {
+    if (!formData.pickupDate) return;
+    
+    const times = getPickupTimeSlots(formData.pickupDate);
+    console.log('Available Times for Selected Date:', times);
+    
+    if (times.length > 0) {
+      setFormData(prev => ({ ...prev, pickupTime: times[0] }));
+    } else {
+      setFormData(prev => ({ ...prev, pickupTime: '' }));
+    }
+  }, [formData.pickupDate, restaurantDetails?.openingHours]);
+
+  const getAvailableDates = () => {
+    if (!restaurantDetails?.openingHours) return [];
+    const dates = [];
+    const today = new Date();
+    
+    for (let i = 0; i < 7; i++) {
+      const check = new Date(today);
+      check.setDate(today.getDate() + i);
+      const dayOfWeek = check.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      const dayHours = restaurantDetails.openingHours.find(hour => hour.day.toLowerCase() === dayOfWeek);
+      
+      if (dayHours && !dayHours.closed) {
+        dates.push({
+          date: check.toISOString().split('T')[0],
+          display: `${check.getDate()} ${check.toLocaleDateString('en-US', { weekday: 'long' })}`
+        });
+      }
+    }
+    return dates;
+  };
 
   if (isLoading) {
     return (
@@ -233,34 +343,99 @@ export default function CheckoutPage() {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <label className="flex items-center">
-                    <input type="radio" name="pickupOption" value="asap" checked={pickupOption === 'asap'} onChange={(e) => handleOptionChange(e.target.value as 'asap' | 'later')} className="mr-2" disabled={!isAsapAvailable} />
+                    <input 
+                      type="radio" 
+                      name="pickupOption" 
+                      value="asap" 
+                      checked={pickupOption === 'asap'} 
+                      onChange={(e) => handleOptionChange(e.target.value as 'asap' | 'later')} 
+                      className="mr-2" 
+                      disabled={!isAsapAvailable} 
+                    />
                     As Soon as Possible
                   </label>
                   <label className="flex items-center">
-                    <input type="radio" name="pickupOption" value="later" checked={pickupOption === 'later'} onChange={(e) => handleOptionChange(e.target.value as 'asap' | 'later')} className="mr-2" />
+                    <input 
+                      type="radio" 
+                      name="pickupOption" 
+                      value="later" 
+                      checked={pickupOption === 'later'} 
+                      onChange={(e) => handleOptionChange(e.target.value as 'asap' | 'later')} 
+                      className="mr-2" 
+                    />
                     Schedule for Later
                   </label>
                 </div>
+                
                 {pickupOption === 'later' && (
                   <>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Pickup Date</label>
-                      <input type="date" value={formData.pickupDate} onChange={(e) => setFormData({ ...formData, pickupDate: e.target.value })} min={getNextOpenDate()} max={(() => { const d = new Date(getNextOpenDate()); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })()} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm" />
-                      {!isDateOpen(formData.pickupDate) && (<div className="text-xs text-red-500 mt-1">Restaurant is closed on this day. Please select another date.</div>)}
+                      <label className="block text-sm font-medium text-gray-700">
+                        Pickup Date
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {getAvailableDates().map(({ date, display }) => (
+                          <button
+                            key={date}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, pickupDate: date })}
+                            className={`px-4 py-2 text-sm rounded-md border transition-colors ${
+                              formData.pickupDate === date
+                                ? 'bg-primary text-white border-primary'
+                                : 'border-gray-300 hover:border-primary hover:bg-primary/5'
+                            }`}
+                          >
+                            {display}
+                          </button>
+                        ))}
+                      </div>
+                      {getAvailableDates().length === 0 && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          No available dates in the next 7 days
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Pickup Time</label>
-                      <select value={formData.pickupTime} onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Pickup Time
+                      </label>
+                      <select
+                        value={formData.pickupTime}
+                        onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm"
+                        required
+                      >
                         <option value="">Select a time</option>
                         {availablePickupTimes.map((time: string) => (
-                          <option key={time} value={time}>{time}</option>
+                          <option key={time} value={time}>
+                            {time}
+                          </option>
                         ))}
                       </select>
+                      {availablePickupTimes.length === 0 && (
+                        <p className="text-sm text-gray-500 mt-1">
+                          {!restaurantDetails?.openingHours ? "Restaurant hours not available" :
+                            !isDateOpen(formData.pickupDate) ? "Restaurant is closed on selected date" :
+                            "No available pickup times for selected date"}
+                        </p>
+                      )}
                     </div>
                   </>
                 )}
               </div>
-              <button type="submit" disabled={isSubmitting} className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-colors ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark'}`}>{isSubmitting ? 'Placing Order...' : 'Place Order'}</button>
+
+              {/* Place Order Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full mt-6 py-3 px-4 rounded-lg font-medium text-white transition-colors ${
+                  isSubmitting
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : 'bg-primary hover:bg-primary-dark cursor-pointer'
+                }`}
+              >
+                {isSubmitting ? 'Placing Order...' : 'Place Order'}
+              </button>
             </form>
           </div>
           <OrderSummary cart={cart} handleSubmit={handleSubmit} pickupOption={pickupOption} formData={formData} isAsapAvailable={true} />

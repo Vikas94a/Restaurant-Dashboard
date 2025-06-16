@@ -15,7 +15,6 @@ interface OrderSummaryProps {
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   cart,
-  
   formData,
   isAsapAvailable,
 }) => {
@@ -88,9 +87,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Submit Button */}
-    
     </div>
   );
 };

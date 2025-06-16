@@ -1,8 +1,9 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, doc, updateDoc, onSnapshot, QuerySnapshot } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, doc, updateDoc, onSnapshot, QuerySnapshot, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Order } from '@/types/checkout';
 import { CartItem } from '@/types/cart';
+import { sendOrderConfirmationEmail, sendOrderRejectionEmail } from '@/services/email/emailService';
 
 // Types
 export interface OrderState {
@@ -74,6 +75,17 @@ export const updateOrderStatus = createAsyncThunk(
       }
 
       await updateDoc(orderRef, updateData);
+      
+      // Get the updated order data
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data() as Order;
+
+      // Send appropriate email based on status
+      if (newStatus === 'accepted') {
+        await sendOrderConfirmationEmail(orderData);
+      } else if (newStatus === 'rejected') {
+        await sendOrderRejectionEmail(orderData);
+      }
       
       // Return serializable data, including the estimated time if set
       return { orderId, newStatus, estimatedPickupTime: newStatus === 'accepted' ? estimatedPickupTime : undefined };
