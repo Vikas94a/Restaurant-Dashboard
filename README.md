@@ -1,346 +1,363 @@
 # AI Eat Easy
 
-A modern restaurant management platform built with Next.js and Firebase, enabling restaurant owners to manage their business and customers to place orders seamlessly.
+A comprehensive restaurant management platform built with Next.js 15 and Firebase, enabling restaurant owners to manage their business and customers to place orders seamlessly. The platform features real-time order tracking, automated email notifications, and a modern responsive interface.
 
-## Features
+## 🚀 Features
 
-- 🏪 Restaurant Management Dashboard
-- 🍽️ Menu Management
-- 🛒 Customer Ordering System
-- ⏰ Real-time Order Tracking
-- 🔐 Secure Authentication
-- 📱 Responsive Design
+### For Restaurant Owners
 
-## Tech Stack
+- 🏪 **Restaurant Dashboard** - Complete business management interface
+- 🍽️ **Advanced Menu Management** - Create, edit, and organize menu items with categories
+- 📊 **Real-time Order Tracking** - Live updates on incoming orders
+- ⏰ **Business Hours Configuration** - Set opening/closing times for each day
+- 📧 **Automated Email System** - Order confirmations and customer feedback emails
+- 🎨 **Restaurant Profile Setup** - Complete business information management
+- 📱 **Responsive Design** - Works perfectly on all devices
 
-- **Frontend**: Next.js 14 with TypeScript
-- **Styling**: Tailwind CSS
-- **Backend**: Firebase (Firestore, Authentication)
-- **State Management**: Redux Toolkit
-- **UI Components**: Custom components with Tailwind
-- **Form Handling**: React Hook Form
+### For Customers
+
+- 🛒 **Smart Shopping Cart** - Add items with customizations and special instructions
+- ⏰ **Flexible Pickup Options** - Choose ASAP or schedule for later
+- 💳 **Seamless Checkout** - User-friendly order placement process
+- 📱 **Order Status Tracking** - Real-time updates on order progress
+- 📧 **Email Notifications** - Order confirmations and feedback requests
+
+### Advanced Features
+
+- 🔐 **Secure Authentication** - Firebase Authentication with email verification
+- 🚨 **Session Management** - Automatic session warnings and secure logout
+- 📊 **Redux State Management** - Persistent cart and optimized state handling
+- 🌙 **Route Protection** - Role-based access control with authentication guards
+- 📧 **Automated Feedback System** - Scheduled emails 2 minutes after pickup time
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 15 with TypeScript and App Router
+- **Styling**: Tailwind CSS 4 with shadcn/ui components
+- **Backend**: Firebase (Firestore, Authentication, Functions, Hosting)
+- **State Management**: Redux Toolkit with Redux Persist
+- **Email Service**: Resend API with automated scheduling
+- **Form Handling**: React Hook Form with Zod validation
+- **UI Components**: Radix UI primitives with custom styling
+- **Icons**: Lucide React and FontAwesome
 - **Notifications**: Sonner Toast
+- **Testing**: Jest with React Testing Library
 
-## Project Structure
+## 📁 Project Structure
 
 ```
-src/
-├── app/                    # Next.js app directory
-│   ├── (customer)/        # Customer-facing routes
-│   │   ├── checkout/      # Checkout flow
-│   │   └── order-status/  # Order tracking
-│   └── (restaurant)/      # Restaurant management routes
-├── components/            # Reusable UI components
-│   ├── checkout/         # Checkout related components
-│   ├── common/           # Shared components
-│   └── restaurant/       # Restaurant specific components
-├── hooks/                # Custom React hooks
-├── lib/                  # Library configurations
-│   └── firebase.ts      # Firebase setup
-├── providers/           # Context providers
-├── services/            # API and service functions
-├── store/               # Redux store configuration
-├── types/               # TypeScript type definitions
-└── utils/               # Utility functions
+ai-eat-easy/
+├── functions/                    # Firebase Cloud Functions
+│   ├── src/
+│   │   └── index.ts             # Email automation & feedback scheduling
+│   └── package.json
+├── src/
+│   ├── app/                     # Next.js App Router
+│   │   ├── (customer)/         # Customer-facing routes
+│   │   │   └── checkout/       # Checkout process
+│   │   ├── dashboard/          # Restaurant owner dashboard
+│   │   │   ├── menu/          # Menu management
+│   │   │   ├── orders/        # Order management
+│   │   │   ├── overview/      # Restaurant setup
+│   │   │   └── settings/      # Restaurant configuration
+│   │   ├── api/               # API routes
+│   │   │   ├── feedback/      # Feedback handling
+│   │   │   └── send-email/    # Email sending service
+│   │   └── restaurant/        # Public restaurant pages
+│   │       └── [id]/          # Dynamic restaurant routes
+│   ├── components/            # Reusable UI components
+│   │   ├── auth/             # Authentication components
+│   │   ├── checkout/         # Checkout flow components
+│   │   ├── dashboardcomponent/ # Dashboard-specific components
+│   │   ├── feedback/         # Feedback system components
+│   │   ├── menu/             # Menu display components
+│   │   └── ui/               # shadcn/ui components
+│   ├── hooks/                # Custom React hooks
+│   │   └── menu/             # Menu-specific hooks
+│   ├── providers/            # Context providers and guards
+│   │   └── guards/           # Route protection guards
+│   ├── services/             # External service integrations
+│   │   ├── email/            # Email service logic
+│   │   └── feedback/         # Feedback service logic
+│   ├── store/                # Redux store configuration
+│   │   ├── features/         # Redux slices
+│   │   └── middleware/       # Custom middleware
+│   ├── types/                # TypeScript type definitions
+│   └── utils/                # Utility functions
+└── firebase.json               # Firebase configuration
 ```
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
-- Firebase account
+- **Node.js** 18+
+- **npm** or **yarn**
+- **Firebase CLI** (`npm install -g firebase-tools`)
+- **Firebase project** with Firestore, Authentication, and Functions enabled
+- **Resend account** for email services
 
 ### Installation
 
-1. Clone the repository:
+1. **Clone the repository:**
 
 ```bash
-git clone [repository-url]
+git clone <repository-url>
 cd ai-eat-easy
 ```
 
-2. Install dependencies:
+2. **Install dependencies:**
 
 ```bash
 npm install
-# or
-yarn install
 ```
 
-3. Set up environment variables:
-   Create a `.env.local` file in the root directory with the following variables:
+3. **Install Firebase Functions dependencies:**
+
+```bash
+cd functions
+npm install
+cd ..
+```
+
+4. **Set up environment variables:**
+
+Create `.env.local` in the root directory:
 
 ```env
+# Firebase Configuration
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
+
+# App Configuration
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Email Service (Server-side only)
+RESEND_API_KEY=your_resend_api_key
 ```
 
-4. Run the development server:
+5. **Configure Firebase:**
+
+```bash
+firebase login
+firebase use --add  # Select your Firebase project
+```
+
+6. **Set Firebase Functions environment variables:**
+
+```bash
+firebase functions:config:set resend.api_key="your_resend_api_key"
+firebase functions:config:set app.url="http://localhost:3000"
+```
+
+### Development
+
+1. **Start the development server:**
 
 ```bash
 npm run dev
-# or
-yarn dev
+```
+
+2. **Start Firebase emulators (optional):**
+
+```bash
+firebase emulators:start
+```
+
+3. **Deploy Firebase Functions:**
+
+```bash
+cd functions
+npm run build
+firebase deploy --only functions
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-## Key Features Implementation
+## 🏗️ Key Features Implementation
+
+### Authentication System
+
+- **Email/Password authentication** with Firebase Auth
+- **Email verification** required for account activation
+- **Session management** with automatic warnings before expiration
+- **Route protection** with AuthGuard and ProfileCompletionGuard
+- **Automatic redirects** based on authentication state
 
 ### Restaurant Management
 
-- Restaurant profile setup and management
-- Menu item creation and organization
-- Order tracking and management
-- Business hours configuration
+- **Complete restaurant profile** setup with business details
+- **Operating hours configuration** with day-specific settings
+- **Menu management** with categories, items, and customizations
+- **Real-time order tracking** with status updates
+- **Dashboard analytics** and business overview
 
-### Customer Ordering
+### Customer Ordering System
 
-- Browse restaurant menus
-- Add items to cart
-- Select pickup times
-- Track order status
-- View order history
+- **Interactive menu browsing** with item customizations
+- **Smart shopping cart** with persistent storage
+- **Flexible pickup scheduling** (ASAP or scheduled)
+- **Real-time order status** tracking
+- **Email notifications** for order updates
 
-### Authentication
+### Email Automation System
 
-- Secure user authentication
-- Role-based access control
-- Protected routes for restaurant owners
+- **Order confirmation emails** sent immediately upon acceptance
+- **Feedback request emails** sent 2 minutes after pickup time
+- **Automated scheduling** using Firebase Cloud Functions
+- **Professional email templates** with order details
+- **Error handling and retry logic**
 
-## Important Time Format Requirements
+## ⚙️ Important Configuration Details
 
-### Restaurant Hours
+### Time Format Requirements
 
-- All restaurant hours must be entered in 24-hour format (HH:mm)
-- Example: "09:00" for 9 AM, "14:30" for 2:30 PM, "23:00" for 11 PM
-- Time format validation uses the pattern: `^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$`
+**Restaurant Hours:**
 
-### Pickup Time Slots
+- Must be in 24-hour format (HH:mm)
+- Examples: "09:00", "14:30", "23:00"
+- Validation pattern: `^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$`
 
-- Time slots are generated in 30-minute intervals
-- For ASAP orders:
-  - A 15-minute buffer is added to the current time
-  - Only available if the restaurant is currently open
-  - Must be at least 30 minutes before closing time
-- For scheduled orders:
-  - Available up to 7 days in advance
-  - Only shows slots for days when the restaurant is open
-  - Time slots are rounded up to the next 30-minute interval
-  - Displayed in 12-hour format with AM/PM for customer view
+**Pickup Time Management:**
 
-### Time Validation
+- **ASAP orders:** 15-minute buffer from current time
+- **Scheduled orders:** 30-minute intervals, up to 7 days ahead
+- **Time slots:** Only generated for open days
+- **Display format:** 12-hour format with AM/PM for customers
 
-- Opening and closing times must be in valid 24-hour format
-- Closing time must be after opening time
-- System automatically validates time formats and prevents invalid entries
-- Restaurant can be marked as closed for specific days
+### Email System Configuration
 
-## Development
+**Sender Address:** `AI Eat Easy <onboarding@resend.dev>`  
+**Feedback Timing:** 2 minutes after pickup time  
+**Email Templates:** Professional HTML with order details  
+**Error Handling:** Automatic retry and failure tracking
 
-### Code Style
+### Firebase Collections Structure
 
-- Follow TypeScript best practices
-- Use functional components with hooks
-- Implement proper error handling
-- Write meaningful comments
+```
+restaurants/
+  {restaurantId}/
+    orders/
+      {orderId}/
+        - customerDetails
+        - items[]
+        - status
+        - pickupTime
+        - estimatedPickupTime
+
+scheduledTasks/
+  {taskId}/
+    - type: 'feedbackEmail'
+    - orderId
+    - restaurantId
+    - scheduledFor
+    - status
+```
+
+## 🧪 Development & Testing
+
+### Code Quality
+
+- **TypeScript** for type safety
+- **ESLint** for code consistency
+- **Functional components** with hooks
+- **Custom hooks** for reusable logic
+- **Error boundaries** and proper error handling
 
 ### Testing
 
 ```bash
-npm run test
-# or
-yarn test
+npm run test          # Run tests
+npm run test:watch    # Watch mode
+npm run test:coverage # Coverage report
 ```
 
 ### Building for Production
 
 ```bash
-npm run build
-# or
-yarn build
+npm run build         # Build Next.js app
+npm run start         # Start production server
 ```
 
-## Contributing
+## 🚀 Deployment
+
+### Deploy to Firebase Hosting
+
+```bash
+npm run build
+firebase deploy
+```
+
+### Deploy Functions Only
+
+```bash
+cd functions
+npm run build
+firebase deploy --only functions
+```
+
+### Deploy Hosting Only
+
+```bash
+npm run build
+firebase deploy --only hosting
+```
+
+## 🛡️ Security Features
+
+- **Environment variable protection** for sensitive keys
+- **Firestore security rules** for data access control
+- **Route protection** with authentication guards
+- **Input validation** with Zod schemas
+- **XSS protection** with proper data sanitization
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Support
+## 🆘 Support & Troubleshooting
 
-For support, email [support@aieateasy.com](mailto:support@aieateasy.com) or open an issue in the repository.
+### Common Issues
 
-## Ai-eat-easy instructions
+**Authentication Issues:**
 
-<invoke name="write_to_file">
-<parameter name="TargetFile">e:\Projects\AIEatEasy\New folder\ai-eat-easy\PROJECT_STRUCTURE.md</parameter>
-<parameter name="CodeContent"># AI Eat Easy - Detailed Project Structure Guide
+- Ensure Firebase Auth is properly configured
+- Check environment variables
+- Verify email verification is enabled
 
-This document provides a comprehensive guide to the codebase structure, helping you quickly locate and understand different parts of the application.
+**Email Not Sending:**
 
-## Core Project Overview
+- Check Resend API key configuration
+- Verify Firebase Functions environment variables
+- Check function logs: `firebase functions:log`
 
-AI Eat Easy is a restaurant management platform with:
+**Order Not Updating:**
 
-- A restaurant owner dashboard for managing restaurant profiles and menus
-- A customer-facing interface for viewing restaurant menus and placing orders
-- Firebase backend for data storage and authentication
+- Check Firestore security rules
+- Verify restaurant ID is correct
+- Check Redux state management
 
-## Technical Stack
+### Getting Help
 
-- **Framework**: Next.js with TypeScript
-- **Styling**: Tailwind CSS
-- **Backend**: Firebase (Firestore, Authentication)
-- **State Management**: React Context API
-- **Routing**: Next.js App Router
+For support or questions:
 
-## Directory Structure Breakdown
+- Check the Firebase console for error logs
+- Review the browser console for client-side errors
+- Use `firebase functions:log` for server-side debugging
 
-### `/src/app/` - Application Routing
+---
 
-Next.js App Router uses a folder-based routing structure:
-
-#### Authentication Routes
-
-- `/auth/login/page.tsx`: Login page
-- `/auth/register/page.tsx`: Registration page
-
-#### Dashboard Routes (Restaurant Owner)
-
-- `/dashboard/page.tsx`: Main dashboard with overview statistics
-- `/dashboard/setup/page.tsx`: Restaurant profile configuration
-- `/dashboard/menu/page.tsx`: Menu item management
-- `/dashboard/orders/page.tsx`: Order management and tracking
-- `/dashboard/layout.tsx`: Shared layout for all dashboard pages
-  - Includes sidebar navigation
-  - Wraps children in CartProvider for menu functionality
-  - Handles authentication checking
-
-#### Restaurant Routes (Customer-facing)
-
-- `/restaurant/[id]/page.tsx`: Restaurant details page
-  - The `[id]` is a dynamic segment representing the restaurant ID
-- `/restaurant/[id]/menu/page.tsx`: Menu viewing and ordering interface
-  - Wrapped in CartProvider for cart functionality
-- `/restaurant/[id]/layout.tsx`: Shared layout for restaurant pages
-
-### `/src/components/` - Reusable UI Components
-
-#### Navigation Components
-
-- `Sidebar.tsx`: Dashboard navigation sidebar
-- `Header.tsx`: Page header with authentication controls
-
-#### Menu-related Components
-
-- `RestaurantMenu.tsx`: Core component for displaying restaurant menus
-  - Handles both admin editing and customer ordering views
-  - Processes different menu data formats (new and legacy)
-- `MenuItem.tsx`: Individual menu item display
-- `MenuItemForm.tsx`: Form for creating/editing menu items
-- `MenuCategory.tsx`: Category grouping of menu items
-
-#### Cart Components
-
-- `Cart.tsx`: Shopping cart display
-- `CartItem.tsx`: Individual item in the cart
-
-#### Form Components
-
-- `Input.tsx`: Reusable input component
-- `Button.tsx`: Reusable button component
-- `SelectInput.tsx`: Dropdown select component
-
-#### UI Components
-
-- `Modal.tsx`: Reusable modal dialog
-- `Loader.tsx`: Loading spinner
-- `ErrorAlert.tsx`: Error message display
-
-### `/src/contexts/` - State Management
-
-- `AuthContext.tsx`: User authentication state
-  - Provides current user information throughout the app
-  - Manages login/logout functionality
-- `CartContext.tsx`: Shopping cart state management
-  - Provides cart add/remove/update functions
-  - Tracks cart items and total price
-- `ToastContext.tsx`: Application-wide notifications
-
-### `/src/firebase/` - Firebase Integration
-
-- `config.ts`: Firebase initialization and configuration
-- `auth.ts`: Authentication utilities
-  - User registration, login, logout
-  - Password reset
-- `firestore.ts`: Database operations
-  - CRUD operations for restaurants, menus, orders
-  - Data transformation utilities
-
-### `/src/hooks/` - Custom React Hooks
-
-- `useAuth.ts`: Authentication hook (wrapper for AuthContext)
-- `useCart.ts`: Cart management hook (wrapper for CartContext)
-- `useRestaurant.ts`: Hook for fetching restaurant data
-
-### `/src/types/` - TypeScript Type Definitions
-
-- `restaurant.ts`: Restaurant data types
-- `menu.ts`: Menu item types
-- `order.ts`: Order and cart types
-- `user.ts`: User profile types
-
-### `/src/utils/` - Utility Functions
-
-- `formatting.ts`: Data formatting utilities (dates, currency, etc.)
-- `validation.ts`: Form validation utilities
-- `helpers.ts`: Miscellaneous helper functions
-
-## Working with the Codebase
-
-### Adding New Features
-
-1. **Dashboard Feature**:
-
-   - Add a new folder under `/src/app/dashboard/` for the feature
-   - Create necessary components in `/src/components/`
-   - Update the Sidebar to include a link to the new feature
-
-2. **Customer-facing Feature**:
-   - Add route under `/src/app/restaurant/[id]/`
-   - Ensure proper authentication/authorization if needed
-
-### Menu Data Structure
-
-The application handles two different menu data formats:
-
-1. **New Format**:
-   ```typescript
-   {
-     id: string;
-     name: string;
-     description: string;
-     price: number;
-     category: string;
-     image?: string;
-   }
-   ```
-
-```
-</parameter>
-</invoke>
-</rewritten_file>
-```
+**Built with ❤️ using Next.js, Firebase, and modern web technologies.**
