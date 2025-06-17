@@ -1,0 +1,21 @@
+.custom-calendar .rdp-head_cell:nth-child(1)::after {
+  content: 'Su';
+}
+.custom-calendar .rdp-head_cell:nth-child(2)::after {
+  content: 'Mo';
+}
+.custom-calendar .rdp-head_cell:nth-child(3)::after {
+  content: 'Tu';
+}
+.custom-calendar .rdp-head_cell:nth-child(4)::after {
+  content: 'We';
+}
+.custom-calendar .rdp-head_cell:nth-child(5)::after {
+  content: 'Th';
+}
+.custom-calendar .rdp-head_cell:nth-child(6)::after {
+  content: 'Fr';
+}
+.custom-calendar .rdp-head_cell:nth-child(7)::after {
+  content: 'Sa';
+}

@@ -17,7 +17,7 @@ interface CartProps {
   className?: string;
 }
 
-export default function Cart({ isOpen, onClose, className = '' }: CartProps) {
+export default function Cart({ isOpen, onClose }: CartProps) {
   const [isNavigating, setIsNavigating] = useState(false);
   const { cart, handleRemoveItem, handleIncreaseQuantity, handleDecreaseQuantity } = useCart();
   const router = useRouter();

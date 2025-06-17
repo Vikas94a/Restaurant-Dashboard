@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, {  useState } from "react";
 import RestaurantDialog from "@/components/dashboardcomponent/RestaurantDialog";
 import { useAppSelector } from "@/store/hooks";
 import { useRouter } from "next/navigation";
 import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
-import { Building2, MapPin, Phone, Clock, Utensils } from "lucide-react";
+import { Building2, MapPin, Clock, Utensils } from "lucide-react";
 
 export default function OverviewPage() {
   const [isOpen, setIsOpen] = useState<boolean>(true);
-  const router = useRouter();
+  // const router = useRouter();
   const { restaurantDetails, isLoading } = useAppSelector((state) => state.auth);
 
   // Check if restaurant details are missing

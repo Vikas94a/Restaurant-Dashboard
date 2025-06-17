@@ -2,9 +2,7 @@
  * Custom Tailwind plugins for AI Eat Easy
  */
 
-const plugin = require('tailwindcss/plugin');
-
-const primaryColorPlugin = plugin(function({ addComponents, theme }) {
+const primaryColorPlugin = plugin(function({ addComponents }) {
   const primaryColor = 'var(--primary)';
   const primaryForeground = 'var(--primary-foreground)';
   

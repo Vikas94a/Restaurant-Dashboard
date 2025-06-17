@@ -15,8 +15,7 @@ interface OrderSummaryProps {
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({
   cart,
-  formData,
-  isAsapAvailable,
+
 }) => {
   return (
     <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-3">

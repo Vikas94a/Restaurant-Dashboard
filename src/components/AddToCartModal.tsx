@@ -80,7 +80,6 @@ export default function AddToCartModal({
   };
 
   // For accessibility: ARIA labels
-  const dialogId = `add-to-cart-dialog-${item.id}`;
   const labelId = `add-to-cart-label-${item.id}`;
 
   return (

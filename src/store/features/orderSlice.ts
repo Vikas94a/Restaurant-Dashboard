@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, doc, updateDoc, onSnapshot, QuerySnapshot, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, Timestamp, orderBy, doc, updateDoc, onSnapshot, QuerySnapshot, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Order } from '@/types/checkout';
 import { CartItem } from '@/types/cart';

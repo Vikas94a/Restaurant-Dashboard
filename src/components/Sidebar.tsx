@@ -69,7 +69,7 @@ const Sidebar = () => {
           <li>
             <Link
               href="/dashboard"
-              className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-blue-100 text-blue-700 font-medium hover:bg-blue-200 transition duration-150 ease-in-out"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg  text-blue-700 font-medium hover:bg-blue-200 transition duration-150 ease-in-out"
               // UI/UX Improvement: Indicate current page for assistive technologies
               aria-current="page"
             >

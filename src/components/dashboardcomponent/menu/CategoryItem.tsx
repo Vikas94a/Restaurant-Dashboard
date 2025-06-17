@@ -1,24 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faEdit,
-  faTrash,
-  faSave,
-  faTimes,
-  faPlus,
-  faChevronDown,
-  faChevronUp,
-  faUtensils,
-  faBoxesStacked,
-} from "@fortawesome/free-solid-svg-icons";
 import {
   Category,
   NestedMenuItem,
   CustomizationGroup,
   ReusableExtraGroup,
-  ItemChangeField,
 } from "@/utils/menuTypes";
 import ItemCustomizationModal from "./ItemCustomizationModal";
 ;
