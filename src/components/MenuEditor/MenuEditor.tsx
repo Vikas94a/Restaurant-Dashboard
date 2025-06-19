@@ -16,6 +16,7 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ restaurantId }) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [editingItem, setEditingItem] = useState<FrontendMenuItem | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
   // Fetch menu data when component mounts
   useEffect(() => {
@@ -91,6 +92,9 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ restaurantId }) => {
               category={category}
               isSelected={category.id === selectedCategoryId}
               onSelect={() => handleCategorySelect(category.id)}
+              isEditing={editingCategoryId === category.id}
+              onEdit={() => setEditingCategoryId(category.id)}
+              onEditCancel={() => setEditingCategoryId(null)}
             />
           ))}
         </div>

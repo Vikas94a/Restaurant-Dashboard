@@ -22,12 +22,7 @@ const AnalyticsNavigation: React.FC<AnalyticsNavigationProps> = ({ activeTab, on
       icon: Menu,
       description: 'Menu performance and item analytics'
     },
-    {
-      id: 'feedback-insight',
-      label: 'Feedback Insight',
-      icon: MessageSquare,
-      description: 'Customer feedback and ratings analysis'
-    },
+
     {
       id: 'ai-suggestion',
       label: 'AI Suggestions',

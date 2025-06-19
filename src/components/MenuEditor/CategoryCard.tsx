@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppDispatch } from '@/store/hooks';
 import { updateCategory, deleteCategory } from '@/store/features/menuSlice';
 import { FrontendCategory } from '@/services/menuService';
@@ -8,18 +8,28 @@ interface CategoryCardProps {
   category: FrontendCategory;
   isSelected: boolean;
   onSelect: () => void;
+  isEditing: boolean;
+  onEdit: () => void;
+  onEditCancel: () => void;
 }
 
 const CategoryCard: React.FC<CategoryCardProps> = ({
   restaurantId,
   category,
   isSelected,
-  onSelect
+  onSelect,
+  isEditing,
+  onEdit,
+  onEditCancel
 }) => {
   const dispatch = useAppDispatch();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedName, setEditedName] = useState(category.name);
+  const [editedName, setEditedName] = useState(category.name || "");
   const [editedDescription, setEditedDescription] = useState(category.description || '');
+
+  useEffect(() => {
+    setEditedName(category.name || "");
+    setEditedDescription(category.description || '');
+  }, [category.id, category.name, category.description]);
 
   const handleSave = async () => {
     try {
@@ -31,7 +41,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
           description: editedDescription
         }
       })).unwrap();
-      setIsEditing(false);
+      onEditCancel();
     } catch (error) {
       // Error is handled by the reducer
       console.error('Failed to update category:', error);
@@ -39,16 +49,14 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this category? This will also delete all items in this category.')) {
-      try {
-        await dispatch(deleteCategory({
-          restaurantId,
-          categoryId: category.id
-        })).unwrap();
-      } catch (error) {
-        // Error is handled by the reducer
-        console.error('Failed to delete category:', error);
-      }
+    try {
+      await dispatch(deleteCategory({
+        restaurantId,
+        categoryId: category.id
+      })).unwrap();
+    } catch (error) {
+      // Error is handled by the reducer
+      console.error('Failed to delete category:', error);
     }
   };
 
@@ -67,6 +75,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
             onChange={(e) => setEditedName(e.target.value)}
             className="w-full p-2 border rounded"
             placeholder="Category name"
+            onClick={e => e.stopPropagation()}
           />
           <textarea
             value={editedDescription}
@@ -74,6 +83,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
             className="w-full p-2 border rounded"
             placeholder="Category description"
             rows={2}
+            onClick={e => e.stopPropagation()}
           />
           <div className="flex gap-2">
             <button
@@ -83,7 +93,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
               Save
             </button>
             <button
-              onClick={() => setIsEditing(false)}
+              onClick={onEditCancel}
               className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
             >
               Cancel
@@ -100,7 +110,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setIsEditing(true);
+                onEdit();
               }}
               className="text-blue-500 hover:text-blue-700"
             >

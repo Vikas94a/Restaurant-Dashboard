@@ -2,47 +2,32 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAppSelector } from '@/store/hooks';
-import { format, subDays, startOfDay, endOfDay, eachDayOfInterval } from 'date-fns';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
+import { 
+  format, 
+  startOfDay, 
+  endOfDay, 
+  eachDayOfInterval,
+  startOfWeek,
+  endOfWeek,
+  subWeeks,
+  isSameWeek,
+  isSameMonth
+} from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend
 } from 'recharts';
-
-// Define interfaces for type safety
-interface CustomerDetails {
-  name: string;
-  phone: string;
-  email: string;
-  pickupDate: string;
-  pickupTime: string;
-}
-
-interface Order {
-  id: string;
-  createdAt: string;
-  updatedAt: Timestamp;
-  customerDetails: CustomerDetails;
-  items: Array<any>;
-  pickupOption: 'asap' | 'later';
-  pickupTime: string;
-  restaurantId: string;
-  status: 'accepted' | 'pending' | 'completed' | 'cancelled';
-  total: number;
-  estimatedPickupTime?: string;
-}
 
 interface SalesData {
   date: string;
@@ -51,15 +36,61 @@ interface SalesData {
   completedOrders: number;
 }
 
-export default function PerformanceChart() {
+interface PerformanceChartProps {
+  onDataUpdate?: (orders: number, revenue: number) => void;
+}
+
+const QUICK_RANGES = [
+  { label: 'This Week', value: 'thisWeek' },
+  { label: 'Last Week', value: 'lastWeek' },
+  { label: 'This Month', value: 'thisMonth' },
+];
+
+export default function PerformanceChart({ onDataUpdate }: PerformanceChartProps) {
   const [dateRange, setDateRange] = useState({
-    from: subDays(new Date(), 6),
+    from: startOfWeek(new Date()),
     to: new Date(),
   });
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { restaurantDetails } = useAppSelector((state) => state.auth);
+
+  const handleQuickRangeSelect = (range: string) => {
+    const today = new Date();
+    let from: Date;
+    let to: Date = today;
+
+    switch (range) {
+      case 'thisWeek':
+        from = startOfWeek(today);
+        break;
+      case 'lastWeek':
+        from = startOfWeek(subWeeks(today, 1));
+        to = endOfWeek(subWeeks(today, 1));
+        break;
+      case 'thisMonth':
+        from = new Date(today.getFullYear(), today.getMonth(), 1);
+        break;
+      default:
+        from = startOfWeek(today);
+    }
+
+    setDateRange({ from, to });
+  };
+
+  const formatDateLabel = (date: string) => {
+    const dateObj = new Date(date);
+    const isWeekRange = isSameWeek(dateObj, dateRange.from) || isSameWeek(dateObj, dateRange.to);
+    const isMonthRange = isSameMonth(dateObj, dateRange.from) || isSameMonth(dateObj, dateRange.to);
+
+    if (isWeekRange) {
+      return format(dateObj, 'EEE'); // Mon, Tue, etc.
+    } else if (isMonthRange) {
+      return format(dateObj, 'MMM dd'); // Jan 01, Jan 02, etc.
+    } else {
+      return format(dateObj, 'MMM dd'); // Jan 01, Jan 02, etc.
+    }
+  };
 
   useEffect(() => {
     const fetchSalesData = async () => {
@@ -78,25 +109,21 @@ export default function PerformanceChart() {
         const orders = querySnapshot.docs.map(doc => ({
           ...doc.data(),
           id: doc.id,
-        })) as Order[];
+        }));
 
         // Create a map of dates with initial values
         const dateMap = new Map<string, { total: number; orders: number; completedOrders: number }>();
         const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
-        
-        // Ensure we have data for all days in the range
         days.forEach(date => {
           const formattedDate = format(date, 'yyyy-MM-dd');
           dateMap.set(formattedDate, { total: 0, orders: 0, completedOrders: 0 });
         });
 
         // Aggregate sales data by date
-        orders.forEach(order => {
+        orders.forEach((order: any) => {
           const orderDate = new Date(order.createdAt);
           const date = format(orderDate, 'yyyy-MM-dd');
           const current = dateMap.get(date) || { total: 0, orders: 0, completedOrders: 0 };
-          
-          // Only count completed orders in revenue
           if (order.status === 'completed') {
             dateMap.set(date, {
               total: current.total + (order.total || 0),
@@ -104,7 +131,6 @@ export default function PerformanceChart() {
               completedOrders: current.completedOrders + 1,
             });
           } else {
-            // Count all orders in total orders
             dateMap.set(date, {
               ...current,
               orders: current.orders + 1,
@@ -112,7 +138,6 @@ export default function PerformanceChart() {
           }
         });
 
-        // Convert map to array and ensure proper date ordering
         const data = days.map(date => {
           const formattedDate = format(date, 'yyyy-MM-dd');
           const dayData = dateMap.get(formattedDate) || { total: 0, orders: 0, completedOrders: 0 };
@@ -123,6 +148,13 @@ export default function PerformanceChart() {
         });
 
         setSalesData(data);
+
+        // Call onDataUpdate with total orders and revenue
+        if (onDataUpdate) {
+          const totalOrders = data.reduce((sum, day) => sum + day.orders, 0);
+          const totalRevenue = data.reduce((sum, day) => sum + day.total, 0);
+          onDataUpdate(totalOrders, totalRevenue);
+        }
       } catch (error) {
         console.error('Error fetching sales data:', error);
       } finally {
@@ -131,64 +163,31 @@ export default function PerformanceChart() {
     };
 
     fetchSalesData();
-  }, [dateRange, restaurantDetails?.restaurantId]);
+  }, [dateRange, restaurantDetails?.restaurantId, onDataUpdate]);
 
   return (
     <Card className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Performance Overview</h3>
-        <div className="relative">
-          <Button
-            variant="outline"
-            className={cn(
-              "w-[240px] justify-start text-left font-normal",
-              !dateRange && "text-muted-foreground"
-            )}
-            onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {dateRange.from ? (
-              dateRange.to ? (
-                <>
-                  {format(dateRange.from, "LLL dd, y")} -{" "}
-                  {format(dateRange.to, "LLL dd, y")}
-                </>
-              ) : (
-                format(dateRange.from, "LLL dd, y")
-              )
-            ) : (
-              <span>Pick a date range</span>
-            )}
-          </Button>
-          {isDatePickerOpen && (
-            <div className="absolute z-50 mt-2">
-              <DatePicker
-                selected={dateRange.from}
-                onChange={(dates) => {
-                  const [start, end] = dates;
-                  setDateRange({
-                    from: start || dateRange.from,
-                    to: end || start || dateRange.to,
-                  });
-                  if (end) {
-                    setIsDatePickerOpen(false);
-                  }
-                }}
-                startDate={dateRange.from}
-                endDate={dateRange.to}
-                selectsRange
-                inline
-                maxDate={new Date()}
-                monthsShown={2}
-                showMonthDropdown
-                showYearDropdown
-                dropdownMode="select"
-              />
-            </div>
-          )}
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Performance Overview</h3>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {QUICK_RANGES.map((range) => (
+            <Button
+              key={range.value}
+              variant="outline"
+              size="sm"
+              onClick={() => handleQuickRangeSelect(range.value)}
+              className={cn(
+                "text-sm",
+                dateRange.from === startOfWeek(new Date()) && range.value === 'thisWeek' && "bg-primary text-primary-foreground"
+              )}
+            >
+              {range.label}
+            </Button>
+          ))}
         </div>
       </div>
-
       {isLoading ? (
         <div className="h-[400px] flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -196,68 +195,43 @@ export default function PerformanceChart() {
       ) : (
         <div className="h-[400px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
+            <BarChart
               data={salesData}
               margin={{
-                top: 5,
+                top: 20,
                 right: 30,
                 left: 20,
-                bottom: 5,
+                bottom: 60,
               }}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="date"
-                tickFormatter={(date) => format(new Date(date), 'MMM dd')}
-                tick={{ fontSize: 12 }}
-                interval="preserveStartEnd"
+                tickFormatter={formatDateLabel}
                 angle={-45}
                 textAnchor="end"
                 height={60}
-                padding={{ left: 20, right: 20 }}
+                interval={0}
               />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" />
+              <YAxis
+                label={{ value: 'Revenue (kr)', angle: -90, position: 'insideLeft' }}
+              />
               <Tooltip
-                formatter={(value: number, name: string) => [
-                  name === 'total' ? `${value.toFixed(2)} kr` : value,
-                  name === 'total' ? 'Revenue' : name === 'completedOrders' ? 'Completed Orders' : 'Total Orders',
-                ]}
+                formatter={(value: number) => [`${value.toFixed(2)} kr`, 'Revenue']}
                 labelFormatter={(date) => format(new Date(date), 'MMM dd, yyyy')}
               />
-              <Line
-                yAxisId="left"
-                type="monotone"
+              <Legend />
+              <Bar
                 dataKey="total"
-                stroke="#2563eb"
-                strokeWidth={2}
-                dot={false}
                 name="Revenue"
+                fill="#2563eb"
+                radius={[4, 4, 0, 0]}
               />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="completedOrders"
-                stroke="#16a34a"
-                strokeWidth={2}
-                dot={false}
-                name="Completed Orders"
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="orders"
-                stroke="#9333ea"
-                strokeWidth={2}
-                dot={false}
-                name="Total Orders"
-              />
-            </LineChart>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       )}
-
-      <div className="mt-4 grid grid-cols-3 gap-4">
+      <div className="mt-4 grid grid-cols-2 gap-4">
         <div className="p-4 bg-blue-50 rounded-lg">
           <p className="text-sm font-medium text-blue-600">Total Revenue</p>
           <p className="text-2xl font-bold text-blue-900">
@@ -265,14 +239,8 @@ export default function PerformanceChart() {
           </p>
         </div>
         <div className="p-4 bg-green-50 rounded-lg">
-          <p className="text-sm font-medium text-green-600">Completed Orders</p>
+          <p className="text-sm font-medium text-green-600">Total Orders</p>
           <p className="text-2xl font-bold text-green-900">
-            {salesData.reduce((sum, day) => sum + day.completedOrders, 0)}
-          </p>
-        </div>
-        <div className="p-4 bg-purple-50 rounded-lg">
-          <p className="text-sm font-medium text-purple-600">Total Orders</p>
-          <p className="text-2xl font-bold text-purple-900">
             {salesData.reduce((sum, day) => sum + day.orders, 0)}
           </p>
         </div>

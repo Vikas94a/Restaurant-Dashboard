@@ -1,13 +1,38 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AnalyticsNavigation from '@/components/dashboardcomponent/AnalyticsNavigation';
 import { Card } from '@/components/ui/card';
 import { BarChart3, TrendingUp, Users, DollarSign, Star, ThumbsUp, Lightbulb, Target } from 'lucide-react';
 import { PerformanceChart } from '@/components/dashboardcomponent/analytics/performance';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import MenuInsight from '@/components/dashboardcomponent/analytics/MenuInsight';
 
 export default function AnalyticsPage() {
     const [activeTab, setActiveTab] = useState('overview');
+    const [totalOrders, setTotalOrders] = useState(0);
+    const [totalRevenue, setTotalRevenue] = useState(0);
+    const [categoryData, setCategoryData] = useState<{ name: string; value: number }[]>([]);
+
+    const handleDataUpdate = (orders: number, revenue: number) => {
+        setTotalOrders(orders);
+        setTotalRevenue(revenue);
+    };
+
+    const fetchCategoryData = async () => {
+        // Fetch category data from the menu subcollection
+        // This is a placeholder for the actual implementation
+        const categories = [
+            { name: 'Category A', value: 30 },
+            { name: 'Category B', value: 20 },
+            { name: 'Category C', value: 50 },
+        ];
+        setCategoryData(categories);
+    };
+
+    useEffect(() => {
+        fetchCategoryData();
+    }, []);
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -18,8 +43,8 @@ export default function AnalyticsPage() {
                             <Card className="p-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                                        <p className="text-2xl font-bold text-gray-900">1,247</p>
+                                        <p className="text-sm font-medium text-gray-600">Total Orders this week</p>
+                                        <p className="text-2xl font-bold text-gray-900">{totalOrders}</p>
                                         <p className="text-xs text-green-600 flex items-center mt-1">
                                             <TrendingUp className="w-3 h-3 mr-1" />
                                             +12.5% from last month
@@ -34,8 +59,8 @@ export default function AnalyticsPage() {
                             <Card className="p-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-gray-600">Revenue</p>
-                                        <p className="text-2xl font-bold text-gray-900">24,567 kr</p>
+                                        <p className="text-sm font-medium text-gray-600">Revenue this week</p>
+                                        <p className="text-2xl font-bold text-gray-900">{totalRevenue.toFixed(2)} kr</p>
                                         <p className="text-xs text-green-600 flex items-center mt-1">
                                             <TrendingUp className="w-3 h-3 mr-1" />
                                             +8.2% from last month
@@ -50,15 +75,29 @@ export default function AnalyticsPage() {
                             <Card className="p-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-gray-600">Customers</p>
-                                        <p className="text-2xl font-bold text-gray-900">892</p>
-                                        <p className="text-xs text-green-600 flex items-center mt-1">
-                                            <TrendingUp className="w-3 h-3 mr-1" />
-                                            +15.3% from last month
-                                        </p>
-                                    </div>
-                                    <div className="p-3 bg-purple-100 rounded-lg">
-                                        <Users className="w-6 h-6 text-purple-600" />
+                                        <p className="text-sm font-medium text-gray-600">Category Sales</p>
+                                        <div className="h-60 w-40">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie
+                                                        data={categoryData}
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        labelLine={false}
+                                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                                        outerRadius={80}
+                                                        innerRadius={20}
+                                                        fill="#8884d8"
+                                                        dataKey="value"
+                                                    >
+                                                        {categoryData.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={`#${Math.floor(Math.random() * 16777215).toString(16)}`} />
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
                                     </div>
                                 </div>
                             </Card>
@@ -79,47 +118,10 @@ export default function AnalyticsPage() {
                                 </div>
                             </Card>
                         </div>
+                        <PerformanceChart onDataUpdate={handleDataUpdate} />
 
-                        <PerformanceChart />
-                    </div>
-                );
-
-            case 'menu-insight':
-                return (
-                    <div className="space-y-6">
                         <Card className="p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Menu Performance</h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <p className="font-medium text-gray-900">Margherita Pizza</p>
-                                        <p className="text-sm text-gray-600">Most popular item</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-semibold text-gray-900">247 orders</p>
-                                        <p className="text-sm text-green-600">+23% this month</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <p className="font-medium text-gray-900">Caesar Salad</p>
-                                        <p className="text-sm text-gray-600">Highest profit margin</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-semibold text-gray-900">156 orders</p>
-                                        <p className="text-sm text-green-600">+18% this month</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
-                );
-
-            case 'feedback-insight':
-                return (
-                    <div className="space-y-6">
-                        <Card className="p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Feedback Analysis</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Feedback Analysis (Last 2 Days)</h3>
                             <div className="space-y-4">
                                 <div className="flex items-center gap-4 p-4 bg-green-50 rounded-lg">
                                     <div className="p-2 bg-green-100 rounded-lg">
@@ -142,6 +144,13 @@ export default function AnalyticsPage() {
                                 </div>
                             </div>
                         </Card>
+                    </div>
+                );
+
+            case 'menu-insight':
+                return (
+                    <div className="space-y-6">
+                        <MenuInsight />
                     </div>
                 );
 
