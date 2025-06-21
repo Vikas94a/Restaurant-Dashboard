@@ -7,12 +7,16 @@ import { BarChart3, TrendingUp, Users, DollarSign, Star, ThumbsUp, Lightbulb, Ta
 import { PerformanceChart } from '@/components/dashboardcomponent/analytics/performance';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import MenuInsight from '@/components/dashboardcomponent/analytics/MenuInsight';
+import AIInsightsPanel from '@/components/dashboardcomponent/analytics/ai/AIInsightsPanel';
 
 export default function AnalyticsPage() {
     const [activeTab, setActiveTab] = useState('overview');
     const [totalOrders, setTotalOrders] = useState(0);
     const [totalRevenue, setTotalRevenue] = useState(0);
     const [categoryData, setCategoryData] = useState<{ name: string; value: number }[]>([]);
+
+    // Mock restaurant ID - in real app this would come from auth context
+    const restaurantId = 'demo-restaurant-123';
 
     const handleDataUpdate = (orders: number, revenue: number) => {
         setTotalOrders(orders);
@@ -157,36 +161,7 @@ export default function AnalyticsPage() {
             case 'ai-suggestion':
                 return (
                     <div className="space-y-6">
-                        <Card className="p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">AI-Powered Recommendations</h3>
-                            <div className="space-y-4">
-                                <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-lg">
-                                    <div className="p-2 bg-blue-100 rounded-lg">
-                                        <Lightbulb className="w-5 h-5 text-blue-600" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="font-medium text-gray-900">Menu Optimization</p>
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            Consider adding a vegetarian burger to your menu. Based on customer feedback and market trends, 
-                                            this could increase revenue by 15-20%.
-                                        </p>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex items-start gap-4 p-4 bg-yellow-50 rounded-lg">
-                                    <div className="p-2 bg-yellow-100 rounded-lg">
-                                        <Target className="w-5 h-5 text-yellow-600" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="font-medium text-gray-900">Peak Hours Optimization</p>
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            Your busiest hours are 12-2 PM and 7-9 PM. Consider offering a "Happy Hour" 
-                                            discount during 3-6 PM to increase afternoon sales.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
+                        <AIInsightsPanel restaurantId={restaurantId} />
                     </div>
                 );
 
