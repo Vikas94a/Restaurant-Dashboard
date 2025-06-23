@@ -20,7 +20,6 @@ import { Button } from "@headlessui/react";
 
 const Sidebar = () => {
   const user = useAppSelector((state) => state.auth.user);
-  const loading = useAppSelector((state) => state.auth.isLoading);
   const dispatch = useAppDispatch();
   const router = useRouter();
 

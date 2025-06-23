@@ -1,11 +1,20 @@
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, arrayRemove, writeBatch, query, where, orderBy } from 'firebase/firestore';
-import { Category, ReusableExtraGroup, MENU_EDITOR_ERROR_MESSAGES } from '@/types/menu';
+import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, writeBatch, query, orderBy } from 'firebase/firestore';
+import { Category, ReusableExtraGroup, Item } from '@/utils/menuTypes';
 import { toast } from "sonner";
 
 // Cache for menu data
 const menuCache = new Map<string, { data: Category[], timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Error messages can be defined here since they were previously in types/menu.ts
+export const MENU_EDITOR_ERROR_MESSAGES = {
+  INVALID_CATEGORY: 'Invalid category data',
+  INVALID_ITEM: 'Invalid item data',
+  INVALID_EXTRA_GROUP: 'Invalid extra group data',
+  NETWORK_ERROR: 'Network error occurred',
+  UNKNOWN_ERROR: 'An unknown error occurred'
+} as const;
 
 /**
  * Helper function to get user-friendly error messages
@@ -13,9 +22,9 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 export function getMenuEditorErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     const errorCode = error.message;
-    return MENU_EDITOR_ERROR_MESSAGES[errorCode as keyof typeof MENU_EDITOR_ERROR_MESSAGES] || MENU_EDITOR_ERROR_MESSAGES.default;
+    return MENU_EDITOR_ERROR_MESSAGES[errorCode as keyof typeof MENU_EDITOR_ERROR_MESSAGES] || MENU_EDITOR_ERROR_MESSAGES.UNKNOWN_ERROR;
   }
-  return MENU_EDITOR_ERROR_MESSAGES.default;
+  return MENU_EDITOR_ERROR_MESSAGES.UNKNOWN_ERROR;
 }
 
 /**
@@ -37,7 +46,7 @@ export async function fetchMenuData(restaurantId: string): Promise<Category[]> {
     const categories = snapshot.docs.map(doc => ({
       docId: doc.id,
       ...doc.data(),
-      items: doc.data().items?.map((item: any) => ({
+      items: doc.data().items?.map((item: Item) => ({
         ...item,
         id: item.id || doc.id,
       })) || [],
@@ -185,7 +194,7 @@ async function cleanupOrphanedExtraReferences(restaurantId: string, groupId: str
     snapshot.docs.forEach(doc => {
       const data = doc.data();
       if (data.items) {
-        const updatedItems = data.items.map((item: any) => {
+        const updatedItems = data.items.map((item: Item) => {
           if (item.linkedReusableExtras && item.linkedReusableExtras[groupId]) {
             const updatedExtras = { ...item.linkedReusableExtras };
             delete updatedExtras[groupId];
@@ -200,15 +209,14 @@ async function cleanupOrphanedExtraReferences(restaurantId: string, groupId: str
           return item;
         });
 
-        if (JSON.stringify(data.items) !== JSON.stringify(updatedItems)) {
-          batch.update(doc.ref, { items: updatedItems });
-        }
+        batch.update(doc.ref, { items: updatedItems });
       }
     });
 
     await batch.commit();
+    menuCache.delete(restaurantId);
   } catch (error) {
-    console.error('Error cleaning up orphaned references:', error);
+    console.error('Error cleaning up orphaned extra references:', error);
     const errorMessage = getMenuEditorErrorMessage(error);
     toast.error(errorMessage);
     throw new Error(errorMessage);

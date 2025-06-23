@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useMenuEditor } from '@/hooks/useMenuEditor';
 import VirtualizedMenuList from '@/components/VirtualizedMenuList';
-import { NestedMenuItem } from '@/utils/menuTypes';
+import { NestedMenuItem, Item } from '@/utils/menuTypes';
 
 export default function MenuPage() {
   const params = useParams();
@@ -25,6 +25,30 @@ export default function MenuPage() {
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
+  const convertItemToNestedMenuItem = (item: Item): NestedMenuItem => {
+    return {
+      id: item.id || item.frontendId || '', // Ensure we always have an id
+      name: item.name,
+      description: item.description,
+      price: {
+        amount: item.price.amount,
+        currency: item.price.currency
+      },
+      isAvailable: item.isAvailable ?? true,
+      frontendId: item.frontendId,
+      imageUrl: item.imageUrl,
+      category: item.category,
+      isPopular: item.isPopular,
+      dietaryTags: item.dietaryTags,
+      customizations: item.customizations,
+      linkedReusableExtras: item.linkedReusableExtras,
+      linkedReusableExtraIds: item.linkedReusableExtraIds,
+      subItems: item.subItems?.map(convertItemToNestedMenuItem),
+      itemType: item.itemType,
+      isEditing: item.isEditing
+    };
+  };
+
   const handleAddToCart = (item: NestedMenuItem) => {
     // TODO: Implement cart functionality
     console.log('Adding to cart:', item);
@@ -39,7 +63,7 @@ export default function MenuPage() {
   }
 
   const currentCategory = categories.find(cat => cat.docId === selectedCategory);
-  const menuItems = currentCategory?.items || [];
+  const menuItems = currentCategory?.items.map(convertItemToNestedMenuItem) || [];
 
   return (
     <div className="container mx-auto px-4 py-8">

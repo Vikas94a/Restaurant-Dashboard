@@ -6,6 +6,7 @@ import {
   subscribeToRestaurantOrders,
   updateOrderStatus,
   clearOrders,
+  setOrders,
 } from "@/store/features/orderSlice";
 import { Order } from '@/types/checkout';
 import { CartItem as OrderItem } from '@/types/cart';
@@ -15,6 +16,8 @@ import { faClock, faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { RootState } from "@/store/store";
 import { useRouter } from "next/navigation";
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/firebase/firebaseConfig';
 
 type UIOrderStatus = "confirmed" | "cancelled" | "completed";
 type BackendOrderStatus = "accepted" | "rejected" | "completed";
@@ -25,11 +28,9 @@ export default function OrdersPage() {
   const { user, restaurantDetails } = useAppSelector(
     (state: RootState) => state.auth
   );
-  const ordersState = useAppSelector((state: RootState) => state.orders);
-  const { orders = [], status = 'idle', error = null } = ordersState || {};
-  const [estimatedTimes, setEstimatedTimes] = useState<Record<string, string>>(
-    {}
-  );
+  const { orders, status } = useAppSelector((state: RootState) => state.orders);
+  const [loading, setLoading] = useState(true);
+  const [estimatedTimes, setEstimatedTimes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -46,10 +47,6 @@ export default function OrdersPage() {
       );
     } else {
       dispatch(clearOrders());
-      dispatch({
-        type: "orders/setOrdersError",
-        payload: "Restaurant details not found.",
-      });
     }
 
     return () => {
@@ -59,17 +56,26 @@ export default function OrdersPage() {
   }, [dispatch, restaurantDetails?.restaurantId, user, router]);
 
   useEffect(() => {
-    const newPendingOrders = orders.filter(
-      (order) => order.status === "pending" && !(order.id in estimatedTimes)
-    );
-    if (newPendingOrders.length > 0) {
-      const newEstimatedTimes = { ...estimatedTimes };
-      newPendingOrders.forEach((order) => {
-        newEstimatedTimes[order.id] = "";
-      });
-      setEstimatedTimes(newEstimatedTimes);
+    if (!restaurantDetails?.restaurantId) {
+      setLoading(false);
+      return;
     }
-  }, [orders]);
+
+    const ordersRef = collection(db, 'orders');
+    const q = query(ordersRef, where('restaurantId', '==', restaurantDetails.restaurantId));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const ordersData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Order[];
+      dispatch(clearOrders());
+      dispatch(setOrders(ordersData));
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [dispatch, restaurantDetails?.restaurantId]);
 
   const handleOrderStatus = async (
     orderId: string,
@@ -98,7 +104,7 @@ export default function OrdersPage() {
           estimatedPickupTime: estimatedPickupTime?.trim(),
         })
       ).unwrap();
-    } catch (error) {
+    } catch {
       toast.error("Failed to update order status");
     }
   };
@@ -107,19 +113,8 @@ export default function OrdersPage() {
     setEstimatedTimes((prev) => ({ ...prev, [orderId]: time }));
   };
 
-  if (status === 'loading' && orders.length === 0) return <LoadingSpinner />;
-
-  if (error) {
-    return (   
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 p-6">
-        <div className="bg-white rounded shadow p-6 max-w-md w-full text-center">
-          <h2 className="text-xl font-semibold text-red-600 mb-2">
-            Error Loading Orders
-          </h2>
-          <p className="text-gray-600">{error}</p>
-        </div>
-      </div>
-    );
+  if (loading) {
+    return <LoadingSpinner />;
   }
 
   if (!restaurantDetails) {
@@ -164,7 +159,7 @@ export default function OrdersPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {orders.length === 0 && status !== 'loading' && !error ? (
+        {orders.length === 0 && status !== 'loading' ? (
           <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-xl font-semibold text-gray-700">
               No Active Orders

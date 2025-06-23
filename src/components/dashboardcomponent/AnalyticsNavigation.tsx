@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { BarChart3, Menu, MessageSquare, Brain, TrendingUp } from 'lucide-react';
+import { BarChart3, Menu, TrendingUp } from 'lucide-react';
 
 interface AnalyticsNavigationProps {
   activeTab: string;
@@ -21,13 +21,6 @@ const AnalyticsNavigation: React.FC<AnalyticsNavigationProps> = ({ activeTab, on
       label: 'Menu Insight',
       icon: Menu,
       description: 'Menu performance and item analytics'
-    },
-
-    {
-      id: 'ai-suggestion',
-      label: 'AI Suggestions',
-      icon: Brain,
-      description: 'AI-powered recommendations and insights'
     }
   ];
 
@@ -40,7 +33,7 @@ const AnalyticsNavigation: React.FC<AnalyticsNavigationProps> = ({ activeTab, on
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
-            <p className="text-sm text-gray-600">Monitor your restaurant's performance and insights</p>
+            <p className="text-sm text-gray-600">Monitor your restaurant&apos;s performance and insights</p>
           </div>
         </div>
         

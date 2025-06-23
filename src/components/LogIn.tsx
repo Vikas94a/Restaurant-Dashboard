@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useAppDispatch } from "@/store/hooks";
 import { setAuthPersistence, setRememberMe, fetchUserData, fetchRestaurantData } from "@/store/features/authSlice";
 import { signInWithEmailAndPassword, sendEmailVerification } from "firebase/auth"; // Firebase auth function to sign in user and send email verification
+import { FirebaseError } from "firebase/app";
 import { auth } from "@/lib/firebase"; // Firebase auth instance
 
 // Props for controlling open state of the login modal
@@ -27,19 +28,6 @@ export interface InputForm {
   password: string;
   error: string;
 }
-
-// Add error message mapping
-const ERROR_MESSAGES = {
-  'auth/invalid-email': 'Please enter a valid email address.',
-  'auth/user-disabled': 'This account has been disabled. Please contact support.',
-  'auth/user-not-found': 'No account found with this email address.',
-  'auth/wrong-password': 'Incorrect password. Please try again.',
-  'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
-  'auth/network-request-failed': 'Network error. Please check your connection.',
-  'auth/operation-not-allowed': 'Email/password sign in is not enabled.',
-  'auth/persistence-error': 'Unable to save login preferences. Please try again.',
-  'default': 'Invalid email or password'
-};
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -70,12 +58,6 @@ export default function Login({ isOpen, onClose }: LogInProps) {
     setRememberMeState(e.target.checked);
   };
 
-  // Helper function to get user-friendly error message
-  const getErrorMessage = (error: any): string => {
-    const errorCode = error?.code || 'default';
-    return ERROR_MESSAGES[errorCode as keyof typeof ERROR_MESSAGES] || ERROR_MESSAGES.default;
-  };
-
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema)
   });
@@ -88,7 +70,7 @@ export default function Login({ isOpen, onClose }: LogInProps) {
         await sendEmailVerification(user);
         toast.success("Verification email sent! Please check your inbox.");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error sending verification email:', error);
       toast.error("Failed to send verification email. Please try again.");
     } finally {
@@ -137,23 +119,27 @@ export default function Login({ isOpen, onClose }: LogInProps) {
           router.push('/dashboard');
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Login error:", error);
       
       // Handle specific Firebase auth errors
-      switch (error.code) {
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-          setError('Invalid email or password');
-          break;
-        case 'auth/invalid-email':
-          setError('Please enter a valid email address');
-          break;
-        case 'auth/too-many-requests':
-          setError('Too many failed attempts. Please try again later');
-          break;
-        default:
-          setError('Invalid email or password');
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+            setError('Invalid email or password');
+            break;
+          case 'auth/invalid-email':
+            setError('Please enter a valid email address');
+            break;
+          case 'auth/too-many-requests':
+            setError('Too many failed attempts. Please try again later');
+            break;
+          default:
+            setError('Invalid email or password');
+        }
+      } else {
+        setError('An unexpected error occurred');
       }
     } finally {
       setLoading(false);
@@ -184,7 +170,7 @@ export default function Login({ isOpen, onClose }: LogInProps) {
                 <Mail className="w-12 h-12 text-blue-500" />
               </div>
               <p className="text-gray-600">
-                We've sent a verification email to <span className="font-semibold">{verificationEmail}</span>
+                We&apos;ve sent a verification email to <span className="font-semibold">{verificationEmail}</span>
               </p>
               <p className="text-sm text-gray-500">
                 Please check your inbox and click the verification link to continue.

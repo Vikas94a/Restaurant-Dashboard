@@ -63,8 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribeToken = onIdTokenChanged(auth, async (user) => {
       if (user) {
         try {
-          // Get the current token
-          const token = await user.getIdToken();
           // Check if token is about to expire (within 5 minutes)
           const decodedToken = await user.getIdTokenResult();
           const expirationTime = new Date(decodedToken.expirationTime).getTime() / 1000;
@@ -99,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubscribeToken();
       clearTimeout(timeoutId);
     };
-  }, [dispatch]);
+  }, [dispatch, loading]);
 
   return (
     <AuthContext.Provider value={{ user, loading }}>

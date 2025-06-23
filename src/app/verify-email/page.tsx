@@ -25,7 +25,7 @@ export default function VerifyEmail() {
         </h1>
         
         <p className="text-gray-600 mb-6">
-          We've sent you a verification email. Please check your inbox and click the verification link to activate your account.
+          We&apos;ve sent you a verification email. Please check your inbox and click the verification link to activate your account.
         </p>
 
         <div className="space-y-4">
@@ -37,7 +37,7 @@ export default function VerifyEmail() {
           </Button>
           
           <p className="text-sm text-gray-500">
-            Didn't receive the email? Check your spam folder or{" "}
+            Didn&apos;t receive the email? Check your spam folder or{" "}
             <button
               onClick={() => router.push("/signup")}
               className="text-blue-600 hover:underline"

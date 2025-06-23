@@ -26,6 +26,7 @@ export interface CartState {
   total: number;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
+  restaurantId: string | null;
 }
 
 // Error messages for cart operations
@@ -69,23 +70,42 @@ const loadCartFromStorage = (): CartState => {
 };
 
 // Helper function to validate cart state structure
-const isValidCartState = (data: any): data is CartState => {
+interface CartItemValidation {
+  id: string;
+  itemName: string;
+  itemPrice: number;
+  quantity: number;
+  categoryName: string;
+  restaurantId: string;
+  customizations: unknown[];
+  totalPrice: number;
+}
+
+const isValidCartState = (data: unknown): data is CartState => {
   if (!data || typeof data !== 'object') return false;
-  if (!Array.isArray(data.items)) return false;
-  if (typeof data.total !== 'number') return false;
+  
+  const cartData = data as Record<string, unknown>;
+  
+  if (!Array.isArray(cartData.items)) return false;
+  if (typeof cartData.total !== 'number') return false;
   
   // Validate each cart item
-  return data.items.every((item: any) => 
-    item &&
-    typeof item.id === 'string' &&
-    typeof item.itemName === 'string' &&
-    typeof item.itemPrice === 'number' &&
-    typeof item.quantity === 'number' &&
-    typeof item.categoryName === 'string' &&
-    typeof item.restaurantId === 'string' &&
-    Array.isArray(item.customizations) &&
-    typeof item.totalPrice === 'number'
-  );
+  return cartData.items.every((item: unknown) => {
+    if (!item || typeof item !== 'object') return false;
+    
+    const cartItem = item as CartItemValidation;
+    
+    return (
+      typeof cartItem.id === 'string' &&
+      typeof cartItem.itemName === 'string' &&
+      typeof cartItem.itemPrice === 'number' &&
+      typeof cartItem.quantity === 'number' &&
+      typeof cartItem.categoryName === 'string' &&
+      typeof cartItem.restaurantId === 'string' &&
+      Array.isArray(cartItem.customizations) &&
+      typeof cartItem.totalPrice === 'number'
+    );
+  });
 };
 
 // Helper function to get initial cart state
@@ -93,7 +113,8 @@ const getInitialCartState = (): CartState => ({
   items: [],
   total: 0,
   status: 'idle',
-  error: null
+  error: null,
+  restaurantId: null
 });
 
 // Initial state

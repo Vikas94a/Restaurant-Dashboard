@@ -102,7 +102,7 @@ export default function CheckoutForm({ isOpen, onClose, restaurantHours }: Check
          setFormData(prev => ({ ...prev, pickupTime: '' })); // No times available
       }
     }
-  }, [isAsapAvailable, availableLaterTimes.length]); // Depend on availability and times list change
+  }, [isAsapAvailable, availableLaterTimes]); // Changed to use availableLaterTimes directly
 
   const handleOptionChange = (option: 'asap' | 'later') => {
     setPickupOption(option);

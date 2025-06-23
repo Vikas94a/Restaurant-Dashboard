@@ -1,23 +1,14 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faEdit,
-  faTrash,
   faPlus,
   faUtensils,
-  faBoxesStacked,
 } from "@fortawesome/free-solid-svg-icons";
-import { Category, NestedMenuItem, CustomizationGroup, ReusableExtraGroup } from "@/utils/menuTypes";
+import { Category, NestedMenuItem, ReusableExtraGroup, CustomizationGroup, ItemChangeField } from "@/utils/menuTypes";
 import { toast } from "sonner";
 import ItemCard from "./ItemCard";
 import { replaceImage } from "@/utils/uploadImage"
 import { useState } from "react";
-// import { CloudCog } from "lucide-react";
-import { doc } from "firebase/firestore";
-
-const CHARACTER_LIMITS = {
-  ITEM_NAME: 100,
-  ITEM_DESCRIPTION: 300,
-};
 
 interface ItemListProps {
   category: Category;
@@ -26,7 +17,7 @@ interface ItemListProps {
   handleItemChange: (
     catIndex: number,
     itemIndex: number,
-    field: string,
+    field: ItemChangeField,
     value: string | number | boolean | string[]
   ) => void;
   handleAddItem: (categoryId: string) => Promise<void>;
@@ -130,6 +121,8 @@ export default function ItemList({
             reusableExtras={reusableExtras}
             handleImageChange={handleImageChange}
             isUploading={uploadingItemIndex === itemIndex}
+            updateItemCustomizations={updateItemCustomizations}
+            updateItemLinkedExtras={updateItemLinkedExtras}
           />
         ))}
 
@@ -164,7 +157,7 @@ export default function ItemList({
               This category is empty.
             </p>
             <p className="text-xs text-gray-500">
-              Click "Add New Item" to get started.
+              Click &quot;Add New Item&quot; to get started.
             </p>
           </div>
         )}

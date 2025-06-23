@@ -1,6 +1,4 @@
 import { useCallback } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
 import { Category, NestedMenuItem, CustomizationGroup, ItemChangeField } from '@/utils/menuTypes';
 import { useMenuOperations } from './useMenuOperations';
@@ -27,7 +25,7 @@ export const useMenuItemOperations = ({
   setLoading,
   setConfirmDialog,
 }: UseMenuItemOperationsProps) => {
-  const { cleanItemForFirestore, handleDeleteItem: deleteItem } = useMenuOperations({
+  const { handleDeleteItem: deleteItem } = useMenuOperations({
     restaurantId,
     setError,
     setLoading,
@@ -106,7 +104,7 @@ export const useMenuItemOperations = ({
       }
       return newCategories;
     });
-  }, []);
+  }, [setCategories]);
 
   const updateItemCustomizations = useCallback((itemFrontendId: string | undefined, newCustomizations: CustomizationGroup[]) => {
     if (!itemFrontendId) {
@@ -125,7 +123,7 @@ export const useMenuItemOperations = ({
       }))
     );
     toast.success('Item customizations updated locally.');
-  }, []);
+  }, [setCategories]);
 
   const updateItemLinkedExtras = useCallback(async (itemFrontendId: string | undefined, linkedExtraGroupIds: string[]): Promise<void> => {
     if (!itemFrontendId) {
@@ -143,14 +141,14 @@ export const useMenuItemOperations = ({
         )
       }))
     );
-  }, []);
+  }, [setCategories]);
 
   const handleDeleteItem = useCallback(async (categoryIndex: number, itemIndex: number) => {
     const category = categories[categoryIndex];
     const item = category.items[itemIndex];
     if (!category || !item) return;
     await deleteItem(category, item, categoryIndex, itemIndex, categories, setCategories);
-  }, [categories, deleteItem]);
+  }, [categories, deleteItem, setCategories]);
 
   return {
     handleAddItem,

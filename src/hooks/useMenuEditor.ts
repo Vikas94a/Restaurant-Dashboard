@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
-import { Category } from '@/utils/menuTypes';
 import { normalizeMenuItemData } from '@/utils/firebase/menu';
 import { useMenuCategoryOperations } from './menu/useMenuCategoryOperations';
 import { useMenuItemOperations } from './menu/useMenuItemOperations';
 import { useReusableExtraOperations } from './menu/useReusableExtraOperations';
 import { migrateRestaurantMenuData } from '@/utils/firebase/menu';
+import { NestedMenuItem, LegacyMenuItem, Category, CustomizationGroup, ItemChangeField } from '@/utils/menuTypes';
 
 // Error message mapping for menu editor operations
 export const MENU_EDITOR_ERROR_MESSAGES = {
@@ -25,55 +25,44 @@ export const MENU_EDITOR_ERROR_MESSAGES = {
   'default': 'An unexpected error occurred while editing the menu.'
 } as const;
 
-// Helper function to get user-friendly error message
-const getMenuEditorErrorMessage = (error: unknown): string => {
-  if (error && typeof error === 'object' && 'code' in error) {
-    const code = error.code as keyof typeof MENU_EDITOR_ERROR_MESSAGES;
-    return MENU_EDITOR_ERROR_MESSAGES[code] || MENU_EDITOR_ERROR_MESSAGES.default;
-  }
-  return MENU_EDITOR_ERROR_MESSAGES.default;
-};
+interface ConfirmDialog {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+}
 
 export interface MenuEditorResult {
   categories: Category[];
   loading: boolean;
   loadingExtras: boolean;
   error: string | null;
-  confirmDialog: {
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  };
-  reusableExtras: any[];
+  confirmDialog: ConfirmDialog;
+  reusableExtras: CustomizationGroup[];
   setError: (error: string | null) => void;
-  setConfirmDialog: (dialog: any) => void;
+  setConfirmDialog: (dialog: ConfirmDialog) => void;
   handleAddCategory: () => void;
   handleAddItem: (categoryIndex: number) => Promise<void>;
   toggleEditCategory: (categoryIndex: number) => void;
   handleSaveCategory: (categoryIndex: number) => Promise<void>;
   handleDeleteCategory: (categoryIndex: number) => Promise<void>;
   handleDeleteItem: (categoryIndex: number, itemIndex: number) => Promise<void>;
-  updateItemCustomizations: (itemId: string, customizations: any[]) => void;
+  updateItemCustomizations: (itemId: string, customizations: CustomizationGroup[]) => void;
   handleCategoryChange: (categoryIndex: number, field: keyof Pick<Category, 'categoryName' | 'categoryDescription'>, value: string) => void;
-  handleItemChange: (categoryIndex: number, itemIndex: number, field: any, value: any) => void;
-  addReusableExtraGroup: (groupData: any) => Promise<string | null>;
-  updateReusableExtraGroup: (groupId: string, groupData: any) => Promise<void>;
+  handleItemChange: (categoryIndex: number, itemIndex: number, field: ItemChangeField, value: string | number | boolean | string[]) => void;
+  addReusableExtraGroup: (groupData: Omit<CustomizationGroup, 'id'>) => Promise<string | null>;
+  updateReusableExtraGroup: (groupId: string, groupData: Partial<Omit<CustomizationGroup, 'id'>>) => Promise<void>;
   deleteReusableExtraGroup: (groupId: string) => Promise<void>;
   updateItemLinkedExtras: (itemId: string, groupIds: string[]) => Promise<void>;
   migrateMenuData: () => Promise<{ success: boolean; message: string }>;
+  toggleItemAvailability: (itemId: string) => void;
 }
 
 export function useMenuEditor(restaurantId: string): MenuEditorResult {
   // State hooks
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-  }>({
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
     isOpen: false,
     title: '',
     message: '',
@@ -119,8 +108,6 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
     deleteReusableExtraGroup,
   } = useReusableExtraOperations({
     restaurantId,
-    setError,
-    setLoading,
     setConfirmDialog,
   });
 
@@ -151,8 +138,8 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
         } else {
           const fetchedCategories = querySnapshot.docs.map((doc) => {
             const data = doc.data();
-            const itemsWithFrontendIds = (data.items || []).map((item: any, index: number) => 
-              normalizeMenuItemData(item, index)
+            const itemsWithFrontendIds = (data.items || []).map((item: unknown, index: number) => 
+              normalizeMenuItemData(item as Partial<NestedMenuItem> | LegacyMenuItem, index)
             );
 
             return {
@@ -177,50 +164,36 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
     fetchMenuData();
   }, [restaurantId, setCategories]);
 
-  const migrateMenuData = async (): Promise<{ success: boolean; message: string }> => {
-    if (!restaurantId) {
-      return { success: false, message: 'Restaurant ID is required' };
-    }
-    
+  const migrateMenuData = useMemo(() => async (): Promise<{ success: boolean; message: string }> => {
     try {
-      setLoading(true);
-      const result = await migrateRestaurantMenuData(restaurantId);
-      
-      // If migration successful, refresh the menu data
-      if (result.success) {
-        const menuRef = collection(db, "restaurants", restaurantId, "menu");
-        const querySnapshot = await getDocs(menuRef);
-        const fetchedCategories = querySnapshot.docs.map((doc) => {
-          const data = doc.data();
-          const itemsWithFrontendIds = (data.items || []).map((item: any, index: number) => 
-            normalizeMenuItemData(item, index)
-          );
-
-          return {
-            ...data,
-            docId: doc.id,
-            items: itemsWithFrontendIds,
-            isEditing: false,
-          };
-        }) as Category[];
-
-        setCategories(fetchedCategories);
-      }
-      
-      return result;
+      await migrateRestaurantMenuData(restaurantId);
+      return { success: true, message: "Menu data migrated successfully" };
     } catch (error) {
-      console.error('Error migrating menu data:', error);
-      return { 
-        success: false, 
-        message: `Failed to migrate menu data: ${(error as Error).message}` 
-      };
-    } finally {
-      setLoading(false);
+      console.error("Error migrating menu data:", error);
+      return { success: false, message: "Failed to migrate menu data" };
     }
-  };
+  }, [restaurantId]);
 
-  // Memoize the return object to prevent unnecessary re-renders
-  return useMemo(() => ({
+  const toggleItemAvailability = useCallback((itemId: string) => {
+    const categoryIndex = categories.findIndex(cat => 
+      cat.items.some(item => item.id === itemId || item.frontendId === itemId)
+    );
+    
+    if (categoryIndex !== -1) {
+      const itemIndex = categories[categoryIndex].items.findIndex(
+        item => item.id === itemId || item.frontendId === itemId
+      );
+      
+      if (itemIndex !== -1) {
+        const newCategories = [...categories];
+        const item = newCategories[categoryIndex].items[itemIndex];
+        item.isAvailable = !item.isAvailable;
+        setCategories(newCategories);
+      }
+    }
+  }, [categories]);
+
+  return {
     categories,
     loading,
     loadingExtras,
@@ -243,25 +216,6 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
     deleteReusableExtraGroup,
     updateItemLinkedExtras,
     migrateMenuData,
-  }), [
-    categories,
-    loading,
-    loadingExtras,
-    error,
-    confirmDialog,
-    reusableExtras,
-    handleAddCategory,
-    handleAddItem,
-    toggleEditCategory,
-    handleSaveCategory,
-    handleDeleteCategory,
-    handleDeleteItem,
-    updateItemCustomizations,
-    handleCategoryChange,
-    handleItemChange,
-    addReusableExtraGroup,
-    updateReusableExtraGroup,
-    deleteReusableExtraGroup,
-    updateItemLinkedExtras,
-  ]);
+    toggleItemAvailability,
+  };
 }

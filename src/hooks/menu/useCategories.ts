@@ -1,21 +1,18 @@
 import { useState } from 'react';
-import { Category } from '@/types/menu';
+import { Category } from '@/utils/menuTypes';
 import { fetchMenuData, saveCategory, deleteCategory } from '@/utils/menu/firestore';
 import { toast } from 'sonner';
 
 export function useCategories(restaurantId: string) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const loadCategories = async () => {
     try {
       setLoading(true);
-      setError(null);
       const data = await fetchMenuData(restaurantId);
       setCategories(data);
-    } catch (error) {
-      setError('Failed to load categories');
+    } catch {
       toast.error('Failed to load categories');
     } finally {
       setLoading(false);
@@ -50,7 +47,7 @@ export function useCategories(restaurantId: string) {
         i === index ? { ...cat, docId, isEditing: false } : cat
       ));
       toast.success('Category saved successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to save category');
     }
   };
@@ -66,7 +63,7 @@ export function useCategories(restaurantId: string) {
       await deleteCategory(restaurantId, category.docId);
       setCategories(prev => prev.filter((_, i) => i !== index));
       toast.success('Category deleted successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete category');
     }
   };
@@ -74,7 +71,6 @@ export function useCategories(restaurantId: string) {
   return {
     categories,
     loading,
-    error,
     loadCategories,
     handleCategoryChange,
     handleAddCategory,

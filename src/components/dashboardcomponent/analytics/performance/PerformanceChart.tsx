@@ -36,6 +36,13 @@ interface SalesData {
   completedOrders: number;
 }
 
+interface OrderData {
+  id: string;
+  createdAt: string;
+  status: string;
+  total: number;
+}
+
 interface PerformanceChartProps {
   onDataUpdate?: (orders: number, revenue: number) => void;
 }
@@ -109,7 +116,7 @@ export default function PerformanceChart({ onDataUpdate }: PerformanceChartProps
         const orders = querySnapshot.docs.map(doc => ({
           ...doc.data(),
           id: doc.id,
-        }));
+        })) as OrderData[];
 
         // Create a map of dates with initial values
         const dateMap = new Map<string, { total: number; orders: number; completedOrders: number }>();
@@ -120,7 +127,7 @@ export default function PerformanceChart({ onDataUpdate }: PerformanceChartProps
         });
 
         // Aggregate sales data by date
-        orders.forEach((order: any) => {
+        orders.forEach((order) => {
           const orderDate = new Date(order.createdAt);
           const date = format(orderDate, 'yyyy-MM-dd');
           const current = dateMap.get(date) || { total: 0, orders: 0, completedOrders: 0 };

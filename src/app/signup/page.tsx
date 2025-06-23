@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { createUserWithEmailAndPassword, sendEmailVerification  } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, AuthError } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
@@ -83,8 +83,9 @@ function Signup() {
 
       toast.success("Signup successful! Please check your email to verify your account.");
       router.push("/verify-email"); // Redirect to verification page
-    } catch (error: any) {
-      toast.error(error.message || "Signup failed. Try again."); // Show error if signup fails
+    } catch (error) {
+      const authError = error as AuthError;
+      toast.error(authError.message || "Signup failed. Try again."); // Show error if signup fails
     } finally {
       setIsLoading(false);
     }
@@ -104,7 +105,7 @@ function Signup() {
               <p className="mt-2 text-gray-600 text-base">
                 Join{" "}
                 <span className="font-medium text-blue-600">AI Eat Easy</span>{" "}
-                and elevate your restaurant's experience.
+                and elevate your restaurant&apos;s experience.
               </p>
             </div>
 
@@ -232,15 +233,10 @@ function Signup() {
             </form>
 
             {/* Link to Login */}
-            <p className="text-center text-sm text-gray-600 pt-4">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="text-blue-600 font-medium hover:underline"
-              >
-                Sign in
-              </Link>
-            </p>
+            <div className="text-sm">
+              <p>Already have an account? <Link href="/login" className="text-primary hover:underline">Sign in</Link></p>
+              <p className="mt-2">By signing up, you&apos;re agreeing to our Terms of Service.</p>
+            </div>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from 'react';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBoxesStacked,
@@ -8,20 +9,40 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 // import { LoadingSpinner } from "./LoadingSpinner";
 import { useMenuEditor } from "@/hooks/useMenuEditor";
-import { CustomizationGroup } from "@/utils/menuTypes";
+import { 
+  CustomizationGroup as MenuCustomizationGroup, 
+  Category,
+  NestedMenuItem,
+  ReusableExtraGroup,
+  ReusableExtraChoice,
+  Item,
+  CustomizationGroup,
+  Category as EditorCategory
+} from "@/utils/menuTypes";
 import CategoryItem from "./menu/CategoryItem";
 import ConfirmationDialog from "./menu/ConfirmationDialog";
 import ReusableExtrasManager from "./menu/ReusableExtrasManager";
-import { useState } from "react";
 import { toast } from "sonner";
 import ErrorBanner from "./menu/ErrorBanner";
-import { findCategoryIndex, findItemIndex, getCategoryId, getItemId, validateIds } from "@/utils/menuHelpers";
+import { findCategoryIndex, findItemIndex, getCategoryId, validateIds } from "@/utils/menuHelpers";
 
 interface MenuEditorProps {
   restaurantId: string;
 }
 
-export default function MenuEditor({ restaurantId }: MenuEditorProps) {
+// Define the internal CustomizationGroup type to match useMenuEditor's type
+interface EditorCustomizationGroup {
+  id: string;
+  name: string;
+  required: boolean;
+  options: {
+    id: string;
+    name: string;
+    price: number;
+  }[];
+}
+
+export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
   const {
     categories,
     loading,
@@ -99,6 +120,65 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
     }
   };
 
+  const transformToEditorCustomization = (group: MenuCustomizationGroup): EditorCustomizationGroup => {
+    return {
+      id: group.id,
+      name: group.groupName,
+      required: group.required ?? false,
+      options: group.choices.map(choice => ({
+        id: choice.id,
+        name: choice.name,
+        price: choice.price
+      }))
+    };
+  };
+
+  const transformToMenuCustomization = (group: EditorCustomizationGroup): MenuCustomizationGroup => {
+    return {
+      id: group.id,
+      groupName: group.name,
+      selectionType: 'single', // Default to single since editor doesn't specify
+      required: group.required,
+      choices: group.options.map(option => ({
+        id: option.id,
+        name: option.name,
+        price: option.price
+      }))
+    };
+  };
+
+  const transformItemToNestedMenuItem = (item: Item): NestedMenuItem => {
+    return {
+      id: item.id || '',
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      isAvailable: item.isAvailable || false,
+      frontendId: item.frontendId,
+      imageUrl: item.imageUrl,
+      category: item.category,
+      isPopular: item.isPopular,
+      dietaryTags: item.dietaryTags,
+      customizations: item.customizations,
+      linkedReusableExtras: item.linkedReusableExtras,
+      linkedReusableExtraIds: item.linkedReusableExtraIds,
+      subItems: item.subItems?.map(transformItemToNestedMenuItem),
+      itemType: item.itemType,
+      isEditing: item.isEditing
+    };
+  };
+
+  const transformCategoryToMenuCategory = (category: Category): Category => {
+    return {
+      docId: category.docId,
+      frontendId: category.frontendId,
+      categoryName: category.categoryName,
+      categoryDescription: category.categoryDescription,
+      items: category.items.map(transformItemToNestedMenuItem),
+      isEditing: category.isEditing
+    };
+  };
+
   const updateItemCustomizationsWrapper = async (
     categoryId: string,
     itemId: string,
@@ -109,7 +189,12 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
       item => item.id === itemId
     );
     if (item) {
-      updateItemCustomizations(item.id, customizations);
+      const validItemId = item.id || item.frontendId;
+      if (!validItemId) {
+        toast.error("Invalid item ID");
+        return;
+      }
+      updateItemCustomizations(validItemId, customizations);
     }
   };
 
@@ -123,9 +208,59 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
       item => item.id === itemId
     );
     if (item) {
+      const validItemId = item.id || item.frontendId;
+      if (!validItemId) {
+        toast.error("Invalid item ID");
+        return;
+      }
       const linkedGroupIds = Object.keys(linkedExtras);
-      await updateItemLinkedExtras(item.id, linkedGroupIds);
+      await updateItemLinkedExtras(validItemId, linkedGroupIds);
     }
+  };
+
+  const transformEditorCustomizationToReusableExtra = (group: EditorCustomizationGroup): ReusableExtraGroup => {
+    return {
+      id: group.id,
+      groupName: group.name,
+      selectionType: 'single', // Default to single since the editor type doesn't specify
+      choices: group.options.map(option => ({
+        id: option.id,
+        name: option.name,
+        price: option.price
+      }))
+    };
+  };
+
+  const transformReusableExtraToEditorCustomization = (group: ReusableExtraGroup): EditorCustomizationGroup => {
+    return {
+      id: group.id,
+      name: group.groupName,
+      required: false, // Default value since ReusableExtraGroup doesn't have this field
+      options: group.choices.map(choice => ({
+        id: choice.id,
+        name: choice.name,
+        price: choice.price
+      }))
+    };
+  };
+
+  const addReusableExtraGroupWrapper = async (groupData: Omit<ReusableExtraGroup, "id">) => {
+    const menuGroup: Omit<CustomizationGroup, "id"> = {
+      groupName: groupData.groupName,
+      selectionType: groupData.selectionType,
+      required: false,
+      choices: groupData.choices
+    };
+    return addReusableExtraGroup(menuGroup);
+  };
+
+  const updateReusableExtraGroupWrapper = async (groupId: string, groupData: Partial<Omit<ReusableExtraGroup, "id">>) => {
+    const menuGroupData: Partial<Omit<CustomizationGroup, "id">> = {
+      ...(groupData.groupName && { groupName: groupData.groupName }),
+      ...(groupData.selectionType && { selectionType: groupData.selectionType }),
+      ...(groupData.choices && { choices: groupData.choices })
+    };
+    return updateReusableExtraGroup(groupId, menuGroupData);
   };
 
   return (
@@ -146,7 +281,7 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
                 categories.map((category, catIndex) => (
                   <CategoryItem
                     key={getCategoryId(category)}
-                    category={category}
+                    category={transformCategoryToMenuCategory(category)}
                     catIndex={catIndex}
                     loading={loading}
                     handleCategoryChange={handleCategoryChange}
@@ -184,8 +319,8 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
               <ReusableExtrasManager
                 reusableExtras={reusableExtras}
                 loadingExtras={loadingExtras}
-                onAddGroup={addReusableExtraGroup}
-                onUpdateGroup={updateReusableExtraGroup}
+                onAddGroup={addReusableExtraGroupWrapper}
+                onUpdateGroup={updateReusableExtraGroupWrapper}
                 onDeleteGroup={deleteReusableExtraGroup}
               />
             </div>
@@ -198,7 +333,12 @@ export default function MenuEditor({ restaurantId }: MenuEditorProps) {
         title={confirmDialog.title}
         message={confirmDialog.message}
         onConfirm={confirmDialog.onConfirm}
-        onCancel={() => setConfirmDialog((prev: typeof confirmDialog) => ({ ...prev, isOpen: false }))}
+        onCancel={() => setConfirmDialog({
+          isOpen: false,
+          title: confirmDialog.title,
+          message: confirmDialog.message,
+          onConfirm: confirmDialog.onConfirm
+        })}
       />
     </div>
   );
@@ -301,9 +441,7 @@ function EmptyMenuState({ onAddCategory }: { onAddCategory: () => void }) {
         <FontAwesomeIcon icon={faUtensils} className="h-12 w-12 text-gray-400" />
       </div>
       <h3 className="text-2xl font-semibold text-gray-800 mb-3">Your Menu is Empty</h3>
-      <p className="text-gray-600 mb-8 max-w-md mx-auto">
-        Get started by adding a category. For example: "Appetizers", "Main Courses", or "Drinks".
-      </p>
+      <p className="text-sm text-gray-500">Click &quot;Add Category&quot; to create your first menu category</p>
       <button
         onClick={onAddCategory}
         className="px-7 py-3 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-light focus:ring-opacity-50 transition-colors duration-200 flex items-center mx-auto"

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface FeedbackFormProps {
-  orderId: string;
   onSubmit: (feedback: FeedbackData) => Promise<void>;
 }
 
@@ -14,7 +13,7 @@ interface FeedbackData {
   comments: string;
 }
 
-export default function FeedbackForm({ orderId, onSubmit }: FeedbackFormProps) {
+export default function FeedbackForm({ onSubmit }: FeedbackFormProps) {
   const router = useRouter();
   const [feedback, setFeedback] = useState<FeedbackData>({
     rating: 0,

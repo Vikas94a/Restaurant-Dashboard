@@ -1,137 +1,134 @@
-import React, { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+"use client";
+
+import { useState, useEffect, useCallback } from 'react';
 import { useAppSelector } from '@/store/hooks';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { subDays, subMonths, startOfDay, endOfDay } from 'date-fns';
+import type { NestedMenuItem as MenuItem, OrderItem } from '@/utils/menuTypes';
 
-interface MenuItem {
-  id?: string;
-  name: string;
-  category?: string;
+interface MenuInsightProps {
+  menuItems: MenuItem[];
+  orderHistory: OrderItem[];
 }
 
-interface MenuCategory {
-  id: string;
+interface SalesData {
+  itemId: string;
   name: string;
-  items: MenuItem[];
+  quantity: number;
+  revenue: number;
 }
 
 const RANGE_OPTIONS = [
   { label: 'Last 7 Days', value: '7days' },
-  { label: 'Last Month', value: 'month' },
+  { label: 'Last Month', value: 'month' }
 ];
 
-const MenuInsight: React.FC = () => {
+export function MenuInsight({ menuItems, orderHistory }: MenuInsightProps) {
   const { restaurantDetails } = useAppSelector((state) => state.auth);
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [salesByItem, setSalesByItem] = useState<Record<string, Record<string, number>>>({});
   const [range, setRange] = useState<'7days' | 'month'>('7days');
 
-  useEffect(() => {
-    const fetchMenuData = async () => {
-      if (!restaurantDetails?.restaurantId) return;
-      setLoading(true);
-      const menuRef = collection(db, 'restaurants', restaurantDetails.restaurantId, 'menu');
-      const querySnapshot = await getDocs(menuRef);
-      const cats: MenuCategory[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        cats.push({
-          id: doc.id,
-          name: data.categoryName || 'Uncategorized',
-          items: (data.items || []).map((item: any, idx: number) => ({
-            id: item.id || `item-${doc.id}-${idx}`,
-            name: item.name || '',
-            category: data.categoryName || 'Uncategorized',
-          })),
+  const calculateSalesData = useCallback((orders: OrderItem[]): SalesData[] => {
+    const salesMap = new Map<string, SalesData>();
+
+    orders.forEach(order => {
+      const item = menuItems.find(menuItem => menuItem.id === order.itemId);
+      if (!item) return;
+
+      if (!salesMap.has(order.itemId)) {
+        salesMap.set(order.itemId, {
+          itemId: order.itemId,
+          name: item.name,
+          quantity: 0,
+          revenue: 0
         });
-      });
-      setCategories(cats);
-      setLoading(false);
-    };
-    fetchMenuData();
-  }, [restaurantDetails?.restaurantId]);
+      }
+
+      const data = salesMap.get(order.itemId)!;
+      data.quantity += order.quantity;
+      data.revenue += order.price * order.quantity;
+    });
+
+    return Array.from(salesMap.values());
+  }, [menuItems]);
 
   useEffect(() => {
     const fetchSalesData = async () => {
       if (!restaurantDetails?.restaurantId) return;
-      let from: Date;
-      let to: Date = new Date();
-      if (range === '7days') {
-        from = subDays(to, 6);
-      } else {
-        from = subMonths(to, 1);
-      }
-      const ordersRef = collection(db, 'restaurants', restaurantDetails.restaurantId, 'orders');
-      const q = query(
-        ordersRef,
-        where('createdAt', '>=', startOfDay(from).toISOString()),
-        where('createdAt', '<=', endOfDay(to).toISOString())
-      );
-      const querySnapshot = await getDocs(q);
-      const orders = querySnapshot.docs.map(doc => doc.data());
-      // Aggregate sales by categoryName and itemName
-      const sales: Record<string, Record<string, number>> = {};
-      orders.forEach(order => {
-        if (order.status !== 'completed' || !Array.isArray(order.items)) return;
-        order.items.forEach((item: any) => {
-          const cat = item.categoryName || 'Uncategorized';
-          const itemName = item.itemName || '';
-          if (!sales[cat]) sales[cat] = {};
-          sales[cat][itemName] = (sales[cat][itemName] || 0) + (item.quantity || 1);
+
+      setLoading(true);
+      try {
+        const startDate = range === '7days' 
+          ? startOfDay(subDays(new Date(), 7))
+          : startOfDay(subMonths(new Date(), 1));
+        const endDate = endOfDay(new Date());
+
+        // Filter orders within date range
+        const filteredOrders = orderHistory.filter(order => {
+          const orderDate = new Date(order.createdAt);
+          return orderDate >= startDate && orderDate <= endDate;
         });
-      });
-      setSalesByItem(sales);
+
+        // Calculate sales data
+        const salesData = calculateSalesData(filteredOrders);
+        
+        // Update state
+        setSalesByItem(prevSales => ({
+          ...prevSales,
+          [range]: salesData.reduce((acc, item) => {
+            acc[item.itemId] = item.quantity;
+            return acc;
+          }, {} as Record<string, number>)
+        }));
+      } catch (err) {
+        console.error('Error fetching sales data:', err);
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchSalesData();
-  }, [restaurantDetails?.restaurantId, range]);
+  }, [restaurantDetails?.restaurantId, range, orderHistory, calculateSalesData]);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-40">Loading menu insight...</div>;
-  }
-
-  if (categories.length === 0) {
-    return <div className="flex justify-center items-center h-40">No menu items available</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex gap-2 mb-4">
-        {RANGE_OPTIONS.map(opt => (
-          <Button
-            key={opt.value}
-            variant={range === opt.value ? 'default' : 'outline'}
-            onClick={() => setRange(opt.value as '7days' | 'month')}
-          >
-            {opt.label}
-          </Button>
-        ))}
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Menu Performance</h2>
+        <div className="flex gap-2">
+          {RANGE_OPTIONS.map(option => (
+            <Button
+              key={option.value}
+              variant={range === option.value ? 'default' : 'outline'}
+              onClick={() => setRange(option.value as '7days' | 'month')}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
       </div>
-      {categories.map((cat) => (
-        <Card key={cat.id} className="p-6">
-          <div className="mb-2">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">{cat.name}</h3>
-            <ul className="divide-y divide-gray-200">
-              {cat.items.map((item) => (
-                <li key={item.id} className="py-2 flex justify-between items-center">
-                  <span className="font-medium text-gray-800">{item.name}</span>
-                  <span className="text-blue-700 font-semibold">
-                    {salesByItem[cat.name]?.[item.name] ?? 0} sold
-                  </span>
-                </li>
-              ))}
-              {cat.items.length === 0 && (
-                <li className="py-2 text-gray-400">No items in this category.</li>
-              )}
-            </ul>
-          </div>
-        </Card>
-      ))}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {menuItems.map(item => {
+          const sales = salesByItem[range]?.[item.id] || 0;
+          return (
+            <Card key={item.id} className="p-4">
+              <h3 className="font-semibold">{item.name}</h3>
+              <p className="text-2xl font-bold mt-2">{sales}</p>
+              <p className="text-sm text-gray-500">Orders</p>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
-};
-
-export default MenuInsight; 
+} 

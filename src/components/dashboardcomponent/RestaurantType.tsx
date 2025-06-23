@@ -5,22 +5,18 @@ import { Input } from "../ui/input";
 import { Label } from "@/components/ui/label";
 import { Restaurant } from "./RestaurantDialog";
 
-type RestaurantTypeProps = {
+interface RestaurantTypeProps {
   restaurantData: Restaurant;
   setRestaurantData: React.Dispatch<React.SetStateAction<Restaurant>>;
   handleForm: (e: React.ChangeEvent<HTMLInputElement>) => void;
-};
+}
 
-function RestaurantType({
-  restaurantData,
-  setRestaurantData,
-  handleForm,
-}: RestaurantTypeProps) {
+function RestaurantType({ restaurantData, setRestaurantData, handleForm }: RestaurantTypeProps) {
   return (
     <div>
       <div>
         <div className="flex flex-col space-y-2 ">
-          <Label>Restsurant type</Label>
+          <Label>Restaurant type</Label>
           <Input
             type="restaurantType"
             name="restaurantType"

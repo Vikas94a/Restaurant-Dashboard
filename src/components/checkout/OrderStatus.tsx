@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck } from '@fortawesome/free-solid-svg-icons';
-import { Order } from '@/types/checkout';
+import { Order } from '@/types/order';
 
 interface OrderStatusProps {
   placedOrder: Order;
@@ -14,12 +14,18 @@ const OrderStatus: React.FC<OrderStatusProps> = ({
   showOrderStatus,
   onReturnToMenu
 }) => {
-  const isAsapOrder = placedOrder.customerDetails.pickupTime === 'asap';
+  const isAsapOrder = placedOrder.pickupOption === 'asap';
 
   const pickupLabel = useMemo(() => {
-    if (isAsapOrder) return null;
+    if (isAsapOrder) {
+      if (placedOrder.estimatedPickupTime) {
+        return `Estimated pickup time: ${placedOrder.estimatedPickupTime}`;
+      }
+      return null;
+    }
+    
     const dateStr = placedOrder.customerDetails.pickupDate;
-    const time = placedOrder.customerDetails.pickupTime;
+    const time = placedOrder.pickupTime;
     if (!dateStr) return null;
     const dateObj = new Date(dateStr);
     const today = new Date();
@@ -32,7 +38,7 @@ const OrderStatus: React.FC<OrderStatusProps> = ({
       const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
       return `Pickup time: ${day} ${weekday} at ${time}`;
     }
-  }, [isAsapOrder, placedOrder.customerDetails.pickupDate, placedOrder.customerDetails.pickupTime]);
+  }, [isAsapOrder, placedOrder.customerDetails.pickupDate, placedOrder.pickupTime, placedOrder.estimatedPickupTime]);
 
   if (!showOrderStatus) return null;
 
@@ -46,7 +52,9 @@ const OrderStatus: React.FC<OrderStatusProps> = ({
           </h3>
           {isAsapOrder ? (
             <p className="text-gray-700">
-              You will receive an email shortly with your order status and pickup time.
+              {placedOrder.estimatedPickupTime 
+                ? `Your order will be ready in approximately ${placedOrder.estimatedPickupTime}`
+                : 'You will receive an email shortly with your order status and pickup time.'}
             </p>
           ) : (
             pickupLabel && <p className="text-gray-700">{pickupLabel}</p>

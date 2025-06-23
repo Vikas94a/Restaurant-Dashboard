@@ -1,23 +1,28 @@
-export interface OrderItem {
-  itemName: string;
-  quantity: number;
-  price: number;
-}
+import { CartItem } from './cart';
+import { CustomerFormData } from './checkout';
 
-export interface CustomerDetails {
-  name: string;
-  email: string;
-  phone: string;
-}
+export type OrderStatus = 'pending' | 'confirmed' | 'ready' | 'completed' | 'cancelled';
 
 export interface Order {
   id: string;
   restaurantId: string;
-  items: OrderItem[];
-  customerDetails: CustomerDetails;
+  customerDetails: CustomerFormData;
+  items: CartItem[];
+  total: number;
+  status: OrderStatus;
+  createdAt: string;
   pickupTime: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-  totalAmount: number;
-  feedbackEmailSent?: boolean;
-  feedbackSubmitted?: boolean;
+  pickupOption: 'asap' | 'later';
+  estimatedPickupTime: string | null;
+}
+
+export interface OrderItem {
+  id: string;
+  itemId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  createdAt: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  restaurantId: string;
 } 

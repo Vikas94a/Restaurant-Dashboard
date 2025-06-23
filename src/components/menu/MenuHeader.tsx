@@ -1,7 +1,13 @@
 import React from 'react';
-import { MenuHeaderProps } from '@/types/menu';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { Category } from '@/utils/menuTypes';
+
+interface MenuHeaderProps {
+  restaurantName: string;
+  onSearch: (query: string) => void;
+}
 
 export const MenuHeader: React.FC<MenuHeaderProps> = ({ restaurantName, onSearch }) => {
   return (

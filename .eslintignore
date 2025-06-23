@@ -1,0 +1,5 @@
+src/store/features/authSlice.ts
+src/components/dashboardcomponent/menu/ReusableExtrasManager.tsx
+src/hooks/menu/useMenuOperations.ts
+src/components/dashboardcomponent/RestaurantDialog.tsx
+src/components/LogIn.tsx 

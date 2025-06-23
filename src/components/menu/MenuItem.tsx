@@ -1,9 +1,16 @@
 import React from "react";
-import { MenuItemProps } from "@/types/menu";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Edit, Trash2, Eye, EyeOff, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
+import { Item } from '@/utils/menuTypes';
+
+interface MenuItemProps {
+  item: Item;
+  onEdit: (item: Item) => void;
+  onDelete: (itemId: string) => void;
+  onToggleAvailability: (itemId: string) => void;
+}
 
 export const MenuItem: React.FC<MenuItemProps> = ({
   item,                    // The individual menu item object (name, description, price, image, availability)
@@ -11,6 +18,13 @@ export const MenuItem: React.FC<MenuItemProps> = ({
   onDelete,                // Callback function to trigger delete action for this item by id
   onToggleAvailability,    // Callback function to toggle item's availability status by id
 }) => {
+  const itemId = item.id || item.frontendId;
+  
+  if (!itemId) {
+    console.warn('MenuItem is missing both id and frontendId:', item);
+    return null;
+  }
+
   return (
     <Card className="p-4 flex gap-4">
       {/* Image container with fixed size */}
@@ -39,7 +53,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
             {/* Item description in smaller gray text */}
             <p className="text-sm text-gray-600">{item.description}</p>
             {/* Item price formatted to 2 decimals */}
-            <p className="text-lg font-bold mt-1">${item.price.toFixed(2)}</p>
+            <p className="text-lg font-bold mt-1">${item.price.amount.toFixed(2)}</p>
           </div>
 
           {/* Action buttons: Edit, Delete, Toggle Availability */}
@@ -50,7 +64,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
             </Button>
 
             {/* Delete button triggers onDelete callback with item id */}
-            <Button variant="ghost" size="icon" onClick={() => onDelete(item.id)}>
+            <Button variant="ghost" size="icon" onClick={() => onDelete(itemId)}>
               <Trash2 size={18} />
             </Button>
 
@@ -58,10 +72,10 @@ export const MenuItem: React.FC<MenuItemProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onToggleAvailability(item.id)}
+              onClick={() => onToggleAvailability(itemId)}
             >
               {/* Show open eye icon if available, closed eye if not */}
-              {item.available ? <Eye size={18} /> : <EyeOff size={18} />}
+              {item.isAvailable ? <Eye size={18} /> : <EyeOff size={18} />}
             </Button>
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { NestedMenuItem, CustomizationGroup, CustomizationChoice, ReusableExtraGroup } from '@/utils/menuTypes';
+import { NestedMenuItem, ReusableExtraGroup } from '@/utils/menuTypes';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTimes, faSave, faSpinner, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'sonner';
@@ -12,22 +12,6 @@ interface ItemCustomizationModalProps {
   item: NestedMenuItem | null;
   reusableExtras: ReusableExtraGroup[];
   onSaveLinkedExtras: (itemFrontendId: string | undefined, linkedIds: string[]) => void;
-}
-
-function deepCopy<T>(obj: T): T {
-  if (obj === null || typeof obj !== 'object') {
-    return obj;
-  }
-  if (Array.isArray(obj)) {
-    return obj.map(item => deepCopy(item)) as any;
-  }
-  const copiedObject: any = {};
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      copiedObject[key] = deepCopy(obj[key]);
-    }
-  }
-  return copiedObject;
 }
 
 const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
@@ -70,7 +54,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
     setIsSaving(true);
     try {
       onSaveLinkedExtras(item.frontendId, selectedReusableExtraGroupIds);
-      toast.success(`'${item.name}' updated with selected extras.`);
+      toast.success(`${item.name} updated with selected extras.`);
       onClose();
     } catch (error) {
       console.error('Error saving linked extras:', error);
@@ -115,7 +99,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
             <div className="text-center py-8 px-4 bg-gray-100 rounded-lg">
                 <FontAwesomeIcon icon={faInfoCircle} className="text-3xl text-gray-400 mb-3"/>
                 <p className="text-gray-600 font-medium">No Reusable Extras Defined</p>
-                <p className="text-sm text-gray-500 mt-1">Go to 'Manage Reusable Item Extras' to create some first.</p>
+                <p className="text-sm text-gray-500 mt-1">Go to &apos;Manage Reusable Item Extras&apos; to create some first.</p>
             </div>
           ) : (
             reusableExtras.map(group => (

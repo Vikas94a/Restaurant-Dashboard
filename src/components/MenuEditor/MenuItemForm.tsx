@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addMenuItem, updateMenuItem } from '@/store/features/menuSlice';
 import { FrontendMenuItem } from '@/services/menuService';
-import { toast } from 'sonner';
 
 interface MenuItemFormProps {
   restaurantId: string;
@@ -18,7 +17,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
   onCancel
 }) => {
   const dispatch = useAppDispatch();
-  const { status, error } = useAppSelector(state => state.menu);
+  const { status } = useAppSelector(state => state.menu);
 
   // Form state
   const [formData, setFormData] = useState<Omit<FrontendMenuItem, 'frontendId' | 'categoryId'>>({

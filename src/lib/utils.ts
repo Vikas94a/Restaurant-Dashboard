@@ -39,8 +39,10 @@ export function generateId(prefix: string = ''): string {
   return `${prefix}${Math.random().toString(36).substring(2, 9)}`;
 }
 
+type AnyFunction = (...args: unknown[]) => unknown;
+
 // Debounce function
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends AnyFunction>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -52,7 +54,7 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Throttle function
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends AnyFunction>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {
@@ -129,9 +131,9 @@ export function getQueryParams(url: string): Record<string, string> {
 }
 
 // Convert object to query string
-export function objectToQueryString(obj: Record<string, any>): string {
+export function objectToQueryString(obj: Record<string, unknown>): string {
   return Object.entries(obj)
-    .filter(([_, value]) => value !== undefined && value !== null)
+    .filter(([, value]) => value !== undefined && value !== null)
     .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
     .join('&');
 }

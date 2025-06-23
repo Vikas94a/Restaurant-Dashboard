@@ -33,6 +33,13 @@ export interface FrontendCategory {
   description?: string;
 }
 
+// Define the structure for Firestore updates
+interface FirestoreUpdates {
+  categoryName?: string;
+  categoryDescription?: string;
+  [key: string]: any;
+}
+
 export const menuService = {
   // Get all categories for a restaurant, converting to frontend structure
   async getCategories(restaurantId: string): Promise<FrontendCategory[]> {
@@ -122,7 +129,7 @@ export const menuService = {
   async updateCategory(restaurantId: string, categoryId: string, updates: Partial<Omit<FrontendCategory, 'id'>>): Promise<void> {
     const categoryRef = doc(db, 'restaurants', restaurantId, 'categories', categoryId);
     // Map frontend updates back to Firestore field names
-    const firestoreUpdates: any = {};
+    const firestoreUpdates: FirestoreUpdates = {};
     if (updates.name !== undefined) {
         firestoreUpdates.categoryName = updates.name;
     }

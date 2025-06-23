@@ -1,13 +1,13 @@
+"use client";
+
 import { useState, useCallback, useEffect } from 'react';
 import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
-import { ReusableExtraGroup } from '@/utils/menuTypes';
+import { ReusableExtraGroup, CustomizationGroup } from '@/utils/menuTypes';
 
 interface UseReusableExtraOperationsProps {
   restaurantId: string;
-  setError: (error: string | null) => void;
-  setLoading: (loading: boolean) => void;
   setConfirmDialog: React.Dispatch<React.SetStateAction<{
     isOpen: boolean;
     title: string;
@@ -16,13 +16,30 @@ interface UseReusableExtraOperationsProps {
   }>>;
 }
 
+interface FirebaseError {
+  code?: string;
+  message?: string;
+}
+
+const transformToCustomizationGroup = (reusableExtra: ReusableExtraGroup): CustomizationGroup => {
+  return {
+    id: reusableExtra.id,
+    groupName: reusableExtra.groupName,
+    selectionType: reusableExtra.selectionType,
+    required: false,
+    choices: reusableExtra.choices.map(choice => ({
+      ...choice,
+      isDefault: false,
+      isEditing: false
+    }))
+  };
+};
+
 export const useReusableExtraOperations = ({
   restaurantId,
-  setError,
-  setLoading,
   setConfirmDialog,
 }: UseReusableExtraOperationsProps) => {
-  const [reusableExtras, setReusableExtras] = useState<ReusableExtraGroup[]>([]);
+  const [reusableExtras, setReusableExtras] = useState<CustomizationGroup[]>([]);
   const [loadingExtras, setLoadingExtras] = useState(true);
 
   const fetchReusableExtras = useCallback(async () => {
@@ -50,15 +67,16 @@ export const useReusableExtraOperations = ({
         return;
       }
 
-      const fetchedExtras = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as ReusableExtraGroup));
+      const fetchedExtras = querySnapshot.docs.map(doc => {
+        const data = doc.data() as ReusableExtraGroup;
+        return transformToCustomizationGroup({ ...data, id: doc.id });
+      });
       
       setReusableExtras(fetchedExtras);
-    } catch (error: any) {
+    } catch (error) {
+      const fbError = error as FirebaseError;
       console.error("Error fetching reusable extras:", error);
-      if (error.code !== 'permission-denied') {
+      if (fbError.code !== 'permission-denied') {
         toast.error("Failed to load reusable extras.");
       }
       setReusableExtras([]);
@@ -76,11 +94,11 @@ export const useReusableExtraOperations = ({
     try {
       const extrasRef = collection(db, "restaurants", restaurantId, "reusableExtraGroups");
       const docRef = await addDoc(extrasRef, groupData);
-      const newGroup = { ...groupData, id: docRef.id };
+      const newGroup = transformToCustomizationGroup({ ...groupData, id: docRef.id });
       setReusableExtras(prev => [...prev, newGroup]);
       toast.success("Reusable extra group added successfully.");
       return docRef.id;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error adding reusable extra group:", error);
       toast.error("Failed to add reusable extra group.");
       return null;
@@ -98,9 +116,9 @@ export const useReusableExtraOperations = ({
     try {
       const groupRef = doc(db, "restaurants", restaurantId, "reusableExtraGroups", groupId);
       await updateDoc(groupRef, groupData);
-      setReusableExtras(prev => prev.map(g => g.id === groupId ? { ...g, ...groupData, id: groupId } : g));
+      setReusableExtras(prev => prev.map(g => g.id === groupId ? transformToCustomizationGroup({ ...g, ...groupData, id: groupId }) : g));
       toast.success("Reusable extra group updated successfully.");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error updating reusable extra group:", error);
       toast.error("Failed to update reusable extra group.");
     } finally {
@@ -124,7 +142,7 @@ export const useReusableExtraOperations = ({
           await deleteDoc(groupRef);
           setReusableExtras(prev => prev.filter(g => g.id !== groupId));
           toast.success("Reusable extra group deleted successfully.");
-        } catch (error: any) {
+        } catch (error) {
           console.error("Error deleting reusable extra group:", error);
           toast.error("Failed to delete reusable extra group.");
         } finally {

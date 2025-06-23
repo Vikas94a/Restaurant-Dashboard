@@ -2,6 +2,10 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { menuService, FrontendMenuItem, FrontendCategory, NestedMenuItem } from '@/services/menuService';
 import { toast } from 'sonner';
 
+interface MenuError {
+  message?: string;
+}
+
 export interface MenuState {
   categories: FrontendCategory[];
   items: FrontendMenuItem[];
@@ -28,8 +32,9 @@ export const fetchMenuData = createAsyncThunk(
         menuService.getMenuItems(restaurantId)
       ]);
       return { categories, items };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to fetch menu data');
+    } catch (error) {
+      const menuError = error as MenuError;
+      return rejectWithValue(menuError.message || 'Failed to fetch menu data');
     }
   }
 );
@@ -44,8 +49,9 @@ export const addMenuItem = createAsyncThunk(
     try {
       await menuService.addMenuItem(restaurantId, categoryId, menuItem);
       return { categoryId, menuItem };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to add menu item');
+    } catch (error) {
+      const menuError = error as MenuError;
+      return rejectWithValue(menuError.message || 'Failed to add menu item');
     }
   }
 );
@@ -61,8 +67,9 @@ export const updateMenuItem = createAsyncThunk(
     try {
       await menuService.updateMenuItem(restaurantId, categoryId, oldMenuItem, newMenuItem);
       return { categoryId, oldMenuItem, newMenuItem };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to update menu item');
+    } catch (error) {
+      const menuError = error as MenuError;
+      return rejectWithValue(menuError.message || 'Failed to update menu item');
     }
   }
 );
@@ -77,8 +84,9 @@ export const deleteMenuItem = createAsyncThunk(
     try {
       await menuService.deleteMenuItem(restaurantId, categoryId, menuItem);
       return { categoryId, menuItem };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to delete menu item');
+    } catch (error) {
+      const menuError = error as MenuError;
+      return rejectWithValue(menuError.message || 'Failed to delete menu item');
     }
   }
 );
@@ -92,8 +100,9 @@ export const addCategory = createAsyncThunk(
     try {
       const categoryId = await menuService.addCategory(restaurantId, category);
       return { ...category, id: categoryId };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to add category');
+    } catch (error) {
+      const menuError = error as MenuError;
+      return rejectWithValue(menuError.message || 'Failed to add category');
     }
   }
 );
@@ -108,8 +117,9 @@ export const updateCategory = createAsyncThunk(
     try {
       await menuService.updateCategory(restaurantId, categoryId, updates);
       return { categoryId, updates };
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to update category');
+    } catch (error) {
+      const menuError = error as MenuError;
+      return rejectWithValue(menuError.message || 'Failed to update category');
     }
   }
 );
@@ -123,8 +133,9 @@ export const deleteCategory = createAsyncThunk(
     try {
       await menuService.deleteCategory(restaurantId, categoryId);
       return categoryId;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to delete category');
+    } catch (error) {
+      const menuError = error as MenuError;
+      return rejectWithValue(menuError.message || 'Failed to delete category');
     }
   }
 );

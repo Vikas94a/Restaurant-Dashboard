@@ -1,7 +1,7 @@
 "use client"; 
 // Tells Next.js that this component should be rendered on the client side (not server-side rendered)
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Sheet,
   SheetContent,
@@ -82,21 +82,6 @@ function RestaurantDialog({ isOpen, setIsOpen, isMandatory = false }: Restaurant
   const [internalOpen, setInternalOpen] = useState(isOpen);
   const dispatch = useAppDispatch();
 
-  // Update internal state when prop changes
-  React.useEffect(() => {
-    setInternalOpen(isOpen);
-  }, [isOpen]);
-
-  // Handle sheet state changes
-  const handleOpenChange = useCallback((open: boolean) => {
-    if (!open && isMandatory && !isFormValid()) {
-      setShowError(true);
-      return;
-    }
-    setInternalOpen(open);
-    setIsOpen(open);
-  }, [isMandatory, setIsOpen]);
-
   // Initialize openingHours state with one entry per day, defaulting to closed
   const [openingHours, setOpeningHours] = useState<OpeningHours[]>(
     day.map((day) => ({
@@ -127,7 +112,7 @@ function RestaurantDialog({ isOpen, setIsOpen, isMandatory = false }: Restaurant
   });
 
   // Validate required fields
-  const isFormValid = () => {
+  const isFormValid = useCallback(() => {
     return (
       restaurantData.city.trim() !== "" &&
       restaurantData.zipCode.trim() !== "" &&
@@ -135,7 +120,17 @@ function RestaurantDialog({ isOpen, setIsOpen, isMandatory = false }: Restaurant
       restaurantData.phoneNumber.trim() !== "" &&
       restaurantData.restaurantType.trim() !== ""
     );
-  };
+  }, [restaurantData]);
+
+  // Handle sheet state changes
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (!open && isMandatory && !isFormValid()) {
+      setShowError(true);
+      return;
+    }
+    setInternalOpen(open);
+    setIsOpen(open);
+  }, [isMandatory, setIsOpen, isFormValid]);
 
   // Handle input changes on form fields (city, zipCode, etc.)
   const handleForm = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,7 +153,7 @@ function RestaurantDialog({ isOpen, setIsOpen, isMandatory = false }: Restaurant
 
     setIsSubmitting(true);
     try {
-      // Add a new document to 'restaurants' collection in Firestore
+      // Add a new document to &apos;restaurants&apos; collection in Firestore
       const refRestaurantCollection = await addDoc(
         collection(db, "restaurants"),
         {

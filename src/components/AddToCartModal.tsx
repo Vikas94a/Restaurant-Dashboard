@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { NestedMenuItem, ReusableExtraGroup } from "@/utils/menuTypes";
+import Image from 'next/image';
 
 interface AddToCartModalProps {
   isOpen: boolean;
@@ -93,13 +94,14 @@ export default function AddToCartModal({
       <div className="bg-white rounded-xl shadow-lg w-full max-w-lg p-0 relative overflow-hidden">
         {/* Header with image, name, description */}
         <div className="relative">
-          {item.imageUrl ? (
-            <img src={item.imageUrl} alt={item.name} className="w-full h-48 object-cover" />
-          ) : (
-            <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-              <span className="text-gray-400 text-lg">Image Coming Soon</span>
-            </div>
-          )}
+          <div className="relative h-48 w-full">
+            <Image
+              src={item.imageUrl || '/placeholder.jpg'}
+              alt={item.name}
+              fill
+              className="object-cover rounded-t-lg"
+            />
+          </div>
           <button
             ref={closeBtnRef}
             onClick={onClose}

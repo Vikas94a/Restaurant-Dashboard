@@ -19,13 +19,32 @@ interface UseMenuOperationsProps {
   setConfirmDialog: React.Dispatch<React.SetStateAction<ConfirmDialog>>;
 }
 
+interface FirestoreItem {
+  name: string;
+  description?: string;
+  price: {
+    amount: number;
+    currency: string;
+  };
+  imageUrl: string;
+  category: string;
+  isAvailable: boolean;
+  isPopular: boolean;
+  dietaryTags: string[];
+  customizations: unknown[];
+  linkedReusableExtras: Record<string, unknown>;
+  linkedReusableExtraIds: string[];
+  subItems: unknown[];
+  itemType: 'item' | 'modifier';
+}
+
 export const useMenuOperations = ({
   restaurantId,
   setError,
   setLoading,
   setConfirmDialog,
 }: UseMenuOperationsProps) => {
-  const cleanItemForFirestore = useCallback((item: NestedMenuItem): any => {
+  const cleanItemForFirestore = useCallback((item: NestedMenuItem): FirestoreItem => {
     return {
       name: item.name,
       description: item.description,
@@ -158,7 +177,7 @@ export const useMenuOperations = ({
         try {
           if (category.docId) {
             const categoryRef = doc(db, "restaurants", restaurantId, "menu", category.docId);
-            const { id, ...itemWithoutFrontendId } = item;
+            const { id: _, ...itemWithoutFrontendId } = item;
             await updateDoc(categoryRef, {
               items: arrayRemove(itemWithoutFrontendId)
             });

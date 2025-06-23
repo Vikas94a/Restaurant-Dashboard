@@ -1,88 +1,45 @@
 "use client";
 
-import { useAppSelector } from "@/store/hooks";
-import MenuEditor from "@/components/dashboardcomponent/MenuEditor";
-import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from 'react';
+import { MenuEditor } from '@/components/dashboardcomponent/MenuEditor';
+import { useAppSelector } from '@/store/hooks';
 
 export default function MenuPage() {
-  const router = useRouter();
-  const { restaurantDetails, isLoading: authLoading } = useAppSelector(
-    (state) => state.auth
-  );
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading] = useState(false);
+  const { restaurantDetails } = useAppSelector((state) => state.auth);
 
-  useEffect(() => {
-    setError(null);
-  }, []);
-
-  // Show loading screen
-  if (authLoading || isLoading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-gray-100">
-        <div className="text-center space-y-4">
-          <LoadingSpinner />
-          <p className="text-gray-500 text-sm">Loading menu data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error if restaurant not set
   if (!restaurantDetails?.restaurantId) {
     return (
-      <div className="h-screen max-w-7xl flex items-center justify-center bg-gray-50 p-4">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-xl p-8">
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 bg-yellow-100 text-yellow-600 flex items-center justify-center rounded-full mb-4">
-              <svg
-                className="w-8 h-8"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
+      <div className="p-6">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Menu Management</h1>
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Restaurant Not Found
-            </h2>
-            <p className="text-sm text-gray-600 mb-6 text-center">
-              Please set up your restaurant details before managing the menu.
-            </p>
-            <button
-              onClick={() => router.push("/dashboard/settings")}
-              className="w-full py-2 px-4 bg-primary text-white font-medium rounded-lg shadow hover:bg-primary-dark transition duration-200"
-            >
-              Go to Settings
-            </button>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Restaurant details not found. Please set up your restaurant first.
+              </p>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  // Main layout
   return (
-    <main className="h-screen w-full bg-gray-100">
-      <div className="h-full flex flex-col">
-        <header className="px-6 py-4 border-b border-gray-200 bg-white shadow-sm">
-          <h1 className="text-xl font-semibold text-gray-800">
-            Menu Management
-          </h1>
-        </header>
-
-        <section className="flex-1 overflow-y-auto">
-          <MenuEditor restaurantId={restaurantDetails.restaurantId} />
-        </section>
-      </div>
-    </main>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Menu Management</h1>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <MenuEditor restaurantId={restaurantDetails.restaurantId} />
+      )}
+    </div>
   );
 }

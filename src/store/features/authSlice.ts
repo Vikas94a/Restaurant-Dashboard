@@ -1,3 +1,5 @@
+"use client";
+
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { doc, getDoc, collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
@@ -19,11 +21,7 @@ let warningTimerInterval: ReturnType<typeof setInterval> | null = null;
 let isLoggingOut = false;
 
 // Debug function to log timer status
-const logTimerStatus = (action: string) => {
-  console.log(`[AutoLogout] ${action} - Current time: ${new Date().toISOString()}`);
-  console.log(`[AutoLogout] Next auto-logout at: ${autoLogoutTimer ? new Date(Date.now() + AUTO_LOGOUT_DURATION).toISOString() : 'No active timer'
-    }`);
-};
+// const logTimerStatus = undefined;
 
 // Define serializable user type
 interface SerializableUser {
@@ -48,35 +46,37 @@ interface SerializableUser {
 }
 
 // Convert Firebase User to serializable format
-const serializeUser = (user: FirebaseUser | null): SerializableUser | null => {
-  if (!user) return null;
-  
-  return {
-    uid: user.uid,
-    email: user.email,
-    displayName: user.displayName,
-    photoURL: user.photoURL,
-    emailVerified: user.emailVerified,
-    isAnonymous: user.isAnonymous,
-    metadata: {
-      creationTime: user.metadata.creationTime,
-      lastSignInTime: user.metadata.lastSignInTime,
-    },
-    providerData: user.providerData.map(provider => ({
-      providerId: provider.providerId,
-      uid: provider.uid,
-      displayName: provider.displayName,
-      email: provider.email,
-      phoneNumber: provider.phoneNumber,
-      photoURL: provider.photoURL,
-    })),
-  };
-};
+// const serializeUser = undefined;
 
 // Define a type for the serialized user data
 interface SerializedUserData extends SerializableUser {
   restaurantName?: string;
-  [key: string]: any; // Allow additional properties from Firestore
+  firstName?: string;
+  lastName?: string;
+  [key: string]: unknown; // Allow additional properties from Firestore with unknown type
+}
+
+// Define error types
+interface AuthError {
+  code?: string;
+  message?: string;
+}
+
+// Replace any types with proper types
+interface FirebaseError {
+  code?: string;
+  message?: string;
+  [key: string]: unknown;
+}
+
+interface RetryableOperation<T> {
+  (): Promise<T>;
+}
+
+interface UnknownError {
+  code?: string;
+  message?: string;
+  [key: string]: unknown;
 }
 
 // Types
@@ -140,10 +140,10 @@ const AUTH_ERROR_MESSAGES = {
   'auth/invalid-credential': 'Invalid credentials. Please try again.',
   'auth/persistence-failed': 'Failed to save login preferences. Please try again.',
   'default': 'An unexpected error occurred. Please try again.'
-};
+} as const;
 
 // Helper function to get user-friendly error message
-const getAuthErrorMessage = (error: any): string => {
+const getAuthErrorMessage = (error: AuthError): string => {
   const errorCode = error?.code || 'default';
   return AUTH_ERROR_MESSAGES[errorCode as keyof typeof AUTH_ERROR_MESSAGES] || AUTH_ERROR_MESSAGES.default;
 };
@@ -163,14 +163,17 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second base delay
 
 // Helper function to check if an error is retryable
-const isRetryableError = (error: any): boolean => {
-  return error?.code && RETRYABLE_ERROR_CODES[error.code as keyof typeof RETRYABLE_ERROR_CODES];
+const isRetryableError = (error: AuthError): boolean => {
+  return error?.code ? RETRYABLE_ERROR_CODES[error.code as keyof typeof RETRYABLE_ERROR_CODES] : false;
 };
 
 // Helper function to delay execution
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Retry wrapper for async operations
+// const withRetry = undefined;
+
+// Async thunks
 const withRetry = async <T>(
   operation: () => Promise<T>,
   maxRetries: number = MAX_RETRIES,
@@ -199,49 +202,42 @@ const withRetry = async <T>(
 // Async thunks
 export const fetchUserData = createAsyncThunk<SerializedUserData | null, FirebaseUser>(
   'auth/fetchUserData',
-  async (firebaseUser, { rejectWithValue }) => {
+  async (user) => {
     try {
-      if (!firebaseUser || !firebaseUser.uid) {
-        clearAllTimers();
-        return null;
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        throw new Error('User document not found');
       }
 
-      clearAllTimers();
-
-      const refUserDoc = doc(db, "users", firebaseUser.uid);
-      const docSnapshot = await getDoc(refUserDoc);
-
-      if (docSnapshot.exists()) {
-        const userData = docSnapshot.data();
-        // Create a serializable version of the user data
-        const serializedUser: SerializedUserData = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-          emailVerified: firebaseUser.emailVerified,
-          isAnonymous: firebaseUser.isAnonymous,
-          metadata: {
-            creationTime: firebaseUser.metadata?.creationTime,
-            lastSignInTime: firebaseUser.metadata?.lastSignInTime,
-          },
-          providerData: firebaseUser.providerData?.map((provider) => ({
-            providerId: provider.providerId,
-            uid: provider.uid,
-            displayName: provider.displayName,
-            email: provider.email,
-            phoneNumber: provider.phoneNumber,
-            photoURL: provider.photoURL,
-          })) || [],
-          ...userData, // Include additional user data from Firestore
-        };
-        return serializedUser;
+      const userData = userDoc.data();
+      return {
+        ...userData,
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        emailVerified: user.emailVerified,
+        isAnonymous: user.isAnonymous,
+        metadata: {
+          creationTime: user.metadata.creationTime,
+          lastSignInTime: user.metadata.lastSignInTime,
+        },
+        providerData: user.providerData.map(provider => ({
+          providerId: provider.providerId,
+          uid: provider.uid,
+          displayName: provider.displayName,
+          email: provider.email,
+          phoneNumber: provider.phoneNumber,
+          photoURL: provider.photoURL,
+        })),
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(error.message);
       }
-
-      return null;
-    } catch (error: any) {
-      console.error('[Auth] Error fetching user data:', error);
-      return rejectWithValue(getAuthErrorMessage(error));
+      throw new Error('Failed to fetch user data');
     }
   }
 );

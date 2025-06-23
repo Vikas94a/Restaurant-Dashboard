@@ -60,7 +60,7 @@ const ReusableExtrasManager: React.FC<ReusableExtrasManagerProps> = ({
 
     try {
       if (isCreatingNewGroup) {
-        const { id, ...groupData } = editingGroup;
+        const { id: _, ...groupData } = editingGroup;
         const newId = await onAddGroup(groupData);
         if (newId) {
           toast.success('New extra group added!');
@@ -121,7 +121,7 @@ const ReusableExtrasManager: React.FC<ReusableExtrasManagerProps> = ({
     if (!editingGroup) return;
     setEditingGroup({
       ...editingGroup,
-      choices: editingGroup.choices.filter((_: ReusableExtraChoice, index: number) => index !== choiceIndex),
+      choices: editingGroup.choices.filter((choice) => editingGroup.choices.indexOf(choice) !== choiceIndex),
     });
   };
   // --- End Choice Management --- 
@@ -198,40 +198,52 @@ const ReusableExtrasManager: React.FC<ReusableExtrasManagerProps> = ({
             </div>
           ))}
           <button 
-            onClick={handleAddChoiceToEditingGroup} 
-            className={`mt-2 px-3 py-1.5 border border-primary rounded-md hover:bg-primary-light transition-colors ${isCompact ? 'text-xs text-primary-dark' : 'text-sm text-primary'}`}
+            onClick={handleAddChoiceToEditingGroup}
+            className={`w-full mt-2 px-3 py-2 text-primary border border-primary rounded hover:bg-primary-lightest focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-colors flex items-center justify-center ${isCompact ? 'text-xs' : 'text-sm'}`}
           >
-            <FontAwesomeIcon icon={faPlus} className="mr-1.5" /> Add Choice
+            <FontAwesomeIcon icon={faPlus} className="mr-1"/> Add Choice
           </button>
 
-          <div className="mt-6 flex justify-end space-x-3">
-            <button onClick={handleCancelEdit} className={`px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 ${isCompact ? 'text-xs' : ''}`}>
-              <FontAwesomeIcon icon={faTimes} className="mr-2"/> Cancel
+          <div className="flex justify-end space-x-2 mt-4">
+            <button 
+              onClick={handleCancelEdit}
+              className={`px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-colors flex items-center ${isCompact ? 'text-xs' : 'text-sm'}`}
+            >
+              <FontAwesomeIcon icon={faTimes} className="mr-1"/> Cancel
             </button>
-            <button onClick={handleSaveGroup} className={`px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark flex items-center ${isCompact ? 'text-xs' : ''}`}>
-              <FontAwesomeIcon icon={faSave} className="mr-2"/> Save Group
+            <button 
+              onClick={handleSaveGroup}
+              className={`px-4 py-2 text-white bg-primary rounded hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-colors flex items-center ${isCompact ? 'text-xs' : 'text-sm'}`}
+            >
+              <FontAwesomeIcon icon={faSave} className="mr-1"/> Save Group
             </button>
           </div>
         </div>
       ) : (
-        // List View
-        <div className={isCompact ? "space-y-2" : "space-y-4"}>
-          {reusableExtras.length === 0 && !loadingExtras && (
-            <p className={`text-gray-500 text-center py-4 ${isCompact ? 'text-sm' : ''}`}>No reusable extra groups defined yet. Click 'Add New Extra Group' to create one.</p>
-          )}
-          {reusableExtras.map(group => (
-            <div key={group.id} className={`border rounded-lg flex justify-between items-center hover:shadow-md transition-shadow bg-gray-50 ${isCompact ? 'p-2' : 'p-3 lg:p-4'}`}>
-              <div>
-                <h3 className={`font-semibold text-gray-700 ${isCompact ? 'text-base' : 'text-lg'}`}>{group.groupName}</h3>
-                <p className={`text-gray-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>Type: {group.selectionType} | Choices: {group.choices.length}</p>
-              </div>
-              <div className="space-x-1">
-                <button onClick={() => handleEditGroup(group)} className={`p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-md ${isCompact ? 'text-sm' : ''}`}>
-                  <FontAwesomeIcon icon={faEdit} size={isCompact ? 'sm' : '1x'} />
-                </button>
-                <button onClick={() => handleDeleteGroup(group.id)} className={`p-1.5 text-red-600 hover:text-red-800 hover:bg-red-100 rounded-md ${isCompact ? 'text-sm' : ''}`}>
-                  <FontAwesomeIcon icon={faTrash} size={isCompact ? 'sm' : '1x'} />
-                </button>
+        <div className={`space-y-3 ${isCompact ? 'text-sm' : ''}`}>
+          {reusableExtras.map((group) => (
+            <div key={group.id} className="p-4 border rounded-lg bg-white hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className={`font-semibold text-gray-800 ${isCompact ? 'text-base' : 'text-lg'}`}>{group.groupName}</h3>
+                  <p className={`text-gray-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>
+                    {group.selectionType === 'single' ? 'Single Choice' : 'Multiple Choices'} | {group.choices.length} options
+                  </p>
+                </div>
+                <div className="flex space-x-2">
+                  <button 
+                    onClick={() => handleEditGroup(group)}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                  >
+                    <FontAwesomeIcon icon={faEdit} size={isCompact ? 'sm' : 'lg'}/>
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteGroup(group.id)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                  >
+                    <FontAwesomeIcon icon={faTrash} size={isCompact ? 'sm' : 'lg'}/>
+                  </button>
+                </div>
               </div>
             </div>
           ))}

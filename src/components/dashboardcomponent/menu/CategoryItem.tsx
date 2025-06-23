@@ -6,18 +6,11 @@ import {
   NestedMenuItem,
   CustomizationGroup,
   ReusableExtraGroup,
+  ItemChangeField,
 } from "@/utils/menuTypes";
 import ItemCustomizationModal from "./ItemCustomizationModal";
-;
 import CategoryHeader from './CategoryHeader';
 import ItemList from './ItemList';
-
-const CHARACTER_LIMITS = {
-  CATEGORY_NAME: 80,
-  CATEGORY_DESCRIPTION: 150,
-  ITEM_NAME: 100,
-  ITEM_DESCRIPTION: 300,
-};
 
 interface CategoryItemProps {
   category: Category;
@@ -31,7 +24,7 @@ interface CategoryItemProps {
   handleItemChange: (
     catIndex: number,
     itemIndex: number,
-    field: string,
+    field: ItemChangeField,
     value: string | number | boolean | string[]
   ) => void;
   handleAddItem: (categoryId: string) => Promise<void>;
@@ -68,52 +61,14 @@ export default function CategoryItem({
   updateItemLinkedExtras,
 }: CategoryItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isCustomizationModalOpen, setIsCustomizationModalOpen] =
-    useState(false);
-  const [selectedItemForCustomization, setSelectedItemForCustomization] =
-    useState<NestedMenuItem | null>(null);
-  const [itemErrors, setItemErrors] = useState<{ [key: string]: string }>({});
-
-
-
-  
-
+  const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false);
+  const [selectedItemForCustomization, setSelectedItemForCustomization] = useState<NestedMenuItem | null>(null);
 
   const handleCategoryClick = useCallback(() => {
     if (!category.isEditing) {
       setIsExpanded((prev) => !prev);
     }
   }, [category.isEditing]);
-
-  const handleOpenCustomizationModal = useCallback((item: NestedMenuItem) => {
-    setSelectedItemForCustomization(item);
-    setIsCustomizationModalOpen(true);
-  }, []);
-
-  const handleCloseCustomizationModal = useCallback(() => {
-    setSelectedItemForCustomization(null);
-    setIsCustomizationModalOpen(false);
-  }, []);
-
-  const handleSaveCustomizations = useCallback(
-    (itemId: string | undefined, customizations: CustomizationGroup[]) => {
-      if (!selectedItemForCustomization || !itemId) return;
-      const categoryId = category.docId || category.frontendId;
-      if (!categoryId) {
-        console.error("Category ID not found for saving customizations");
-        return;
-      }
-      updateItemCustomizations(categoryId, itemId, customizations);
-      handleCloseCustomizationModal();
-    },
-    [
-      selectedItemForCustomization,
-      category.docId,
-      category.frontendId,
-      updateItemCustomizations,
-      handleCloseCustomizationModal,
-    ]
-  );
 
   useEffect(() => {
     if (category.isEditing) {

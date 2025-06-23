@@ -1,16 +1,16 @@
 "use client";
 
-import React, {  useState } from "react";
+import React, { useState } from "react";
 import RestaurantDialog from "@/components/dashboardcomponent/RestaurantDialog";
 import { useAppSelector } from "@/store/hooks";
-import { useRouter } from "next/navigation";
 import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
 import { Building2, MapPin, Clock, Utensils } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
-export default function OverviewPage() {
+export default function DashboardOverview() {
   const [isOpen, setIsOpen] = useState<boolean>(true);
-  // const router = useRouter();
-  const { restaurantDetails, isLoading } = useAppSelector((state) => state.auth);
+  const { restaurantDetails } = useAppSelector((state) => state.auth);
+  const [isLoading] = useState(false);
 
   // Check if restaurant details are missing
   const hasRestaurantDetails = restaurantDetails?.streetName && 
@@ -38,7 +38,7 @@ export default function OverviewPage() {
               Welcome to Your Restaurant Dashboard
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Let's get your restaurant set up so you can start managing your business efficiently.
+              Let&apos;s get your restaurant set up so you can start managing your business efficiently.
             </p>
           </div>
 
@@ -46,19 +46,19 @@ export default function OverviewPage() {
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <Building2 className="w-8 h-8 text-primary mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Restaurant Profile</h3>
-              <p className="text-gray-600">Set up your restaurant's basic information and branding.</p>
+              <p className="text-gray-600">Set up your restaurant&apos;s basic information and branding.</p>
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <MapPin className="w-8 h-8 text-primary mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Location Details</h3>
-              <p className="text-gray-600">Add your restaurant's address and contact information.</p>
+              <p className="text-gray-600">Add your restaurant&apos;s address and contact information.</p>
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
               <Clock className="w-8 h-8 text-primary mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Operating Hours</h3>
-              <p className="text-gray-600">Configure your restaurant's opening and closing times.</p>
+              <p className="text-gray-600">Configure your restaurant&apos;s opening and closing times.</p>
             </div>
           </div>
 
@@ -80,9 +80,33 @@ export default function OverviewPage() {
 
   // If we have restaurant details, show the overview content
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard Overview</h1>
-      {/* Add your overview content here */}
+    <div className="container mx-auto p-6">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-4">Welcome to your restaurant&apos;s dashboard</h1>
+        <p className="text-lg mb-8">Here&apos;s what&apos;s happening in your restaurant</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-4">
+          <h2 className="text-xl font-semibold mb-2">Today&apos;s Orders</h2>
+          <p className="text-3xl font-bold text-primary">0</p>
+          <p className="text-sm text-gray-600">Total orders today</p>
+        </Card>
+        <Card className="p-4">
+          <h2 className="text-xl font-semibold mb-2">Today&apos;s Revenue</h2>
+          <p className="text-3xl font-bold text-primary">$0</p>
+          <p className="text-sm text-gray-600">Total revenue today</p>
+        </Card>
+        <Card className="p-4">
+          <h2 className="text-xl font-semibold mb-2">Menu Items</h2>
+          <p className="text-3xl font-bold text-primary">0</p>
+          <p className="text-sm text-gray-600">Active menu items</p>
+        </Card>
+        <Card className="p-4">
+          <h2 className="text-xl font-semibold mb-2">Reviews</h2>
+          <p className="text-3xl font-bold text-primary">0</p>
+          <p className="text-sm text-gray-600">Customer reviews</p>
+        </Card>
+      </div>
     </div>
   );
 }

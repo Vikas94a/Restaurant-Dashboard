@@ -20,7 +20,7 @@ export default function Home() {
                 <span className="text-blue-600">losing sales</span>
               </h1>
               <p className="text-lg md:text-xl text-gray-600 max-w-xl mx-auto md:mx-0">
-                Get smart insights into your restaurant's online presence and
+                Get smart insights into your restaurant&apos;s online presence and
                 optimize for higher revenue.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start pt-2">

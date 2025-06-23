@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, Timestamp, DocumentData } from 'firebase/firestore';
 
 // Utility function to convert Firebase Timestamp to ISO string
 const convertTimestampToString = (timestamp: Timestamp): string => {
@@ -8,7 +8,7 @@ const convertTimestampToString = (timestamp: Timestamp): string => {
 };
 
 // Utility function to convert Firebase data to serializable format
-const convertToSerializable = (data: any): any => {
+const convertToSerializable = (data: DocumentData | undefined): DocumentData | undefined => {
   if (!data) return data;
   
   const result = { ...data };

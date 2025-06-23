@@ -12,12 +12,6 @@ type RestaurantHoursProps = {
   isEditing: boolean;
 };
 
-// Helper function to convert day name to number (0-6, Sunday-Saturday)
-const getDayNumber = (day: string): number => {
-  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  return days.indexOf(day.toLowerCase());
-};
-
 function RestaurantHours({ restaurantDetails, onHoursChange, isEditing }: RestaurantHoursProps) {
   const [hours, setHours] = useState<OpeningHours[]>([]);
   const [initialized, setInitialized] = useState(false);

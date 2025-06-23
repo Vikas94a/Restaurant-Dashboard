@@ -4,9 +4,10 @@ import {
   faPlus,
   faBoxesStacked,
 } from "@fortawesome/free-solid-svg-icons";
-import { NestedMenuItem, CustomizationGroup, ReusableExtraGroup } from "@/utils/menuTypes";
+import { NestedMenuItem, ReusableExtraGroup, CustomizationGroup, ItemChangeField } from "@/utils/menuTypes";
 import { toast } from "sonner";
 import { useState, useRef } from "react";
+import Image from 'next/image';
 
 const CHARACTER_LIMITS = {
   ITEM_NAME: 100,
@@ -23,12 +24,22 @@ interface ItemCardProps {
   handleItemChange: (
     catIndex: number,
     itemIndex: number,
-    field: string,
+    field: ItemChangeField,
     value: string | number | boolean | string[]
   ) => void;
   handleDeleteItem: (categoryId: string, itemId: string) => Promise<void>;
   onOpenCustomizationModal: (item: NestedMenuItem) => void;
   reusableExtras: ReusableExtraGroup[];
+  updateItemCustomizations: (
+    categoryId: string,
+    itemId: string,
+    customizations: CustomizationGroup[]
+  ) => void;
+  updateItemLinkedExtras: (
+    categoryId: string,
+    itemId: string,
+    linkedExtras: { [key: string]: string[] }
+  ) => Promise<void>;
   handleImageChange?: (
     catIndex: number,
     itemIndex: number,
@@ -48,6 +59,8 @@ export default function ItemCard({
   handleDeleteItem,
   onOpenCustomizationModal,
   reusableExtras,
+  updateItemCustomizations,
+  updateItemLinkedExtras,
   handleImageChange,
   isUploading
 }: ItemCardProps) {
@@ -152,10 +165,11 @@ export default function ItemCard({
                 onMouseLeave={() => setHovered(false)}
                 onClick={triggerFileSelect}
               >
-                <img
+                <Image
                   src={item.imageUrl}
                   alt="Item"
-                  className="h-24 w-full object-cover rounded shadow"
+                  fill
+                  className="object-cover rounded-t-lg"
                 />
                 {hovered && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded">

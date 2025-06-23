@@ -3,12 +3,11 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import cartReducer from '@/store/features/cartSlice';
 import RestaurantMenu from '../RestaurantMenu';
-import { getDocs, collection } from 'firebase/firestore';
+import { getDocs } from 'firebase/firestore';
 import { useCart } from '@/hooks/useCart';
 
 // Mock Firebase
 jest.mock('firebase/firestore', () => ({
-  collection: jest.fn(),
   getDocs: jest.fn(),
   getFirestore: jest.fn(() => ({})),
 }));

@@ -1,9 +1,9 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { collection, addDoc, query, getDocs, Timestamp, orderBy, doc, updateDoc, onSnapshot, QuerySnapshot, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, doc, updateDoc, onSnapshot, QuerySnapshot, getDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Order } from '@/types/checkout';
 import { CartItem } from '@/types/cart';
-import { sendOrderConfirmationEmail, sendOrderRejectionEmail } from '@/services/email/emailService';
+import { sendOrderConfirmationEmail } from '@/services/email/emailService';
 
 // Types
 export interface OrderState {
@@ -38,17 +38,6 @@ function backendToUIStatus(status: BackendOrderStatus): UIOrderStatus {
       return 'confirmed';
     case 'rejected':
       return 'cancelled';
-    default:
-      return status;
-  }
-}
-
-function uiToBackendStatus(status: UIOrderStatus): BackendOrderStatus {
-  switch (status) {
-    case 'confirmed':
-      return 'accepted';
-    case 'cancelled':
-      return 'rejected';
     default:
       return status;
   }
@@ -99,23 +88,17 @@ export const updateOrderStatus = createAsyncThunk(
       }
 
       const orderData = orderDoc.data();
-      const updateData: any = {
+      const updateData = {
         status: newStatus,
         updatedAt: serverTimestamp(),
+        ...(estimatedPickupTime && { estimatedPickupTime }),
+        ...(newStatus === 'completed' && { completedAt: serverTimestamp() })
       };
-
-      if (estimatedPickupTime) {
-        updateData.estimatedPickupTime = estimatedPickupTime;
-      }
 
       // Send confirmation email when order is accepted
       if (newStatus === 'accepted') {
         const order = { id: orderId, ...orderData } as Order;
         await sendOrderConfirmationEmail(order);
-      }
-
-      if (newStatus === 'completed') {
-        updateData.completedAt = serverTimestamp();
       }
 
       await updateDoc(orderRef, updateData);
@@ -128,7 +111,7 @@ export const updateOrderStatus = createAsyncThunk(
 );
 
 // Custom thunk to set up real-time listener for restaurant orders
-export const subscribeToRestaurantOrders = (restaurantId: string) => (dispatch: any) => {
+export const subscribeToRestaurantOrders = (restaurantId: string) => (dispatch: (action: PayloadAction<Order[] | boolean | string | null>) => void) => {
    if (!restaurantId) {
         console.error('Restaurant ID is required to subscribe to orders.');
         dispatch(setOrdersError('Restaurant ID not available.'));
@@ -150,7 +133,6 @@ export const subscribeToRestaurantOrders = (restaurantId: string) => (dispatch: 
           
           // Convert Timestamp fields to strings for Redux state serializability
           const createdAt = data.createdAt ? convertTimestampToString(data.createdAt) : '';
-          const updatedAt = data.updatedAt ? convertTimestampToString(data.updatedAt) : '';
 
           return {
             id: doc.id,
@@ -168,7 +150,7 @@ export const subscribeToRestaurantOrders = (restaurantId: string) => (dispatch: 
         // Dispatch action to update orders in the state
         dispatch(setOrders(ordersList));
       },
-      (error: any) => {
+      (error: Error) => {
         console.error('Error fetching real-time orders:', error);
         dispatch(setOrdersError(error.message || 'Failed to fetch real-time orders'));
       }

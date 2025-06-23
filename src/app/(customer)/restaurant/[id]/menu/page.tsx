@@ -1,132 +1,76 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import RestaurantMenu from "@/components/RestaurantMenu";
-import Cart from "@/components/Cart";
-import { useState, useEffect } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faShoppingCart } from "@fortawesome/free-solid-svg-icons";
+import { Button } from "@/components/ui/button";
+import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { RestaurantMenu } from "@/components/RestaurantMenu";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import type { NestedMenuItem } from '@/utils/menuTypes';
 
 // Separate client component for the cart button
 function CartButton({  onOpen }: { isOpen: boolean; onOpen: () => void }) {
   const { cart } = useCart();
-  const [mounted, setMounted] = useState(false);
-  const [itemCount, setItemCount] = useState(0);
-
-  useEffect(() => {
-    setMounted(true);
-    setItemCount(cart.items.length);
-  }, [cart.items.length]);
-
-  if (!mounted) {
-    return (
-      <button
-        onClick={onOpen}
-        className="fixed bottom-6 right-6 z-50 p-4 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-      >
-        <FontAwesomeIcon
-          icon={faShoppingCart}
-          className="w-6 h-6"
-        />
-      </button>
-    );
-  }
+  const totalItems = cart.items.reduce((acc: number, item) => acc + item.quantity, 0);
 
   return (
-    <button
+    <Button
       onClick={onOpen}
-      className="fixed bottom-6 right-6 z-50 p-4 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      className="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-3 shadow-lg"
     >
-      <FontAwesomeIcon
-        icon={faShoppingCart}
-        className="w-6 h-6"
-      />
-      {itemCount > 0 && (
-        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ring-2 ring-white">
-          {itemCount}
-        </span>
-      )}
-    </button>
+      <ShoppingCart className="w-5 h-5" />
+      <span>Cart ({totalItems})</span>
+    </Button>
   );
 }
 
-export default function MenuPage() {
+export default function RestaurantMenuPage() {
   const params = useParams();
-  const restaurantId = params.id as string;
+  const [items, setItems] = useState<NestedMenuItem[]>([]);
+  const [restaurantName, setRestaurantName] = useState("");
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [restaurantName, setRestaurantName] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRestaurantDetails = async () => {
+    const fetchRestaurantData = async () => {
+      if (!params.id) return;
+
       try {
-        const restaurantRef = doc(db, "restaurants", restaurantId);
-        const restaurantDoc = await getDoc(restaurantRef);
-        
-        if (restaurantDoc.exists()) {
-          const data = restaurantDoc.data();
-          setRestaurantName(data.name || data.restaurantType || "Restaurant");
-        } else {
-          setRestaurantName("Restaurant Not Found");
+        // Fetch restaurant details
+        const restaurantRef = doc(db, "restaurants", params.id as string);
+        const restaurantSnap = await getDoc(restaurantRef);
+
+        if (restaurantSnap.exists()) {
+          setRestaurantName(restaurantSnap.data().name || "");
         }
+
+        // Fetch menu items
+        const menuRef = collection(db, "restaurants", params.id as string, "menu");
+        const menuSnap = await getDocs(menuRef);
+
+        const menuItems: NestedMenuItem[] = [];
+        menuSnap.forEach((doc) => {
+          const data = doc.data();
+          if (data.items && Array.isArray(data.items)) {
+            menuItems.push(...data.items);
+          }
+        });
+
+        setItems(menuItems);
       } catch (error) {
-        console.error("Error fetching restaurant details:", error);
-        setRestaurantName("Error Loading Restaurant");
-      } finally {
-        setIsLoading(false);
+        console.error("Error fetching restaurant data:", error);
       }
     };
 
-    if (restaurantId) {
-      fetchRestaurantDetails();
-    }
-  }, [restaurantId]);
+    fetchRestaurantData();
+  }, [params.id]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Add custom styles for scrollbar hiding */}
-      <style jsx global>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .line-clamp-2 {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-      `}</style>
-
-      {/* Floating Cart Button */}
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-8">{restaurantName}</h1>
+      <RestaurantMenu restaurantId={params.id as string} items={items} />
       <CartButton isOpen={isCartOpen} onOpen={() => setIsCartOpen(true)} />
-
-      {/* Header with Restaurant Name */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {isLoading ? (
-              <div className="animate-pulse bg-gray-200 h-6 w-48 rounded"></div>
-            ) : (
-              restaurantName
-            )}
-          </h1>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto">
-        <RestaurantMenu restaurantId={restaurantId} />
-      </div>
-
-      {/* Cart Component */}
-      <Cart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </div>
   );
 } 

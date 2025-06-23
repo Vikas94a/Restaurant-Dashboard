@@ -1,4 +1,4 @@
-import { doc, writeBatch, collection, getDocs, query, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { doc, writeBatch, collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { NestedMenuItem, LegacyMenuItem, Category } from '../menuTypes';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,19 +11,20 @@ export const normalizeMenuItemData = (
   index?: number
 ): NestedMenuItem => {
   // Generate an ID if one doesn't exist
-  const id = item.id || `item-${index || uuidv4()}`;
+  const id = String(item.id || `item-${index || uuidv4()}`);
   
   // Extract name from either format
-  const name = item.name || (item as LegacyMenuItem).itemName || '';
+  const name = String(item.name || (item as LegacyMenuItem).itemName || '');
   
   // Extract description from either format
-  const description = item.description || (item as LegacyMenuItem).itemDescription || '';
+  const description = String(item.description || (item as LegacyMenuItem).itemDescription || '');
   
   // Extract and normalize price data
-  const priceAmount = 
+  const priceAmount = Number(
     (item as NestedMenuItem).price?.amount ?? 
     (item as LegacyMenuItem).itemPrice ?? 
-    0;
+    0
+  );
   
   return {
     id,
@@ -31,25 +32,29 @@ export const normalizeMenuItemData = (
     description,
     price: {
       amount: priceAmount,
-      currency: (item as NestedMenuItem).price?.currency ?? 'USD',
+      currency: String((item as NestedMenuItem).price?.currency ?? 'USD'),
     },
-    imageUrl: (item as NestedMenuItem).imageUrl,
-    category: (item as NestedMenuItem).category,
-    isAvailable: (item as NestedMenuItem).isAvailable ?? true,
-    isPopular: (item as NestedMenuItem).isPopular ?? false,
-    dietaryTags: (item as NestedMenuItem).dietaryTags ?? [],
+    imageUrl: (item as NestedMenuItem).imageUrl ? String((item as NestedMenuItem).imageUrl) : undefined,
+    category: (item as NestedMenuItem).category ? String((item as NestedMenuItem).category) : undefined,
+    isAvailable: Boolean((item as NestedMenuItem).isAvailable ?? true),
+    isPopular: Boolean((item as NestedMenuItem).isPopular ?? false),
+    dietaryTags: Array.isArray((item as NestedMenuItem).dietaryTags) 
+      ? (item as NestedMenuItem).dietaryTags!.map(String) 
+      : [],
     customizations: (item as NestedMenuItem).customizations ?? [],
     linkedReusableExtras: (item as NestedMenuItem).linkedReusableExtras ?? {},
-    linkedReusableExtraIds: (item as NestedMenuItem).linkedReusableExtraIds ?? [],
+    linkedReusableExtraIds: Array.isArray((item as NestedMenuItem).linkedReusableExtraIds)
+      ? (item as NestedMenuItem).linkedReusableExtraIds!.map(String)
+      : [],
     subItems: (item as NestedMenuItem).subItems ?? [],
-    itemType: (item as NestedMenuItem).itemType ?? 'item',
+    itemType: ((item as NestedMenuItem).itemType === 'modifier' ? 'modifier' : 'item') as 'item' | 'modifier',
   };
 };
 
 /**
  * Cleans a menu item for Firestore storage by removing client-side only properties
  */
-export const cleanItemForFirestore = (item: NestedMenuItem): any => {
+export const cleanItemForFirestore = (item: NestedMenuItem): Omit<NestedMenuItem, 'id'> => {
   return {
     name: item.name,
     description: item.description,
@@ -99,15 +104,18 @@ export const migrateRestaurantMenuData = async (
       
       // Check if this category has items that need migration
       const hasLegacyItems = categoryData.items?.some(
-        item => (item as LegacyMenuItem).itemName !== undefined ||
-               (item as LegacyMenuItem).itemDescription !== undefined ||
-               (item as LegacyMenuItem).itemPrice !== undefined
+        item => {
+          const legacyItem = item as unknown as LegacyMenuItem;
+          return legacyItem.itemName !== undefined ||
+                 legacyItem.itemDescription !== undefined ||
+                 legacyItem.itemPrice !== undefined;
+        }
       );
       
       if (hasLegacyItems) {
         // Normalize all items in this category
         const normalizedItems = (categoryData.items || []).map(
-          (item, index) => normalizeMenuItemData(item, index)
+          (item, index) => normalizeMenuItemData(item as unknown as LegacyMenuItem, index)
         );
         
         // Update the category with normalized items
