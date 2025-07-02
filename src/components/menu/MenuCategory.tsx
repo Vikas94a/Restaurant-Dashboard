@@ -1,7 +1,4 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Edit, Trash2, Plus } from 'lucide-react';
 import { MenuItem } from './MenuItem';
 import { Category, Item } from '@/utils/menuTypes';
 

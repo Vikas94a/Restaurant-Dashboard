@@ -61,14 +61,36 @@ export default function OrdersPage() {
       return;
     }
 
-    const ordersRef = collection(db, 'orders');
+    const ordersRef = collection(db, 'restaurants', restaurantDetails.restaurantId, 'orders');
     const q = query(ordersRef, where('restaurantId', '==', restaurantDetails.restaurantId));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ordersData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Order[];
+      const ordersData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        
+        // Convert Timestamp fields to strings
+        const convertTimestamp = (timestamp: any) => {
+          if (timestamp && typeof timestamp.toDate === 'function') {
+            return timestamp.toDate().toISOString();
+          }
+          return null;
+        };
+
+        return {
+          id: doc.id,
+          restaurantId: data.restaurantId,
+          customerDetails: data.customerDetails,
+          items: data.items || [],
+          total: data.total,
+          status: data.status,
+          pickupTime: data.pickupTime,
+          pickupOption: data.pickupOption,
+          estimatedPickupTime: data.estimatedPickupTime,
+          createdAt: convertTimestamp(data.createdAt),
+          updatedAt: convertTimestamp(data.updatedAt),
+          completedAt: convertTimestamp(data.completedAt)
+        } as Order;
+      });
       dispatch(clearOrders());
       dispatch(setOrders(ordersData));
       setLoading(false);
@@ -104,6 +126,15 @@ export default function OrdersPage() {
           estimatedPickupTime: estimatedPickupTime?.trim(),
         })
       ).unwrap();
+
+      // Show success message based on the action
+      if (newStatus === 'accepted') {
+        toast.success(`Order accepted! Customer has been notified via email.`);
+      } else if (newStatus === 'rejected') {
+        toast.success(`Order rejected! Customer has been notified via email.`);
+      } else if (newStatus === 'completed') {
+        toast.success(`Order marked as completed!`);
+      }
     } catch {
       toast.error("Failed to update order status");
     }
@@ -111,6 +142,50 @@ export default function OrdersPage() {
 
   const handleEstimatedTimeChange = (orderId: string, time: string) => {
     setEstimatedTimes((prev) => ({ ...prev, [orderId]: time }));
+  };
+
+  // Test email functionality
+  const testEmail = async () => {
+    try {
+      const testOrder = orders[0]; // Use the first order as a test
+      if (!testOrder) {
+        toast.error("No orders available for testing");
+        return;
+      }
+
+      console.log('🧪 Testing email functionality with order:', testOrder.id);
+      
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: testOrder.customerDetails.email,
+          subject: 'Test Email - AI Eat Easy',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #333;">Test Email</h2>
+              <p>This is a test email to verify the email functionality is working.</p>
+              <p>Order ID: ${testOrder.id}</p>
+              <p>Customer: ${testOrder.customerDetails.name}</p>
+            </div>
+          `
+        }),
+      });
+
+      const data = await response.json();
+      console.log('🧪 Test email response:', data);
+
+      if (response.ok) {
+        toast.success("Test email sent successfully! Check the console for details.");
+      } else {
+        toast.error(`Test email failed: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('🧪 Test email error:', error);
+      toast.error("Test email failed. Check console for details.");
+    }
   };
 
   if (loading) {
@@ -153,6 +228,12 @@ export default function OrdersPage() {
                   Updating orders...
                 </span>
               )}
+              <button
+                onClick={testEmail}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+              >
+                Test Email
+              </button>
             </div>
           </div>
         </div>

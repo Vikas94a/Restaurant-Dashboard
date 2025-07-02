@@ -11,9 +11,11 @@ interface OrderStatusState {
 
 interface OrderStatusProps {
   orderId: string;
+  restaurantId?: string;
+  shouldListen?: boolean;
 }
 
-export function useOrderStatus({ orderId }: OrderStatusProps) {
+export function useOrderStatus({ orderId, restaurantId, shouldListen = false }: OrderStatusProps) {
   const [orderStatus, setOrderStatus] = useState<OrderStatusState>({
     status: 'pending',
     estimatedTime: null
@@ -29,9 +31,9 @@ export function useOrderStatus({ orderId }: OrderStatusProps) {
   };
 
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId || !restaurantId || !shouldListen) return;
     
-    const unsubscribe = onSnapshot(doc(db, 'orders', orderId), (doc) => {
+    const unsubscribe = onSnapshot(doc(db, 'restaurants', restaurantId, 'orders', orderId), (doc) => {
       if (doc.exists()) {
         const data = doc.data();
         setOrderStatus({
@@ -43,10 +45,12 @@ export function useOrderStatus({ orderId }: OrderStatusProps) {
           ...data
         } as Order);
       }
+    }, (error) => {
+      console.error('Error listening to order status:', error);
     });
 
     return () => unsubscribe();
-  }, [orderId]);
+  }, [orderId, restaurantId, shouldListen]);
 
   return {
     orderStatus,

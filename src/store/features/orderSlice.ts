@@ -3,7 +3,7 @@ import { collection, addDoc, query, orderBy, doc, updateDoc, onSnapshot, QuerySn
 import { db } from '@/lib/firebase';
 import { Order } from '@/types/checkout';
 import { CartItem } from '@/types/cart';
-import { sendOrderConfirmationEmail } from '@/services/email/emailService';
+import { sendOrderConfirmationEmail, sendOrderRejectionEmail } from '@/services/email/emailService';
 
 // Types
 export interface OrderState {
@@ -65,6 +65,8 @@ export const createOrder = createAsyncThunk(
       pickupOption: orderData.pickupOption,
       estimatedPickupTime: orderData.estimatedPickupTime,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      completedAt: null
     };
 
     return newOrder;
@@ -80,14 +82,24 @@ export const updateOrderStatus = createAsyncThunk(
     estimatedPickupTime?: string;
   }) => {
     try {
+      console.log('🔄 Starting order status update:', { orderId, restaurantId, newStatus, estimatedPickupTime });
+      
       const orderRef = doc(db, 'restaurants', restaurantId, 'orders', orderId);
       const orderDoc = await getDoc(orderRef);
 
       if (!orderDoc.exists()) {
+        console.error('❌ Order not found:', orderId);
         throw new Error('Order not found');
       }
 
       const orderData = orderDoc.data();
+      console.log('📋 Order data retrieved:', { 
+        customerEmail: orderData.customerDetails?.email,
+        customerName: orderData.customerDetails?.name,
+        status: orderData.status,
+        newStatus 
+      });
+
       const updateData = {
         status: newStatus,
         updatedAt: serverTimestamp(),
@@ -97,14 +109,35 @@ export const updateOrderStatus = createAsyncThunk(
 
       // Send confirmation email when order is accepted
       if (newStatus === 'accepted') {
+        console.log('✅ Sending confirmation email for order:', orderId);
         const order = { id: orderId, ...orderData } as Order;
-        await sendOrderConfirmationEmail(order);
+        try {
+          await sendOrderConfirmationEmail(order);
+          console.log('✅ Confirmation email sent successfully');
+        } catch (emailError) {
+          console.error('❌ Failed to send confirmation email:', emailError);
+        }
       }
 
+      // Send rejection email when order is rejected
+      if (newStatus === 'rejected') {
+        console.log('❌ Sending rejection email for order:', orderId);
+        const order = { id: orderId, ...orderData } as Order;
+        try {
+          await sendOrderRejectionEmail(order);
+          console.log('✅ Rejection email sent successfully');
+        } catch (emailError) {
+          console.error('❌ Failed to send rejection email:', emailError);
+        }
+      }
+
+      console.log('💾 Updating order document with new status:', newStatus);
       await updateDoc(orderRef, updateData);
+      console.log('✅ Order status updated successfully');
+      
       return { orderId, newStatus, estimatedPickupTime };
     } catch (error) {
-      console.error('Error updating order status:', error);
+      console.error('❌ Error updating order status:', error);
       throw error;
     }
   }

@@ -2,76 +2,76 @@
 
 import React from "react";
 import { OpeningHours, day } from "./RestaurantDialog";
+import { Label } from "@/components/ui/label";
 
 interface OpeningHoursProps {
-  openingHours: OpeningHours[]; // Array of opening hours for each day
-  setOpeningHours: React.Dispatch<React.SetStateAction<OpeningHours[]>>; // Setter to update opening hours state
+  openingHours: OpeningHours[];
+  setOpeningHours: React.Dispatch<React.SetStateAction<OpeningHours[]>>;
 }
 
 function RestaurantTiming({
   openingHours,
   setOpeningHours,
 }: OpeningHoursProps) {
-
-  /**
-   * updateHours
-   * Updates the openingHours array at a specific index with new values.
-   * @param index - index of the day in openingHours array
-   * @param fields - key of the OpeningHours object to update (open, close, closed)
-   * @param value - new value to assign (string for time or boolean for closed)
-   */
   const updateHours = (
     index: number,
     fields: keyof OpeningHours,
     value: string | boolean
   ) => {
-    // Create a copy of the current openingHours array
     const update = [...openingHours];
-    // Update the specific field for the day at 'index'
     update[index] = { ...update[index], [fields]: value };
-    // Update the state with new array
     setOpeningHours(update);
   };
 
   return (
-    <div>
-      <div>
-        {/* Loop through each day to display input fields for opening hours */}
+    <div className="space-y-6">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-1">Opening Hours</h3>
+        <p className="text-sm text-gray-500">Set your restaurant&apos;s operating hours.</p>
+      </div>
+
+      <div className="space-y-4">
+        {/* Header row */}
+        <div className="grid grid-cols-[120px_1fr_1fr_100px] gap-4 mb-2 text-sm font-medium text-gray-600">
+          <div>Day</div>
+          <div>Opening Time</div>
+          <div>Closing Time</div>
+          <div>Status</div>
+        </div>
+
+        {/* Days rows */}
         {day.map((day, i) => (
-          <div key={i} className="flex gap-4 items-center mb-2">
-            {/* Display the day name with first letter capitalized */}
-            <label className="w-20">
+          <div key={i} className="grid grid-cols-[120px_1fr_1fr_100px] gap-4 items-center">
+            <Label className="font-medium text-gray-700">
               {day.charAt(0).toUpperCase() + day.slice(1)}
-            </label>
+            </Label>
 
-            {/* Input for opening time */}
             <input
               type="time"
-              value={openingHours[i]?.open} // Controlled value from state
-              onChange={(e) => updateHours(i, "open", e.target.value)} // Update opening time on change
-              disabled={openingHours[i]?.closed} // Disable if the day is marked closed
-              className="border px-2"
+              value={openingHours[i]?.open}
+              onChange={(e) => updateHours(i, "open", e.target.value)}
+              disabled={openingHours[i]?.closed}
+              className="px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
               required
             />
 
-            {/* Input for closing time */}
             <input
               type="time"
-              value={openingHours[i]?.close} // Controlled value from state
-              onChange={(e) => updateHours(i, "close", e.target.value)} // Update closing time on change
-              disabled={openingHours[i]?.closed} // Disable if the day is marked closed
-              className="border px-2"
+              value={openingHours[i]?.close}
+              onChange={(e) => updateHours(i, "close", e.target.value)}
+              disabled={openingHours[i]?.closed}
+              className="px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
               required
             />
 
-            {/* Checkbox to mark the day as closed */}
-            <label>
+            <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={openingHours[i]?.closed} // Controlled checkbox state
-                onChange={(e) => updateHours(i, "closed", e.target.checked)} // Update closed status on toggle
+                checked={openingHours[i]?.closed}
+                onChange={(e) => updateHours(i, "closed", e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              Closed
+              <span className="text-sm text-gray-600">Closed</span>
             </label>
           </div>
         ))}

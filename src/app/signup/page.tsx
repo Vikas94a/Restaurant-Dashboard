@@ -70,22 +70,50 @@ function Signup() {
         form.password
       );
       const userID = userCredential.user.uid;
+      try {
+        // Send verification email
+        await sendEmailVerification(userCredential.user)
 
-      await sendEmailVerification(userCredential.user)
+        router.push("/verify-email");
+        // Store user details in Firestore
+        console.log('Storing user details in Firestore...');
+        await setDoc(doc(db, "users", userID), {
+          restaurantName: form.restaurantName,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          emailVerified: false,
+          createdAt: new Date().toISOString(),
+        });
+        console.log('User details stored successfully');
 
-      // Store user details in Firestore
-      await setDoc(doc(db, "users", userID), {
-        restaurantName: form.restaurantName,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-      });
-
-      toast.success("Signup successful! Please check your email to verify your account.");
-      router.push("/verify-email"); // Redirect to verification page
+        // Make sure to sign out the user
+     
+        // Show success message and redirect
+        toast.success("Account created! Please check your email to verify your account.");
+        router.push("/verify-email");
+      } catch (verificationError) {
+        console.error('Error during verification process:', verificationError);
+        // If verification fails, delete the user and throw error
+        await userCredential.user.delete();
+        throw new Error('Failed to complete signup process. Please try again.');
+      }
     } catch (error) {
+      console.error('Signup error:', error);
       const authError = error as AuthError;
-      toast.error(authError.message || "Signup failed. Try again."); // Show error if signup fails
+      let errorMessage = "Signup failed. Please try again.";
+      
+      if (authError.code === 'auth/email-already-in-use') {
+        errorMessage = "This email is already registered. Please try logging in instead.";
+      } else if (authError.code === 'auth/invalid-email') {
+        errorMessage = "Please enter a valid email address.";
+      } else if (authError.code === 'auth/weak-password') {
+        errorMessage = "Password should be at least 6 characters long.";
+      } else if (authError.message) {
+        errorMessage = authError.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

@@ -64,7 +64,7 @@ export default function AnalyticsPage() {
             setIsMenuLoading(true);
             try {
                 // Fetch menu items
-                const menuItemsRef = collection(db, 'restaurants', restaurantId, 'menuItems');
+                const menuItemsRef = collection(db, 'restaurants', restaurantId, 'menu');
                 const menuSnapshot = await getDocs(menuItemsRef);
                 const items = menuSnapshot.docs.map(doc => ({
                     id: doc.id,
@@ -94,49 +94,6 @@ export default function AnalyticsPage() {
 
         fetchMenuData();
     }, [restaurantId]);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!user?.restaurantName) {
-                setError('Restaurant not found');
-                setLoading(false);
-                return;
-            }
-
-            try {
-                // Fetch orders
-                const ordersRef = collection(db, 'orders');
-                const ordersQuery = query(
-                    ordersRef,
-                    where('restaurantId', '==', user.restaurantName),
-                    orderBy('createdAt', 'desc')
-                );
-                const ordersSnapshot = await getDocs(ordersQuery);
-                const ordersData = ordersSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                })) as OrderItem[];
-                setOrderHistory(ordersData);
-
-                // Fetch menu items
-                const menuRef = collection(db, 'restaurants', user.restaurantName, 'menu');
-                const menuSnapshot = await getDocs(menuRef);
-                const menuData = menuSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                })) as NestedMenuItem[];
-                setMenuItems(menuData);
-
-                setLoading(false);
-            } catch (err) {
-                console.error('Error fetching data:', err);
-                setError('Error fetching data');
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [user?.restaurantName]);
 
     const calculateRevenue = () => {
         return orderHistory.reduce((total, order) => total + (order.price * order.quantity), 0);

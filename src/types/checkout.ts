@@ -8,6 +8,8 @@ export interface Order {
   total: number;
   status: 'pending' | 'confirmed' | 'ready' | 'completed' | 'cancelled';
   createdAt: string;
+  updatedAt: string | null;
+  completedAt: string | null;
   pickupTime: string;
   pickupOption: 'asap' | 'later';
   estimatedPickupTime: string | null;

@@ -3,6 +3,7 @@
 import { useAuth } from '../AuthProvider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { EmailVerificationGuard } from './EmailVerificationGuard';
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -18,5 +19,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  return user ? <>{children}</> : null;
+  // If user exists, wrap with EmailVerificationGuard
+  return user ? (
+    <EmailVerificationGuard>{children}</EmailVerificationGuard>
+  ) : null;
 } 
