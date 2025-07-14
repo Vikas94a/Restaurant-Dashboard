@@ -139,6 +139,9 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # Email Service (Server-side only)
 RESEND_API_KEY=your_resend_api_key
+
+# OpenAI API Key for AI Marketing Post Generation (Server-side only)
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
 5. **Configure Firebase:**
