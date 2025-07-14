@@ -1,232 +1,22 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import {
-  subscribeToRestaurantOrders,
-  updateOrderStatus,
-  clearOrders,
-  setOrders,
-} from "@/store/features/orderSlice";
+import React from 'react';
 import { Order } from '@/types/checkout';
 import { CartItem as OrderItem } from '@/types/cart';
-import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faClock, faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { toast } from "sonner";
-import { RootState } from "@/store/store";
-import { useRouter } from "next/navigation";
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '@/firebase/firebaseConfig';
-import OrderNavBar from '@/components/Orders/OrderNavBar';
-import OrderList from '@/components/Orders/OrderList';
 
-type UIOrderStatus = "confirmed" | "cancelled" | "completed";
-type BackendOrderStatus = "accepted" | "rejected" | "completed";
+type BackendOrderStatus = 'accepted' | 'rejected' | 'completed';
 
-export default function OrdersPage() {
-  const dispatch = useAppDispatch();
-  const router = useRouter();
-  const { user, restaurantDetails } = useAppSelector(
-    (state: RootState) => state.auth
-  );
-  const { orders, status } = useAppSelector((state: RootState) => state.orders);
-  const [loading, setLoading] = useState(true);
-  const [estimatedTimes, setEstimatedTimes] = useState<Record<string, string>>({});
-  const [selectedTab, setSelectedTab] = useState<'active' | 'completed' | 'rejected'>('active');
-
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-
-    if (!user) {
-      toast.error("Please sign in to view orders");
-      router.replace("/login");
-      return;
-    }
-
-    if (restaurantDetails?.restaurantId) {
-      unsubscribe = dispatch(
-        subscribeToRestaurantOrders(restaurantDetails.restaurantId)
-      );
-    } else {
-      dispatch(clearOrders());
-    }
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-      dispatch(clearOrders());
-    };
-  }, [dispatch, restaurantDetails?.restaurantId, user, router]);
-
-  useEffect(() => {
-    if (!restaurantDetails?.restaurantId) {
-      setLoading(false);
-      return;
-    }
-
-    const ordersRef = collection(db, 'restaurants', restaurantDetails.restaurantId, 'orders');
-    const q = query(ordersRef, where('restaurantId', '==', restaurantDetails.restaurantId));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ordersData = snapshot.docs.map(doc => {
-        const data = doc.data();
-        
-        // Convert Timestamp fields to strings
-        const convertTimestamp = (timestamp: any) => {
-          if (timestamp && typeof timestamp.toDate === 'function') {
-            return timestamp.toDate().toISOString();
-          }
-          return null;
-        };
-
-        return {
-          id: doc.id,
-          restaurantId: data.restaurantId,
-          customerDetails: data.customerDetails,
-          items: data.items || [],
-          total: data.total,
-          status: data.status,
-          pickupTime: data.pickupTime,
-          pickupOption: data.pickupOption,
-          estimatedPickupTime: data.estimatedPickupTime,
-          createdAt: convertTimestamp(data.createdAt),
-          updatedAt: convertTimestamp(data.updatedAt),
-          completedAt: convertTimestamp(data.completedAt)
-        } as Order;
-      });
-      dispatch(clearOrders());
-      dispatch(setOrders(ordersData));
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [dispatch, restaurantDetails?.restaurantId]);
-
-  const handleOrderStatus = async (
-    orderId: string,
-    newStatus: BackendOrderStatus
-  ) => {
-    try {
-      if (!restaurantDetails?.restaurantId) {
-        toast.error("Restaurant ID not found");
-        return;
-      }
-
-      const order = orders.find(o => o.id === orderId);
-      const isAsapOrder = order?.pickupOption === 'asap';
-      const estimatedPickupTime = isAsapOrder && newStatus === "accepted" ? estimatedTimes[orderId] : undefined;
-
-      if (isAsapOrder && newStatus === "accepted" && (!estimatedPickupTime || estimatedPickupTime.trim() === "")) {
-        toast.error("Please provide an estimated pickup time for ASAP orders.");
-        return;
-      }
-
-      await dispatch(
-        updateOrderStatus({
-          orderId,
-          restaurantId: restaurantDetails.restaurantId,
-          newStatus,
-          estimatedPickupTime: estimatedPickupTime?.trim(),
-        })
-      ).unwrap();
-
-      // Show success message based on the action
-      if (newStatus === 'accepted') {
-        toast.success(`Order accepted! Customer has been notified via email.`);
-      } else if (newStatus === 'rejected') {
-        toast.success(`Order rejected! Customer has been notified via email.`);
-      } else if (newStatus === 'completed') {
-        toast.success(`Order marked as completed!`);
-      }
-    } catch {
-      toast.error("Failed to update order status");
-    }
-  };
-
-  const handleEstimatedTimeChange = (orderId: string, time: string) => {
-    setEstimatedTimes((prev) => ({ ...prev, [orderId]: time }));
-  };
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  if (!restaurantDetails) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 p-6">
-        <div className="bg-white rounded shadow p-6 max-w-md w-full text-center">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">
-            No Restaurant Found
-          </h2>
-          <p className="text-gray-600 mb-4">
-            Please set up your restaurant details first.
-          </p>
-          <button
-            onClick={() => router.push("/dashboard/setup")}
-            className="bg-primary text-white px-4 py-2 rounded hover:bg-primary-dark"
-          >
-            Go to Setup
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Split orders into active, completed, and rejected
-  const activeOrders = orders.filter(
-    (order: Order) => (order.status as string) !== 'completed' && (order.status as string) !== 'rejected'
-  );
-  const completedOrders = orders.filter(
-    (order: Order) => (order.status as string) === 'completed'
-  );
-  const rejectedOrders = orders.filter(
-    (order: Order) => (order.status as string) === 'rejected'
-  );
-
-  let displayedOrders = activeOrders;
-  if (selectedTab === 'completed') displayedOrders = completedOrders;
-  if (selectedTab === 'rejected') displayedOrders = rejectedOrders;
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Order Management
-            </h1>
-            <div className="flex items-center space-x-4">
-              {status === 'loading' && orders.length > 0 && (
-                <span className="text-sm text-gray-500 flex items-center">
-                  <LoadingSpinner />
-                  Updating orders...
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <OrderNavBar selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
-        <OrderList
-          orders={displayedOrders}
-          estimatedTimes={estimatedTimes}
-          onEstimatedTimeChange={handleEstimatedTimeChange}
-          onStatusChange={handleOrderStatus}
-        />
-      </main>
-    </div>
-  );
+interface OrderListProps {
+  orders: Order[];
+  estimatedTimes: Record<string, string>;
+  onEstimatedTimeChange: (orderId: string, time: string) => void;
+  onStatusChange: (orderId: string, status: BackendOrderStatus) => void;
 }
 
+// Move OrderCard here from the page file
 interface OrderCardProps {
   order: Order;
   estimatedTime: string;
   onEstimatedTimeChange: (orderId: string, time: string) => void;
-  onStatusChange: (
-    orderId: string,
-    status: BackendOrderStatus
-  ) => void;
+  onStatusChange: (orderId: string, status: BackendOrderStatus) => void;
 }
 
 function OrderCard({
@@ -244,13 +34,13 @@ function OrderCard({
   };
 
   // Map backend status to UI status
-  const backendToUIStatus = (status: string): UIOrderStatus | 'pending' | 'ready' => {
+  const backendToUIStatus = (status: string) => {
     if (status === 'accepted') return 'confirmed';
     if (status === 'rejected') return 'cancelled';
-    return status as UIOrderStatus | 'pending' | 'ready';
+    return status;
   };
   // Map UI status to backend status
-  const uiToBackendStatus = (status: UIOrderStatus): BackendOrderStatus => {
+  const uiToBackendStatus = (status: string): BackendOrderStatus => {
     if (status === 'confirmed') return 'accepted';
     if (status === 'cancelled') return 'rejected';
     return 'completed';
@@ -261,11 +51,9 @@ function OrderCard({
 
   const formatPickupTime = () => {
     if (isAsapOrder) return 'ASAP';
-    
     const pickupDate = new Date(order.customerDetails.pickupDate);
     const today = new Date();
     const isToday = pickupDate.toDateString() === today.toDateString();
-    
     if (isToday) {
       return `Today at ${order.pickupTime}`;
     } else {
@@ -277,9 +65,7 @@ function OrderCard({
 
   return (
     <div
-      className={`rounded-lg border p-4 transition-all duration-200 ${
-        statusColors[uiStatus]
-      }`}
+      className={`rounded-lg border p-4 transition-all duration-200 ${statusColors[uiStatus]}`}
     >
       {/* Order Header */}
       <div className="flex justify-between items-start mb-4">
@@ -378,7 +164,7 @@ function OrderCard({
       {/* Pickup Time */}
       <div className="flex items-center justify-between text-sm mb-4">
         <span className="text-gray-600 flex items-center">
-          <FontAwesomeIcon icon={faClock} className="mr-2 text-gray-400" />
+          {/* You may want to import FontAwesomeIcon and faClock if needed */}
           Pickup: {formatPickupTime()}
         </span>
       </div>
@@ -400,14 +186,12 @@ function OrderCard({
               onClick={() => onStatusChange(order.id, uiToBackendStatus("confirmed"))}
               className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
             >
-              <FontAwesomeIcon icon={faCheck} className="mr-2" />
               Accept
             </button>
             <button
               onClick={() => onStatusChange(order.id, uiToBackendStatus("cancelled"))}
               className="flex-1 bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
             >
-              <FontAwesomeIcon icon={faXmark} className="mr-2" />
               Reject
             </button>
           </div>
@@ -418,7 +202,6 @@ function OrderCard({
         <div className="space-y-3">
           {isAsapOrder && order.estimatedPickupTime ? (
             <p className="text-sm text-green-700 font-medium flex items-center">
-              <FontAwesomeIcon icon={faClock} className="mr-2" />
               Ready in: {order.estimatedPickupTime}
             </p>
           ) : null}
@@ -433,3 +216,29 @@ function OrderCard({
     </div>
   );
 }
+
+const OrderList: React.FC<OrderListProps> = ({ orders, estimatedTimes, onEstimatedTimeChange, onStatusChange }) => {
+  if (!orders || orders.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[200px] bg-white rounded-lg shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-700">No Orders</h3>
+        <p className="text-gray-500 mt-2">No orders to display in this category.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {orders.map((order) => (
+        <OrderCard
+          key={order.id}
+          order={order}
+          estimatedTime={estimatedTimes[order.id]}
+          onEstimatedTimeChange={onEstimatedTimeChange}
+          onStatusChange={onStatusChange}
+        />
+      ))}
+    </div>
+  );
+};
+
+export default OrderList; 

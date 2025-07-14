@@ -12,12 +12,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { NestedMenuItem } from '@/utils/menuTypes';
-import type { OrderItem } from '@/types/order';
+import type { Order } from '@/types/order';
 import AnalyticsNavigation from '@/components/dashboardcomponent/AnalyticsNavigation';
 import { BarChart3, TrendingUp, DollarSign, Star, ThumbsUp } from 'lucide-react';
 import { PerformanceChart } from '@/components/dashboardcomponent/analytics/performance';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { MenuInsight } from '@/components/dashboardcomponent/analytics/MenuInsight';
+import { fetchRestaurantData } from '@/store/features/authSlice';
+
 
 export default function AnalyticsPage() {
     const [activeTab, setActiveTab] = useState('overview');
@@ -26,7 +28,7 @@ export default function AnalyticsPage() {
     const [totalRevenue, setTotalRevenue] = useState(0);
     const [categoryData, setCategoryData] = useState<{ name: string; value: number }[]>([]);
     const [menuItems, setMenuItems] = useState<NestedMenuItem[]>([]);
-    const [orderHistory, setOrderHistory] = useState<OrderItem[]>([]);
+    const [orderHistory, setOrderHistory] = useState<Order[]>([]);
     const [isMenuLoading, setIsMenuLoading] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export default function AnalyticsPage() {
                 const orders = ordersSnapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
-                })) as OrderItem[];
+                })) as Order[];
                 setOrderHistory(orders);
             } catch (error) {
                 console.error('Error fetching menu data:', error);
@@ -95,25 +97,30 @@ export default function AnalyticsPage() {
         fetchMenuData();
     }, [restaurantId]);
 
+    // Calculate total revenue by summing all items in all orders
     const calculateRevenue = () => {
-        return orderHistory.reduce((total, order) => total + (order.price * order.quantity), 0);
+        return orderHistory.reduce((total, order) => {
+            if (!Array.isArray(order.items)) return total;
+            return total + order.items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+        }, 0);
     };
 
+    // Calculate total orders (number of orders)
     const calculateTotalOrders = () => {
         return orderHistory.length;
     };
 
-    const calculateAverageOrderValue = () => {
-        if (orderHistory.length === 0) return 0;
-        return calculateRevenue() / orderHistory.length;
-    };
-
+    // Calculate popular items by aggregating all items in all orders
     const calculatePopularItems = () => {
         const itemCounts: { [key: string]: number } = {};
         orderHistory.forEach(order => {
-            itemCounts[order.itemId] = (itemCounts[order.itemId] || 0) + order.quantity;
+            if (!Array.isArray(order.items)) return;
+            order.items.forEach(item => {
+                const id = item.itemId || item.id;
+                if (!id) return;
+                itemCounts[id] = (itemCounts[id] || 0) + (item.quantity || 0);
+            });
         });
-
         return Object.entries(itemCounts)
             .sort(([, a], [, b]) => b - a)
             .slice(0, 5)
@@ -121,6 +128,63 @@ export default function AnalyticsPage() {
                 item: menuItems.find(item => item.id === itemId)?.name || 'Unknown Item',
                 count
             }));
+    };
+
+    // Get top selling items in the last 3 months
+    const getTopSellingItemsLast3Months = async () => {
+        if (!restaurantId) return [];
+        
+        const now = new Date();
+        const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        function toDate(val: any): Date | null {
+            if (!val) return null;
+            if (val instanceof Date) return val;
+            if (typeof val === 'object' && typeof val.seconds === 'number') {
+                return new Date(val.seconds * 1000);
+            }
+            if (typeof val === 'string') {
+                const d = new Date(val);
+                return isNaN(d.getTime()) ? null : d;
+            }
+            return null;
+        }
+
+        // Filter orders from last 3 months
+        const recentOrders = orderHistory.filter(order => {
+            const createdAt = toDate(order.createdAt);
+            return createdAt && createdAt >= threeMonthsAgo && createdAt <= now;
+        });
+
+        // Simple aggregation by item name and category
+        const salesByCategory: { [category: string]: { [itemName: string]: number } } = {};
+        
+        recentOrders.forEach(order => {
+            if (!Array.isArray(order.items)) return;
+            order.items.forEach(item => {
+                const itemName = item.itemName || 'Unknown Item';
+                const category = item.categoryName || 'Other';
+                const quantity = item.quantity || 0;
+                
+                if (!salesByCategory[category]) {
+                    salesByCategory[category] = {};
+                }
+                if (!salesByCategory[category][itemName]) {
+                    salesByCategory[category][itemName] = 0;
+                }
+                salesByCategory[category][itemName] += quantity;
+            });
+        });
+
+        // Convert to simple array format
+        const result = Object.entries(salesByCategory).map(([category, items]) => ({
+            category,
+            items: Object.entries(items).map(([name, sales]) => ({
+                name,
+                sales
+            })).sort((a, b) => b.sales - a.sales) // Sort by sales descending
+        }));
+
+        return result;
     };
 
     // Show loading state while fetching restaurant details
@@ -149,6 +213,117 @@ export default function AnalyticsPage() {
             </div>
         );
     }
+
+    // --- NEW: Fetch and aggregate menu and order data for last 3 months ---
+    async function getMenuSalesDataLast3Months() {
+        if (!restaurantId) return [];
+        // 1. Fetch all menu items
+        const menuItemsRef = collection(db, 'restaurants', restaurantId, 'menu');
+        const menuSnapshot = await getDocs(menuItemsRef);
+        const menuItems = menuSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as NestedMenuItem[];
+
+        // 2. Fetch all orders from last 3 months
+        const now = new Date();
+        const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        const ordersRef = collection(db, 'restaurants', restaurantId, 'orders');
+        const ordersQuery = query(
+            ordersRef,
+            where('status', 'in', ['completed', 'confirmed']),
+            orderBy('createdAt', 'desc')
+        );
+        const ordersSnapshot = await getDocs(ordersQuery);
+        // Helper to get JS Date from possible Firestore Timestamp, Date, or string
+        function toDate(val: any): Date | null {
+            if (!val) return null;
+            if (val instanceof Date) return val;
+            if (typeof val === 'object' && typeof val.seconds === 'number') {
+                // Firestore Timestamp
+                return new Date(val.seconds * 1000);
+            }
+            if (typeof val === 'string') {
+                const d = new Date(val);
+                return isNaN(d.getTime()) ? null : d;
+            }
+            return null;
+        }
+        // Only orders in last 3 months
+        const recentOrders = ordersSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }) as import('@/types/order').Order)
+            .filter(order => {
+                const createdAt = toDate(order.createdAt);
+                return createdAt && createdAt >= threeMonthsAgo && createdAt <= now;
+            }); // order is of type Order
+
+        // 3. Aggregate sales for each menu item
+        const salesCount: { [itemId: string]: number } = {};
+        recentOrders.forEach(order => {
+            if (!Array.isArray(order.items)) return;
+            order.items.forEach(item => {
+                const id = item.itemId || item.id;
+                if (!id) return;
+                salesCount[id] = (salesCount[id] || 0) + (item.quantity || 0);
+            });
+        });
+
+        // 4. Merge sales data with menu
+        const merged = menuItems.map(item => ({
+            id: item.id,
+            name: item.name,
+            category: item.category || 'Uncategorized',
+            sales: salesCount[item.id] || 0
+        }));
+        return merged;
+    }
+
+    // Test the new simplified function
+    getTopSellingItemsLast3Months().then(data => {
+        console.log('NEW SIMPLIFIED DATA FORMAT:', data);
+    });
+
+    // Helper to flatten Order[] to OrderItem[] for MenuInsight
+    function flattenOrdersToOrderItems(orders: Order[]): import('@/utils/menuTypes').OrderItem[] {
+        const result: import('@/utils/menuTypes').OrderItem[] = [];
+        orders.forEach(order => {
+            if (!Array.isArray(order.items)) return;
+            order.items.forEach(item => {
+                result.push({
+                    id: item.id || '',
+                    itemId: item.itemId || item.id || '',
+                    name: item.itemName || '',
+                    price: item.itemPrice || 0,
+                    quantity: item.quantity || 0,
+                    createdAt: order.createdAt,
+                    status: order.status as any // fallback, may need mapping
+                });
+            });
+        });
+        return result;
+    }
+
+    // Calculate sales by day of week for last 3 months
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const salesByDay: { [day: string]: number } = { Sunday: 0, Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0 };
+    const nowDate = new Date();
+    const threeMonthsAgoDate = new Date(nowDate.getFullYear(), nowDate.getMonth() - 3, nowDate.getDate());
+    orderHistory.forEach(order => {
+        const createdAt = new Date(order.createdAt);
+        if (createdAt >= threeMonthsAgoDate && createdAt <= nowDate) {
+            const day = dayNames[createdAt.getDay()];
+            salesByDay[day] += 1;
+        }
+    });
+    // Prepare sales by day as array for summary
+    const salesByDayArray = dayNames.map(day => ({ day, orders: salesByDay[day] }));
+    const maxOrders = Math.max(...salesByDayArray.map(d => d.orders));
+    const minOrders = Math.min(...salesByDayArray.map(d => d.orders));
+    const busiestDays = salesByDayArray.filter(d => d.orders === maxOrders).map(d => d.day);
+    const slowestDays = salesByDayArray.filter(d => d.orders === minOrders).map(d => d.day);
+    // Format as table for AI
+    const salesByDayTable = `| Day       | Orders |\n|-----------|--------|\n${salesByDayArray.map(d => `| ${d.day.padEnd(9)} | ${d.orders.toString().padEnd(6)} |`).join('\n')}`;
+    const salesSummary = `Sales by Day of Week (last 3 months):\n${salesByDayTable}\n\nBusiest day(s): ${busiestDays.join(', ')} (${maxOrders} orders)\nSlowest day(s): ${slowestDays.join(', ')} (${minOrders} orders)`;
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -211,36 +386,6 @@ export default function AnalyticsPage() {
                             <Card className="p-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="text-sm font-medium text-gray-600">Category Sales</p>
-                                        <div className="h-60 w-40">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie
-                                                        data={categoryData}
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        labelLine={false}
-                                                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                                        outerRadius={80}
-                                                        innerRadius={20}
-                                                        fill="#8884d8"
-                                                        dataKey="value"
-                                                    >
-                                                        {categoryData.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={`#${Math.floor(Math.random() * 16777215).toString(16)}`} />
-                                                        ))}
-                                                    </Pie>
-                                                    <Tooltip />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    </div>
-                                </div>
-                            </Card>
-
-                            <Card className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
                                         <p className="text-sm font-medium text-gray-600">Avg Rating</p>
                                         <p className="text-2xl font-bold text-gray-900">4.8</p>
                                         <p className="text-xs text-green-600 flex items-center mt-1">
@@ -293,7 +438,7 @@ export default function AnalyticsPage() {
                 }
                 return (
                     <div className="space-y-6">
-                        <MenuInsight menuItems={menuItems} orderHistory={orderHistory} />
+                        <MenuInsight menuItems={menuItems} orderHistory={flattenOrdersToOrderItems(orderHistory)} />
                     </div>
                 );
 
@@ -304,7 +449,7 @@ export default function AnalyticsPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <AnalyticsNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+            <AnalyticsNavigation activeTab={activeTab} onTabChange={setActiveTab} extraTabs={[]} />
             <div className="p-6">
                 {renderTabContent()}
             </div>

@@ -6,9 +6,10 @@ import { BarChart3, Menu, TrendingUp } from 'lucide-react';
 interface AnalyticsNavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  extraTabs?: { key: string; label: string; icon?: React.ElementType; description?: string }[];
 }
 
-const AnalyticsNavigation: React.FC<AnalyticsNavigationProps> = ({ activeTab, onTabChange }) => {
+const AnalyticsNavigation: React.FC<AnalyticsNavigationProps> = ({ activeTab, onTabChange, extraTabs = [] }) => {
   const tabs = [
     {
       id: 'overview',
@@ -21,7 +22,18 @@ const AnalyticsNavigation: React.FC<AnalyticsNavigationProps> = ({ activeTab, on
       label: 'Menu Insight',
       icon: Menu,
       description: 'Menu performance and item analytics'
-    }
+    },
+    // extraTabs will be appended below
+  ];
+
+  const allTabs = [
+    ...tabs,
+    ...extraTabs.map(tab => ({
+      id: tab.key,
+      label: tab.label,
+      icon: tab.icon || BarChart3,
+      description: tab.description || tab.label
+    }))
   ];
 
   return (
@@ -38,7 +50,7 @@ const AnalyticsNavigation: React.FC<AnalyticsNavigationProps> = ({ activeTab, on
         </div>
         
         <nav className="flex space-x-8">
-          {tabs.map((tab) => {
+          {allTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             
