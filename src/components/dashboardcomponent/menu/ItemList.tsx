@@ -1,4 +1,7 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { setEditingCategory } from "@/store/features/menuSlice";
 import {
   faEdit,
   faPlus,
@@ -55,6 +58,28 @@ export default function ItemList({
   handleSaveCategory,
 }: ItemListProps) {
   const [uploadingItemIndex, setUploadingItemIndex] = useState<number | null>(null);
+  const dispatch = useDispatch();
+  const editingCategoryId = useSelector((state: RootState) => state.menu.editingCategoryId);
+  const isEditing = editingCategoryId === (category.docId || category.frontendId);
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const categoryId = category.docId || category.frontendId;
+    if (categoryId) {
+      dispatch(setEditingCategory(isEditing ? null : categoryId));
+      toggleEditCategory(categoryId);
+    }
+  };
+
+  const handleAddItemClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const categoryId = category.docId || category.frontendId;
+    if (categoryId) {
+      handleAddItem(categoryId);
+    }
+  };
 
   // Function to handle changes to item properties
   const handleImageChange = async (catIndex: number, itemIndex: number, file: File) => {
@@ -65,10 +90,10 @@ export default function ItemList({
   
     try {
       setUploadingItemIndex(itemIndex);
-      const oldImageUrl = item.imageUrl; // Get current image URL
-      const imageUrl = await replaceImage(file, itemId, oldImageUrl); // Delete old and upload new
+      const oldImageUrl = item.imageUrl;
+      const imageUrl = await replaceImage(file, itemId, oldImageUrl);
       handleItemChange(catIndex, itemIndex, "imageUrl", imageUrl);
-      console.log("imageUrl", imageUrl);
+      
       // Save the category to persist the image URL
       if (category.docId || category.frontendId) {
         await handleSaveCategory(category.docId || category.frontendId!);
@@ -84,18 +109,15 @@ export default function ItemList({
   };
 
   return (
-    <>
-      {!category.isEditing && category.items.length > 0 && (
+    <div onClick={(e) => e.stopPropagation()}>
+      {!isEditing && category.items.length > 0 && (
         <div className="mb-3 pb-2 border-b border-gray-200 flex justify-between items-center">
           <h4 className="text-xs font-semibold text-gray-700 flex items-center">
             <span className="h-3 w-1 bg-primary rounded mr-2"></span>
             Menu Items
           </h4>
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleEditCategory(category.docId || category.frontendId!);
-            }}
+            onClick={handleEditClick}
             className="flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-600/70 focus:ring-offset-1"
           >
             <FontAwesomeIcon icon={faEdit} className="mr-1 h-3 w-3" />
@@ -104,9 +126,8 @@ export default function ItemList({
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
+      <div className="space-y-4">
         {category.items.map((item, itemIndex) => (
-          
           <ItemCard
             key={`${category.docId || category.frontendId}-${item.id || item.frontendId || `item-${itemIndex}`}`}
             item={item}
@@ -114,7 +135,7 @@ export default function ItemList({
             catIndex={catIndex}
             categoryId={category.docId || category.frontendId!}
             loading={loading}
-            isEditing={category.isEditing ?? false}
+            isEditing={isEditing}
             handleItemChange={handleItemChange}
             handleDeleteItem={handleDeleteItem}
             onOpenCustomizationModal={onOpenCustomizationModal}
@@ -126,7 +147,7 @@ export default function ItemList({
           />
         ))}
 
-        {category.items.length === 0 && !category.isEditing && isExpanded && (
+        {category.items.length === 0 && !isEditing && isExpanded && (
           <div className="text-center py-6 px-4 bg-white rounded border border-dashed border-gray-300">
             <FontAwesomeIcon
               icon={faUtensils}
@@ -136,10 +157,7 @@ export default function ItemList({
               No items in this category yet.
             </p>
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleEditCategory(category.docId || category.frontendId!);
-              }}
+              onClick={handleEditClick}
               className="mt-2 text-xs text-primary hover:text-primary-dark font-medium py-1 px-2 rounded hover:bg-primary-lightest transition-colors focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-1"
             >
               Add First Item
@@ -147,7 +165,7 @@ export default function ItemList({
           </div>
         )}
 
-        {category.items.length === 0 && category.isEditing && (
+        {category.items.length === 0 && isEditing && (
           <div className="text-center py-5 px-4 bg-gray-50 rounded border border-dashed border-gray-300">
             <FontAwesomeIcon
               icon={faUtensils}
@@ -157,14 +175,14 @@ export default function ItemList({
               This category is empty.
             </p>
             <p className="text-xs text-gray-500">
-              Click &quot;Add New Item&quot; to get started.
+              Click "Add New Item" to get started.
             </p>
           </div>
         )}
 
-        {category.isEditing && (
+        {isEditing && (
           <button
-            onClick={() => handleAddItem(category.docId || category.frontendId!)}
+            onClick={handleAddItemClick}
             className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg bg-white hover:border-primary hover:bg-gray-50 transition-all duration-200 flex items-center justify-center gap-2 text-gray-600 hover:text-primary"
           >
             <FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
@@ -172,6 +190,6 @@ export default function ItemList({
           </button>
         )}
       </div>
-    </>
+    </div>
   );
 }

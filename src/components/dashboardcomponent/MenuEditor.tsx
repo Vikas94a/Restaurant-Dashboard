@@ -7,6 +7,21 @@ import {
   faPlus,
   faUtensils,
 } from "@fortawesome/free-solid-svg-icons";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 // import { LoadingSpinner } from "./LoadingSpinner";
 import { useMenuEditor } from "@/hooks/useMenuEditor";
 import { 
@@ -19,12 +34,14 @@ import {
   CustomizationGroup,
   Category as EditorCategory
 } from "@/utils/menuTypes";
-import CategoryItem from "./menu/CategoryItem";
+import DraggableCategoryItem from "./menu/DraggableCategoryItem";
 import ConfirmationDialog from "./menu/ConfirmationDialog";
 import ReusableExtrasManager from "./menu/ReusableExtrasManager";
 import { toast } from "sonner";
 import ErrorBanner from "./menu/ErrorBanner";
 import { findCategoryIndex, findItemIndex, getCategoryId, validateIds } from "@/utils/menuHelpers";
+import { useAppSelector } from "@/store/hooks";
+import { ensureMenuCategoriesOrder } from "@/utils/menuOrderMigration";
 
 interface MenuEditorProps {
   restaurantId: string;
@@ -43,6 +60,8 @@ interface EditorCustomizationGroup {
 }
 
 export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
+  const [orderModified, setOrderModified] = useState(false);
+  
   const {
     categories,
     loading,
@@ -63,9 +82,62 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
     updateReusableExtraGroup,
     deleteReusableExtraGroup,
     updateItemLinkedExtras,
+    reorderCategories,
+    saveCategoryOrder,
     error,
     setError,
   } = useMenuEditor(restaurantId);
+
+  // Configure sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end event
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = categories.findIndex(
+        category => (category.docId || category.frontendId || `category-${categories.indexOf(category)}`) === active.id
+      );
+      const newIndex = categories.findIndex(
+        category => (category.docId || category.frontendId || `category-${categories.indexOf(category)}`) === over?.id
+      );
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        reorderCategories(oldIndex, newIndex);
+        setOrderModified(true);
+        toast.success("Category order updated! Click 'Save Order' to persist changes.");
+      }
+    }
+  };
+
+  // Handle save order
+  const handleSaveOrder = async () => {
+    await saveCategoryOrder();
+    setOrderModified(false);
+  };
+
+  // Handle fix category order
+  const handleFixCategoryOrder = async () => {
+    try {
+      await ensureMenuCategoriesOrder(restaurantId);
+      toast.success("Category order has been fixed!");
+      // Refresh the menu data
+      window.location.reload();
+    } catch (error) {
+      console.error("Error fixing category order:", error);
+      toast.error("Failed to fix category order");
+    }
+  };
 
   // Generic wrapper for category operations
   const withCategoryIndex = async (
@@ -175,7 +247,7 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
       categoryName: category.categoryName,
       categoryDescription: category.categoryDescription,
       items: category.items.map(transformItemToNestedMenuItem),
-      isEditing: category.isEditing
+      isEditing: false // Redux will determine this, not local state
     };
   };
 
@@ -264,67 +336,82 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
   };
 
   return (
-    <div className="p-3 max-w-full">
+    <div className="p-3 max-w-full overflow-x-hidden">
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       
-      <div className="flex gap-2">
-        <div className="flex-1 w-160 ">
-          <MenuHeader
-            onAddCategory={handleAddCategory}
-            restaurantId={restaurantId}
-          />
-          <div className="flex-1 overflow-y-auto mt-2">
-            <section className="space-y-8 pb-10 px-4">
-              {categories.length === 0 && !loading ? (
-                <EmptyMenuState onAddCategory={handleAddCategory} />
-              ) : (
-                categories.map((category, catIndex) => (
-                  <CategoryItem
-                    key={getCategoryId(category)}
-                    category={transformCategoryToMenuCategory(category)}
-                    catIndex={catIndex}
-                    loading={loading}
-                    handleCategoryChange={handleCategoryChange}
-                    handleItemChange={handleItemChange}
-                    handleAddItem={handleAddItemWrapper}
-                    toggleEditCategory={toggleEditCategoryWrapper}
-                    handleSaveCategory={handleSaveCategoryWrapper}
-                    handleDeleteCategory={handleDeleteCategoryWrapper}
-                    handleDeleteItem={handleDeleteItemWrapper}
-                    updateItemCustomizations={updateItemCustomizationsWrapper}
-                    reusableExtras={reusableExtras}
-                    updateItemLinkedExtras={updateItemLinkedExtrasWrapper}
-                  />
-                ))
-              )}
-            </section>
+      {/* Reusable Extras at the top */}
+      <div className="mb-6 bg-white rounded-lg shadow-md border border-gray-200">
+        <section className="flex flex-col">
+          <header className="p-4 border-b border-gray-200 bg-white rounded-t-lg">
+            <h3 className="text-lg font-bold text-gray-800 flex items-center">
+              <span className="bg-gray-700 text-white p-2 rounded-lg mr-3 shadow">
+                <FontAwesomeIcon icon={faBoxesStacked} className="h-4 w-4" />
+              </span>
+              Reusable Extras
+            </h3>
+            <p className="text-gray-600 mt-1 text-sm">
+              Manage common add-ons and customization options.
+            </p>
+          </header>
+          <div className="p-4">
+            <ReusableExtrasManager
+              reusableExtras={reusableExtras}
+              loadingExtras={loadingExtras}
+              onAddGroup={addReusableExtraGroupWrapper}
+              onUpdateGroup={updateReusableExtraGroupWrapper}
+              onDeleteGroup={deleteReusableExtraGroup}
+            />
           </div>
-        </div>
+        </section>
+      </div>
 
-        {/* Sidebar with reusable extras */}
-        <div className="w-[300px] flex-shrink-0 h-full border-l border-gray-300 bg-white rounded-lg shadow-md">
-          <section className="h-full flex flex-col">
-            <header className="p-4 border-b border-gray-200 sticky top-0 bg-white z-10">
-              <h3 className="text-lg font-bold text-gray-800 flex items-center">
-                <span className="bg-gray-700 text-white p-2 rounded-lg mr-3 shadow">
-                  <FontAwesomeIcon icon={faBoxesStacked} className="h-4 w-4" />
-                </span>
-                Reusable Extras
-              </h3>
-              <p className="text-gray-600 mt-1 text-sm">
-                Manage common add-ons and customization options.
-              </p>
-            </header>
-            <div className="p-4 flex-1 overflow-y-auto">
-              <ReusableExtrasManager
-                reusableExtras={reusableExtras}
-                loadingExtras={loadingExtras}
-                onAddGroup={addReusableExtraGroupWrapper}
-                onUpdateGroup={updateReusableExtraGroupWrapper}
-                onDeleteGroup={deleteReusableExtraGroup}
-              />
-            </div>
-          </section>
+      {/* Main menu editor content */}
+      <div className="w-full max-w-4xl mx-auto">
+        <MenuHeader
+          onAddCategory={handleAddCategory}
+          restaurantId={restaurantId}
+          onSaveOrder={handleSaveOrder}
+          onFixOrder={handleFixCategoryOrder}
+          orderModified={orderModified}
+        />
+        <div className="overflow-y-auto mt-2">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={categories.map((category, index) => 
+                category.docId || category.frontendId || `category-${index}`
+              )}
+              strategy={verticalListSortingStrategy}
+            >
+              <section className="space-y-8 pb-10 px-4">
+                {categories.length === 0 && !loading ? (
+                  <EmptyMenuState onAddCategory={handleAddCategory} />
+                ) : (
+                  categories.map((category, catIndex) => (
+                    <DraggableCategoryItem
+                      key={getCategoryId(category)}
+                      category={transformCategoryToMenuCategory(category)}
+                      catIndex={catIndex}
+                      loading={loading}
+                      handleCategoryChange={handleCategoryChange}
+                      handleItemChange={handleItemChange}
+                      handleAddItem={handleAddItemWrapper}
+                      toggleEditCategory={toggleEditCategoryWrapper}
+                      handleSaveCategory={handleSaveCategoryWrapper}
+                      handleDeleteCategory={handleDeleteCategoryWrapper}
+                      handleDeleteItem={handleDeleteItemWrapper}
+                      updateItemCustomizations={updateItemCustomizationsWrapper}
+                      reusableExtras={reusableExtras}
+                      updateItemLinkedExtras={updateItemLinkedExtrasWrapper}
+                    />
+                  ))
+                )}
+              </section>
+            </SortableContext>
+          </DndContext>
         </div>
       </div>
 
@@ -347,15 +434,28 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
 function MenuHeader({
   onAddCategory,
   restaurantId,
+  onSaveOrder,
+  onFixOrder,
+  orderModified = false,
 }: {
   onAddCategory: () => void;
   restaurantId: string;
+  onSaveOrder: () => void;
+  onFixOrder: () => void;
+  orderModified?: boolean;
 }) {
   const [orderLink, setOrderLink] = useState<string | null>(null);
+  const domain = useAppSelector((state) => state.auth.domain);
 
   const handleGetOrderLink = () => {
-    const generatedLink = `${window.location.origin}/restaurant/${restaurantId}/menu`;
-    setOrderLink(generatedLink);
+    if (domain) {
+      const generatedLink = `${window.location.origin}/${domain}/menu`;
+      setOrderLink(generatedLink);
+    } else {
+      // Fallback to old format if domain is not available
+      const generatedLink = `${window.location.origin}/restaurant/${restaurantId}/menu`;
+      setOrderLink(generatedLink);
+    }
   };
 
   const handleCopyLink = async () => {
@@ -382,9 +482,30 @@ function MenuHeader({
         </span>
         Menu Editor
       </h2>
+      <p className="text-xs text-gray-500 mt-1">
+        Drag the grip handle to reorder categories
+      </p>
     </div>
   
     <div className="flex items-center space-x-3 flex-shrink-0">
+      <button
+        onClick={onSaveOrder}
+        className={`px-3 py-1.5 font-semibold rounded-md shadow-sm focus:outline-none transition-colors duration-200 text-sm ${
+          orderModified 
+            ? 'bg-orange-600 hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-opacity-50 text-white' 
+            : 'bg-green-600 hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 text-white'
+        }`}
+        title={orderModified ? "Save the current category order (unsaved changes)" : "Save the current category order"}
+      >
+        {orderModified ? 'Save Order*' : 'Save Order'}
+      </button>
+      <button
+        onClick={onFixOrder}
+        className="px-3 py-1.5 bg-yellow-600 text-white font-semibold rounded-md shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 transition-colors duration-200 text-sm"
+        title="Fix category order for existing categories"
+      >
+        Fix Order
+      </button>
       <button
         onClick={handleGetOrderLink}
         className="px-3 py-1.5 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-200 text-sm"
@@ -393,7 +514,7 @@ function MenuHeader({
       </button>
       <button
         onClick={onAddCategory}
-        className="px-3 py-1.5 bg-primary text-white font-semibold rounded-md shadow-sm hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-light focus:ring-opacity-50 transition-colors duration-200 text-sm flex items-center"
+        className="px-3 py-1.5 bg-primary text-white font-semibold rounded-md shadow-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary-light focus:ring-opacity-50 transition-colors duration-200 text-sm flex items-center"
       >
         <FontAwesomeIcon icon={faPlus} className="mr-1.5 h-4 w-4" />
         Add Category

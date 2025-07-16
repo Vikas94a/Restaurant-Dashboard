@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { setEditingCategory } from "@/store/features/menuSlice";
 import {
   Category,
   NestedMenuItem,
@@ -60,32 +63,64 @@ export default function CategoryItem({
   reusableExtras,
   updateItemLinkedExtras,
 }: CategoryItemProps) {
+  // Local state for expansion and customization modal
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCustomizationModalOpen, setIsCustomizationModalOpen] = useState(false);
   const [selectedItemForCustomization, setSelectedItemForCustomization] = useState<NestedMenuItem | null>(null);
+  
+  const dispatch = useDispatch();
+  const editingCategoryId = useSelector((state: RootState) => state.menu.editingCategoryId);
+  const isEditing = editingCategoryId === (category.docId || category.frontendId);
 
   const handleCategoryClick = useCallback(() => {
-    if (!category.isEditing) {
+    if (!isEditing) {
       setIsExpanded((prev) => !prev);
     }
-  }, [category.isEditing]);
+  }, [isEditing]);
+
+  // Handle toggling edit mode
+  const handleToggleEdit = useCallback(() => {
+    const categoryId = category.docId || category.frontendId;
+    if (categoryId) {
+      dispatch(setEditingCategory(isEditing ? null : categoryId));
+      toggleEditCategory(categoryId);
+    }
+  }, [category.docId, category.frontendId, toggleEditCategory, dispatch, isEditing]);
+
+  // Handle saving category
+  const handleSave = useCallback(async () => {
+    const categoryId = category.docId || category.frontendId;
+    if (categoryId) {
+      await handleSaveCategory(categoryId);
+      dispatch(setEditingCategory(null));
+    }
+  }, [category.docId, category.frontendId, handleSaveCategory, dispatch]);
 
   useEffect(() => {
-    if (category.isEditing) {
+    if (isEditing) {
       setIsExpanded(true);
     }
-  }, [category.isEditing]);
+    // Auto-edit new categories (those without docId)
+    if (!category.docId && !category.categoryName && !isEditing) {
+      const categoryId = category.frontendId;
+      if (categoryId) {
+        dispatch(setEditingCategory(categoryId));
+      }
+    }
+  }, [isEditing, category.docId, category.categoryName, category.frontendId, dispatch]);
 
   return (
     <>
-      <div className="block w-160 max-w-full min-w-0 mb-4 bg-white rounded-md shadow transition-all duration-300 hover:shadow-md border border-gray-200">
+      <div 
+        className="block w-full max-w-full mb-4 bg-white rounded-md shadow transition-all duration-300 hover:shadow-md border border-gray-200 relative z-10"
+      >
         <CategoryHeader
           category={category}
           catIndex={catIndex}
           loading={loading}
           handleCategoryChange={handleCategoryChange}
-          toggleEditCategory={toggleEditCategory}
-          handleSaveCategory={handleSaveCategory}
+          toggleEditCategory={handleToggleEdit}
+          handleSaveCategory={handleSave}
           handleDeleteCategory={handleDeleteCategory}
           handleCategoryClick={handleCategoryClick}
           isExpanded={isExpanded}
@@ -93,11 +128,11 @@ export default function CategoryItem({
 
         {/* Expandable content area */}
         <div
-          className={`transition-all duration-300 ease-in-out ${
+          className={`transition-all duration-300 ease-in-out overflow-hidden relative ${
             isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
           }`}
         >
-          <div className="p-3 border-t border-gray-200 bg-gray-50">
+          <div className="p-3 border-t border-gray-200 bg-gray-50 relative z-0">
             <ItemList
               category={category}
               catIndex={catIndex}
@@ -113,8 +148,8 @@ export default function CategoryItem({
                 setSelectedItemForCustomization(item);
                 setIsCustomizationModalOpen(true);
               }}
-              toggleEditCategory={toggleEditCategory}
-              handleSaveCategory={handleSaveCategory}
+              toggleEditCategory={handleToggleEdit}
+              handleSaveCategory={handleSave}
             />
           </div>
         </div>

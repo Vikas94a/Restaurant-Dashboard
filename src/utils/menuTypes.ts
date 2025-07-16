@@ -55,6 +55,7 @@ export interface Category {
   categoryName: string;
   categoryDescription?: string;
   items: NestedMenuItem[];
+  order?: number;
   isEditing?: boolean;
 }
 

@@ -84,6 +84,7 @@ export interface AuthState {
   user: SerializedUserData | null;
   restaurantDetails: Restaurant | undefined;
   restaurantName: string;
+  domain: string;
   isLogoutWarningModalVisible: boolean;
   warningTimerRemaining: number;
   rememberMe: boolean;
@@ -96,6 +97,7 @@ const initialState: AuthState = {
   user: null,
   restaurantDetails: undefined,
   restaurantName: "",
+  domain: "",
   isLogoutWarningModalVisible: false,
   warningTimerRemaining: 0,
   rememberMe: false,
@@ -377,6 +379,7 @@ const authSlice = createSlice({
           state.user = null;
           state.restaurantDetails = undefined;
           state.restaurantName = "";
+          state.domain = "";
           state.isLoading = false;
           state.error = null;
 
@@ -414,6 +417,9 @@ const authSlice = createSlice({
         state.isLoading = false;
         if (action.payload?.restaurantName) {
           state.restaurantName = action.payload.restaurantName;
+        }
+        if (action.payload?.domain) {
+          state.domain = action.payload.domain;
         }
       })
       .addCase(fetchUserData.rejected, (state, action) => {

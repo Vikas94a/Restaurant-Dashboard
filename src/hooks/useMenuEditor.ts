@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -78,6 +78,8 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
     handleCategoryChange,
     handleSaveCategory,
     handleDeleteCategory,
+    reorderCategories,
+    saveCategoryOrder,
   } = useMenuCategoryOperations({
     restaurantId,
     setError,
@@ -125,7 +127,8 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
         setError(null);
 
         const menuRef = collection(db, "restaurants", restaurantId, "menu");
-        const querySnapshot = await getDocs(menuRef);
+        const menuQuery = query(menuRef, orderBy('order', 'asc'));
+        const querySnapshot = await getDocs(menuQuery);
 
         if (querySnapshot.empty) {
           setCategories([{
@@ -149,6 +152,9 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
               isEditing: false,
             };
           }) as Category[];
+
+          // Sort categories by order field to ensure proper ordering
+          fetchedCategories.sort((a, b) => (a.order || 0) - (b.order || 0));
 
           setCategories(fetchedCategories);
         }
@@ -217,5 +223,7 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
     updateItemLinkedExtras,
     migrateMenuData,
     toggleItemAvailability,
+    reorderCategories,
+    saveCategoryOrder,
   };
 }

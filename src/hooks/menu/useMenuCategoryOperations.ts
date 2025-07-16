@@ -22,7 +22,7 @@ export const useMenuCategoryOperations = ({
   setConfirmDialog,
 }: UseMenuCategoryOperationsProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const { handleSaveCategory: saveCategory, handleDeleteCategory: deleteCategory } = useMenuOperations({
+  const { handleSaveCategory: saveCategory, handleDeleteCategory: deleteCategory, saveCategoryOrder: saveOrder } = useMenuOperations({
     restaurantId,
     setError,
     setLoading,
@@ -34,21 +34,16 @@ export const useMenuCategoryOperations = ({
       categoryName: "",
       categoryDescription: "",
       items: [],
-      isEditing: true,
+      isEditing: false, // Redux will handle edit state
       frontendId: uuidv4()
     };
     setCategories(prev => [...prev, newCategory]);
   }, []);
 
   const toggleEditCategory = useCallback((categoryIndex: number) => {
-    setCategories(prevCategories =>
-      prevCategories.map((category, index) => {
-        if (index === categoryIndex) {
-          return { ...category, isEditing: !category.isEditing };
-        }
-        return category;
-      })
-    );
+    // No longer managing edit state locally - this is now handled by Redux
+    // This function is kept for compatibility but doesn't change local state
+    console.log(`Category ${categoryIndex} edit state is now managed by Redux`);
   }, []);
 
   const handleCategoryChange = useCallback((
@@ -80,6 +75,19 @@ export const useMenuCategoryOperations = ({
     await deleteCategory(category, categoryIndex, categories, setCategories);
   }, [categories, deleteCategory]);
 
+  const reorderCategories = useCallback((startIndex: number, endIndex: number) => {
+    setCategories(prevCategories => {
+      const newCategories = [...prevCategories];
+      const [removed] = newCategories.splice(startIndex, 1);
+      newCategories.splice(endIndex, 0, removed);
+      return newCategories;
+    });
+  }, []);
+
+  const saveCategoryOrder = useCallback(async () => {
+    await saveOrder(categories);
+  }, [categories, saveOrder]);
+
   return {
     categories,
     setCategories,
@@ -88,5 +96,7 @@ export const useMenuCategoryOperations = ({
     handleCategoryChange,
     handleSaveCategory,
     handleDeleteCategory,
+    reorderCategories,
+    saveCategoryOrder,
   };
 }; 

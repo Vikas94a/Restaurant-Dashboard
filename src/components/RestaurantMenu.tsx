@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { collection, getDocs, DocumentData, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, DocumentData, doc, getDoc, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useCart } from "@/hooks/useCart";
 import { CartItem } from "../types/cart";
@@ -19,7 +19,7 @@ interface RestaurantMenuProps {
 }
 
 export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
-  const [menuData, setMenuData] = useState<{ id: string; name: string; description?: string; items: NestedMenuItem[] }[]>([]);
+  const [menuData, setMenuData] = useState<{ id: string; name: string; description?: string; items: NestedMenuItem[]; order?: number }[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedItemForModal, setSelectedItemForModal] = useState<NestedMenuItem | null>(null);
@@ -55,14 +55,17 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
       resetError();
       const menuRef = collection(db, "restaurants", restaurantId, "menu");
       
+      // Create a query with ordering by the 'order' field
+      const menuQuery = query(menuRef, orderBy('order', 'asc'));
+      
       const fetchWithRetry = () => withRetry(
-        () => withTimeout(getDocs(menuRef)),
+        () => withTimeout(getDocs(menuQuery)),
         3,
         1000
       );
 
       const querySnapshot = await fetchWithRetry();
-      const categories: { id: string; name: string; description?: string; items: NestedMenuItem[] }[] = [];
+      const categories: { id: string; name: string; description?: string; items: NestedMenuItem[]; order?: number }[] = [];
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
@@ -75,10 +78,14 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
             id: doc.id,
             name: data.categoryName || 'Uncategorized',
             description: data.categoryDescription,
-            items: items
+            items: items,
+            order: data.order || 0
           });
         }
       });
+
+      // Sort categories by order field to ensure proper ordering
+      categories.sort((a, b) => (a.order || 0) - (b.order || 0));
 
       setMenuData(categories);
       if (categories.length > 0 && !selectedCategory) {
@@ -170,7 +177,7 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-4 border-orange-500"></div>
       </div>
     );
   }
@@ -178,11 +185,11 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
   if (isError && !canRetry) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] p-8">
-        <FontAwesomeIcon icon={faExclamationTriangle} className="h-16 w-16 text-red-500 mb-4" />
-        <p className="text-red-500 mb-4 text-lg">Failed to load menu</p>
+        <FontAwesomeIcon icon={faExclamationTriangle} className="h-12 w-12 text-red-400 mb-4" />
+        <p className="text-red-500 mb-4 text-base font-semibold">Failed to load menu</p>
         <button
           onClick={fetchMenuData}
-          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+          className="px-4 py-2 bg-gradient-to-r from-orange-400 to-red-400 text-white rounded-lg hover:from-orange-500 hover:to-red-500 transition-all duration-200 font-semibold shadow-md"
         >
           Retry
         </button>
@@ -193,30 +200,66 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
   if (menuData.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] p-8">
-        <FontAwesomeIcon icon={faUtensils} className="h-16 w-16 text-gray-400 mb-4" />
-        <p className="text-gray-600 text-lg">No menu items available</p>
+        <div className="bg-gradient-to-br from-orange-50 to-red-50 p-6 rounded-full mb-4">
+          <FontAwesomeIcon icon={faUtensils} className="h-12 w-12 text-orange-400" />
+        </div>
+        <p className="text-gray-600 text-lg font-semibold">No menu items available</p>
+        <p className="text-gray-500 mt-2 text-sm">Check back soon for delicious options!</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen">
-      {/* Left Sidebar - Categories */}
-      <div className="w-64 bg-white shadow-sm border-r border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">Categories</h2>
+    <div className="flex flex-col lg:flex-row min-h-screen">
+      {/* Mobile Category Selector */}
+      <div className="lg:hidden bg-white shadow-md border-b border-orange-50 p-3">
+        <h2 className="text-base font-bold text-gray-700 mb-3 flex items-center">
+          <span className="bg-gradient-to-r from-orange-400 to-red-400 text-white p-1 rounded-md mr-2">
+            <FontAwesomeIcon icon={faUtensils} className="h-3 w-3" />
+          </span>
+          Categories
+        </h2>
+        <div className="flex space-x-2 overflow-x-auto pb-2">
+          {menuData.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => setSelectedCategory(category.name)}
+              className={`flex-shrink-0 px-3 py-2 rounded-lg transition-all duration-300 whitespace-nowrap ${
+                selectedCategory === category.name
+                  ? "bg-gradient-to-r from-orange-400 to-red-400 text-white shadow-md"
+                  : "text-gray-600 bg-gray-50 hover:bg-gradient-to-r hover:from-orange-25 hover:to-red-25 border border-orange-50"
+              }`}
+            >
+              <div className="font-semibold text-sm">{category.name}</div>
+              <div className={`text-xs ${selectedCategory === category.name ? 'opacity-90' : 'opacity-60'}`}>
+                {category.items.length}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Desktop Left Sidebar - Categories */}
+      <div className="hidden lg:block w-64 bg-white shadow-lg border-r border-orange-50 p-4 rounded-r-xl">
+        <h2 className="text-lg font-bold text-gray-700 mb-4 flex items-center">
+          <span className="bg-gradient-to-r from-orange-400 to-red-400 text-white p-1.5 rounded-md mr-2">
+            <FontAwesomeIcon icon={faUtensils} className="h-3 w-3" />
+          </span>
+          Categories
+        </h2>
         <div className="space-y-2">
           {menuData.map((category) => (
             <button
               key={category.id}
               onClick={() => setSelectedCategory(category.name)}
-              className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 ${
+              className={`w-full text-left px-3 py-3 rounded-lg transition-all duration-300 transform hover:scale-102 ${
                 selectedCategory === category.name
-                  ? "bg-primary text-white shadow-md"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-gradient-to-r from-orange-400 to-red-400 text-white shadow-md"
+                  : "text-gray-600 hover:bg-gradient-to-r hover:from-orange-25 hover:to-red-25 border border-orange-50"
               }`}
             >
-              <div className="font-medium">{category.name}</div>
-              <div className="text-sm opacity-75">
+              <div className="font-semibold text-base">{category.name}</div>
+              <div className={`text-xs ${selectedCategory === category.name ? 'opacity-90' : 'opacity-60'}`}>
                 {category.items.length} item{category.items.length !== 1 ? 's' : ''}
               </div>
             </button>
@@ -225,28 +268,28 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
       </div>
 
       {/* Main Content - Selected Category Items */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-3 lg:p-6">
         {selectedCategoryData ? (
           <div>
             {/* Category Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <div className="mb-4 lg:mb-6 text-center">
+              <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent mb-2">
                 {selectedCategoryData.name}
               </h1>
               {selectedCategoryData.description && (
-                <p className="text-gray-600 text-lg">{selectedCategoryData.description}</p>
+                <p className="text-gray-600 text-sm lg:text-base max-w-2xl mx-auto px-2">{selectedCategoryData.description}</p>
               )}
             </div>
 
             {/* Items Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
               {selectedCategoryData.items.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100"
+                  className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-orange-50 transform hover:scale-102"
                 >
                   {/* Item Image */}
-                  <div className="relative h-48 bg-gray-100">
+                  <div className="relative h-40 sm:h-48 bg-gradient-to-br from-orange-25 to-red-25">
                     {item.imageUrl ? (
                       <img
                         src={item.imageUrl}
@@ -254,50 +297,51 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-red-50">
                         <div className="text-center">
-                          <FontAwesomeIcon icon={faUtensils} className="h-8 w-8 text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-500">Image Coming Soon</p>
+                          <FontAwesomeIcon icon={faUtensils} className="h-6 w-6 sm:h-8 sm:w-8 text-orange-300 mb-1 sm:mb-2" />
+                          <p className="text-xs text-orange-500 font-medium">Image Coming Soon</p>
                         </div>
                       </div>
                     )}
                     {!item.isAvailable && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                        <span className="text-white font-semibold">Not Available</span>
+                      <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-t-xl">
+                        <span className="text-white font-bold text-xs sm:text-sm bg-red-400 px-2 sm:px-3 py-1 rounded-full">Not Available</span>
                       </div>
                     )}
                   </div>
 
                   {/* Item Details */}
-                  <div className="p-6">
-                    <h3 className="font-bold text-xl text-gray-900 mb-2">{item.name}</h3>
+                  <div className="p-3 sm:p-4">
+                    <h3 className="font-bold text-base sm:text-lg text-gray-700 mb-2">{item.name}</h3>
                     
                     {item.description && (
-                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">{item.description}</p>
+                      <p className="text-gray-500 text-xs mb-3 line-clamp-2 leading-relaxed">{item.description}</p>
                     )}
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-primary">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3">
+                      <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
                         {item.price.amount.toFixed(2)} Kr
                       </span>
                       
                       <button
                         onClick={() => openAddToCartModal(item)}
                         disabled={!item.isAvailable}
-                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                        className={`flex items-center justify-center space-x-1 px-3 py-2 rounded-lg transition-all duration-300 font-semibold text-sm ${
                           item.isAvailable
-                            ? "bg-primary text-white hover:bg-primary-dark hover:scale-105 active:scale-95"
-                            : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            ? "bg-gradient-to-r from-orange-400 to-red-400 text-white hover:from-orange-500 hover:to-red-500 hover:scale-105 active:scale-95 shadow-md"
+                            : "bg-gray-200 text-gray-400 cursor-not-allowed"
                         }`}
                       >
-                        <FontAwesomeIcon icon={faPlus} className="h-4 w-4" />
-                        <span className="font-medium">Add</span>
+                        <FontAwesomeIcon icon={faPlus} className="h-3 w-3" />
+                        <span>Add to Cart</span>
                       </button>
                     </div>
 
                     {/* Only show extras indicator if item actually has extras */}
                     {item.linkedReusableExtraIds && item.linkedReusableExtraIds.length > 0 && (
-                      <div className="mt-3 text-xs text-gray-500">
+                      <div className="flex items-center text-orange-500 text-xs font-medium">
+                        <span className="w-1.5 h-1.5 bg-orange-400 rounded-full mr-1.5"></span>
                         Customizable options available
                       </div>
                     )}

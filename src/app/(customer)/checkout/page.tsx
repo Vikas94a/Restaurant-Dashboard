@@ -9,11 +9,12 @@ import { doc, getDoc } from 'firebase/firestore';
 import { CustomerFormData, RestaurantDetails } from '@/types/checkout';
 import CustomerForm from '@/components/checkout/CustomerForm';
 import OrderSummary from '@/components/checkout/OrderSummary';
-import OrderStatus from '@/components/checkout/OrderStatus';
 import PickupOptions from '@/components/checkout/PickupOptions';
 import { useOrderStatus } from '@/hooks/useOrderStatus';
 import { useRestaurantTiming } from '@/hooks/useRestaurantTiming';
 import { useOrderSubmission } from '@/hooks/useOrderSubmission';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheckCircle } from '@fortawesome/free-solid-svg-icons';
 
 export default function CheckoutPage() {
   const { cart } = useCart();
@@ -166,12 +167,50 @@ export default function CheckoutPage() {
           />
         </div>
         
-        {localPlacedOrder && (
-          <OrderStatus 
-            placedOrder={localPlacedOrder} 
-            showOrderStatus={showOrderStatus} 
-            onReturnToMenu={onReturnToMenu} 
-          />
+        {/* Simple Order Confirmation Dialog */}
+        {localPlacedOrder && showOrderStatus && (
+          <>
+            {/* Backdrop */}
+            <div className="fixed inset-0 z-40 backdrop-blur-sm bg-black/30" onClick={onReturnToMenu} />
+            
+            {/* Dialog */}
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-gray-100 overflow-hidden">
+                {/* Success Header */}
+                <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-8 text-center">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FontAwesomeIcon icon={faCheckCircle} className="w-8 h-8 text-green-500" />
+                  </div>
+                  <h1 className="text-2xl font-bold text-white mb-2">Order Received!</h1>
+                  <p className="text-green-100">Your order has been received by the restaurant</p>
+                </div>
+
+                <div className="p-6">
+                  <div className="text-center space-y-4">
+                    <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">What's Next?</h3>
+                      <div className="space-y-2 text-sm text-blue-800">
+                        <p>✓ Restaurant will confirm your order</p>
+                        {timing.pickupOption === 'asap' ? (
+                          <p>✓ Pickup time will be notified by email</p>
+                        ) : (
+                          <p>✓ Order scheduled for {timing.pickupTime}</p>
+                        )}
+                        <p>✓ You'll receive email confirmation</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={onReturnToMenu}
+                      className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-6 rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-opacity-50"
+                    >
+                      Back to Menu
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

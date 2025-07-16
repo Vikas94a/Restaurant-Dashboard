@@ -8,15 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createUserWithEmailAndPassword, sendEmailVerification, AuthError } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import { validateDomain } from "@/utils/domainValidation";
 
 // Define the structure of the form state
 export interface inputForm {
   restaurantName: string;
+  domain: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -30,6 +32,7 @@ function Signup() {
   // Form state for input values
   const [form, setForm] = useState<inputForm>({
     restaurantName: "",
+    domain: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -55,9 +58,34 @@ function Signup() {
       !form.email ||
       !form.password ||
       !form.firstName ||
-      !form.restaurantName
+      !form.restaurantName ||
+      !form.domain
     ) {
       toast.error("Please fill in all required fields.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate domain format
+    const domainValidation = validateDomain(form.domain);
+    if (!domainValidation.isValid) {
+      toast.error(domainValidation.error || "Invalid domain format");
+      setIsLoading(false);
+      return;
+    }
+
+    // Check if domain is already taken
+    try {
+      const domainQuery = query(collection(db, "restaurants"), where("domain", "==", form.domain));
+      const domainSnapshot = await getDocs(domainQuery);
+      if (!domainSnapshot.empty) {
+        toast.error("This domain is already taken. Please choose a different one.");
+        setIsLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking domain uniqueness:", error);
+      toast.error("Error checking domain availability. Please try again.");
       setIsLoading(false);
       return;
     }
@@ -79,6 +107,7 @@ function Signup() {
         console.log('Storing user details in Firestore...');
         await setDoc(doc(db, "users", userID), {
           restaurantName: form.restaurantName,
+          domain: form.domain,
           firstName: form.firstName,
           lastName: form.lastName,
           email: form.email,
@@ -156,6 +185,33 @@ function Signup() {
                   required
                   className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
+              </div>
+
+              {/* Domain */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="domain"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Your Domain <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="domain"
+                    name="domain"
+                    placeholder="myindian-delight"
+                    value={form.domain}
+                    onChange={handleInput}
+                    required
+                    className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition pr-20"
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <span className="text-gray-500 text-sm">.aieateasy.com</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  This will be your unique URL: <span className="font-mono text-blue-600">{form.domain || 'your-domain'}.aieateasy.com</span>
+                </p>
               </div>
 
               {/* First & Last Name */}

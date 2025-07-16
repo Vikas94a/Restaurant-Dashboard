@@ -82,14 +82,9 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [generatedPosts, setGeneratedPosts] = useState<MarketingPost[]>([]);
-    const [autoGenerate, setAutoGenerate] = useState(true);
+    const [autoGenerate, setAutoGenerate] = useState(false);
 
-    // Auto-generate posts when component mounts or data changes
-    useEffect(() => {
-        if (autoGenerate && (topSellingItems.length > 0 || weatherData.length > 0 || cityEvents.length > 0)) {
-            generatePosts();
-        }
-    }, [topSellingItems, weatherData, cityEvents, autoGenerate]);
+    // Manual generation only - no auto-generation
 
     // Generate 2 days of posts automatically (first and third day)
     const generatePosts = async () => {
@@ -145,47 +140,38 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
 
     return (
         <div className="space-y-6">
-            {/* Auto-Generation Controls */}
+            {/* Manual Generation Controls */}
             <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">AI Markedsføringspost Generator</h3>
+                    <h3 className="text-lg font-semibold">AI Marketing Post Generator</h3>
                     <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                checked={autoGenerate}
-                                onChange={(e) => setAutoGenerate(e.target.checked)}
-                                className="rounded"
-                            />
-                            <span className="text-sm">Auto-generer</span>
-                        </label>
                         <button
-                            onClick={regeneratePosts}
+                            onClick={generatePosts}
                             disabled={loading}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200"
                         >
-                            Generer på nytt
+                            {loading ? 'Generating...' : 'Generate Posts'}
                         </button>
                     </div>
                 </div>
                 
                 <p className="text-gray-600 mb-4">
-                    Genererer automatisk 2 dagers Facebook markedsføringsposter basert på vær, hendelser og salgsdata. 
-                    Inkluderer også bilde-anbefalinger og ChatGPT-prompts for bildeforbedring.
+                    Generate 2 days of Facebook marketing posts based on weather, events, and sales data. 
+                    Includes image recommendations and ChatGPT prompts for image enhancement.
                 </p>
 
                 {loading && (
                     <div className="text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                        <p className="mt-2 text-gray-600">Genererer din 2-dagers markedsføringsplan med AI...</p>
+                        <p className="mt-2 text-gray-600">Generating your 2-day marketing plan with AI...</p>
                     </div>
                 )}
 
                 {error && (
                     <div className="text-center text-red-600">
-                        <p>Feil: {error}</p>
+                        <p>Error: {error}</p>
                         {error.includes('OpenAI API key not configured') && (
-                            <p className="text-sm mt-2">Vennligst konfigurer din OpenAI API-nøkkel i miljøvariablene.</p>
+                            <p className="text-sm mt-2">Please configure your OpenAI API key in the environment variables.</p>
                         )}
                     </div>
                 )}
@@ -194,29 +180,29 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
             {/* Generated Posts Timeline */}
             {generatedPosts.length > 0 && (
                 <div className="space-y-6">
-                    <h3 className="text-lg font-semibold">2-Dagers Markedsføringsplan</h3>
+                    <h3 className="text-lg font-semibold">2-Day Marketing Plan</h3>
                     {generatedPosts.map((post, index) => (
                         <div key={post.id} className="bg-white rounded-lg shadow p-6">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <h4 className="text-lg font-semibold text-blue-600">{post.day || `Dag ${index + 1}`}</h4>
+                                    <h4 className="text-lg font-semibold text-blue-600">{post.day || `Day ${index + 1}`}</h4>
                                     <p className="text-sm text-gray-500">Facebook Post</p>
                                 </div>
                                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    AUTO-GENERERT
+                                    AI-GENERATED
                                 </span>
                             </div>
 
                             <div className="space-y-4">
                                 {/* Post Title */}
                                 <div>
-                                    <h5 className="font-semibold text-gray-800 mb-2">Tittel:</h5>
+                                    <h5 className="font-semibold text-gray-800 mb-2">Title:</h5>
                                     <p className="text-lg font-medium text-blue-600">{post.title}</p>
                                 </div>
 
                                 {/* Post Content */}
                                 <div>
-                                    <h5 className="font-semibold text-gray-800 mb-2">Innhold:</h5>
+                                    <h5 className="font-semibold text-gray-800 mb-2">Content:</h5>
                                     <div className="bg-gray-50 p-4 rounded-lg">
                                         <pre className="whitespace-pre-wrap text-sm text-gray-800">{post.content}</pre>
                                     </div>
@@ -225,14 +211,14 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
                                 {/* Post Details */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <h5 className="font-semibold text-gray-800 mb-2">Posting Detaljer:</h5>
+                                        <h5 className="font-semibold text-gray-800 mb-2">Posting Details:</h5>
                                         <ul className="space-y-1 text-sm">
-                                            <li><span className="font-medium">Plattform:</span> {post.suggestedPlatforms.join(', ')}</li>
-                                            <li><span className="font-medium">Beste tid:</span> {post.postingTime}</li>
-                                            <li><span className="font-medium">Estimert rekkevidde:</span> {post.estimatedReach}</li>
-                                            <li><span className="font-medium">Betalt reklame:</span> {post.paidPromotion ? 'Anbefalt' : 'Ikke nødvendig'}</li>
+                                            <li><span className="font-medium">Platform:</span> {post.suggestedPlatforms.join(', ')}</li>
+                                            <li><span className="font-medium">Best time:</span> {post.postingTime}</li>
+                                            <li><span className="font-medium">Estimated reach:</span> {post.estimatedReach}</li>
+                                            <li><span className="font-medium">Paid promotion:</span> {post.paidPromotion ? 'Recommended' : 'Not necessary'}</li>
                                             {post.budgetRecommendation && (
-                                                <li><span className="font-medium">Budsjett:</span> {post.budgetRecommendation}</li>
+                                                <li><span className="font-medium">Budget:</span> {post.budgetRecommendation}</li>
                                             )}
                                         </ul>
                                     </div>
@@ -251,7 +237,7 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
 
                                 {/* Call to Action */}
                                 <div>
-                                    <h5 className="font-semibold text-gray-800 mb-2">Handling:</h5>
+                                    <h5 className="font-semibold text-gray-800 mb-2">Call to Action:</h5>
                                     <p className="text-green-600 font-medium">{post.callToAction}</p>
                                 </div>
 

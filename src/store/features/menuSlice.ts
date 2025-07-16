@@ -12,6 +12,7 @@ export interface MenuState {
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
   selectedCategory: string | null;
+  editingCategoryId: string | null; // Track which category is being edited
 }
 
 const initialState: MenuState = {
@@ -19,7 +20,8 @@ const initialState: MenuState = {
   items: [],
   status: 'idle',
   error: null,
-  selectedCategory: null
+  selectedCategory: null,
+  editingCategoryId: null
 };
 
 // Async thunks
@@ -149,6 +151,9 @@ const menuSlice = createSlice({
     },
     clearMenuError: (state) => {
       state.error = null;
+    },
+    setEditingCategory: (state, action: PayloadAction<string | null>) => {
+      state.editingCategoryId = action.payload;
     }
   },
   extraReducers: (builder) => {
@@ -253,5 +258,5 @@ const menuSlice = createSlice({
   }
 });
 
-export const { setSelectedCategory, clearMenuError } = menuSlice.actions;
+export const { setSelectedCategory, clearMenuError, setEditingCategory } = menuSlice.actions;
 export default menuSlice.reducer; 

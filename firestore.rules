@@ -20,10 +20,17 @@ service cloud.firestore {
         !exists(/databases/$(database)/documents/restaurants/$(request.resource.data.ownerId));
     }
 
+    // Helper function to check if domain is unique
+    function isDomainUnique(domain) {
+      return !exists(/databases/$(database)/documents/restaurants/$(domain));
+    }
+
     // Restaurants collection rules
     match /restaurants/{restaurantId} {
       allow read: if true;  // Anyone can read restaurant details
-      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;  // User can create their own restaurant
+      allow create: if isAuthenticated() && 
+        request.resource.data.ownerId == request.auth.uid && 
+        request.resource.data.domain != null;  // User can create their own restaurant with domain
       allow update, delete: if isRestaurantOwner(restaurantId);  // Only owner can update/delete
 
       // Orders subcollection rules

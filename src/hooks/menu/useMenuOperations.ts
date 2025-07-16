@@ -94,7 +94,8 @@ export const useMenuOperations = ({
         const categoryData = {
           categoryName: category.categoryName,
           categoryDescription: category.categoryDescription || "",
-          items: itemsForFirestore
+          items: itemsForFirestore,
+          order: categoryIndex // Add order field for new categories
         };
 
         const docRef = await addDoc(collection(db, "restaurants", restaurantId, "menu"), categoryData);
@@ -201,10 +202,41 @@ export const useMenuOperations = ({
     });
   }, [restaurantId, setError, setLoading, setConfirmDialog]);
 
+  const saveCategoryOrder = useCallback(async (
+    categories: Category[]
+  ): Promise<void> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Update each category with its new order
+      const updatePromises = categories.map((category, index) => {
+        if (category.docId) {
+          const categoryRef = doc(db, "restaurants", restaurantId, "menu", category.docId);
+          return updateDoc(categoryRef, {
+            order: index
+          });
+        }
+        return Promise.resolve();
+      });
+
+      await Promise.all(updatePromises);
+      toast.success("Category order saved successfully");
+    } catch (error) {
+      console.error("[MenuEditor] Error saving category order:", error);
+      const errorMessage = getMenuEditorErrorMessage(error);
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [restaurantId, setError, setLoading]);
+
   return {
     cleanItemForFirestore,
     handleSaveCategory,
     handleDeleteCategory,
     handleDeleteItem,
+    saveCategoryOrder,
   };
 }; 

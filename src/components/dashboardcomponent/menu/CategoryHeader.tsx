@@ -1,4 +1,7 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store/store";
+import { setEditingCategory } from "@/store/features/menuSlice";
 import {
   faEdit,
   faTrash,
@@ -43,20 +46,63 @@ export default function CategoryHeader({
   handleCategoryClick,
   isExpanded,
 }: CategoryHeaderProps) {
+  const dispatch = useDispatch();
+  const editingCategoryId = useSelector((state: RootState) => state.menu.editingCategoryId);
+  const isEditing = editingCategoryId === (category.docId || category.frontendId);
+  console.log('CategoryHeader render:', category.categoryName, 'isEditing:', isEditing, 'editingCategoryId:', editingCategoryId, 'categoryId:', category.docId || category.frontendId);
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const categoryId = category.docId || category.frontendId;
+    console.log('Edit clicked for category:', categoryId, 'Current editing:', editingCategoryId, 'Will set to:', isEditing ? null : categoryId);
+    if (categoryId) {
+      dispatch(setEditingCategory(isEditing ? null : categoryId));
+      toggleEditCategory(categoryId);
+    }
+  };
+
+  const handleSaveClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const categoryId = category.docId || category.frontendId;
+    if (categoryId) {
+      await handleSaveCategory(categoryId);
+      dispatch(setEditingCategory(null));
+    }
+  };
+
+  const handleDeleteClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const categoryId = category.docId || category.frontendId;
+    if (!categoryId) {
+      console.error("Cannot delete category: No valid ID found");
+      return;
+    }
+    try {
+      if (window.confirm("Are you sure you want to delete this category? This action cannot be undone.")) {
+        await handleDeleteCategory(categoryId);
+      }
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast.error("Failed to delete category. Please check your permissions and try again.");
+    }
+  };
+
   return (
     <div
       className={`w-full px-4 py-3 ${
-        category.isEditing
+        isEditing
           ? "bg-gray-50 border-b border-gray-200"
           : "bg-white border-l-4 border-orange-400"
       } flex justify-between items-center ${
-        !category.isEditing ? "cursor-pointer hover:bg-gray-50" : ""
+        !isEditing ? "cursor-pointer hover:bg-gray-50" : ""
       } transition-colors duration-150`}
-      onClick={!category.isEditing ? handleCategoryClick : undefined}
+      onClick={!isEditing ? handleCategoryClick : undefined}
     >
-      {category.isEditing ? (
+      {isEditing ? (
         <div className="w-full p-2 mr-3">
-          {/* Category Name Input */}
           <div className="w-full mb-4">
             <label className="block text-xs font-semibold text-gray-600 mb-1">
               Category Name*
@@ -65,9 +111,10 @@ export default function CategoryHeader({
               type="text"
               name="categoryName"
               value={category.categoryName}
-              onChange={(e) =>
-                handleCategoryChange(catIndex, "categoryName", e.target.value)
-              }
+              onChange={(e) => {
+                e.stopPropagation();
+                handleCategoryChange(catIndex, "categoryName", e.target.value);
+              }}
               className="text-base font-medium px-5 py-2 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/50 w-full shadow-sm outline-none transition-all"
               placeholder="Category Name"
               required
@@ -79,17 +126,17 @@ export default function CategoryHeader({
             </div>
           </div>
 
-          {/* Category Description Input */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600">
+            <label className="block text-xs font-semibold text-gray-600 mb-1">
               Description
             </label>
             <textarea
               name="categoryDescription"
               value={category.categoryDescription || ""}
-              onChange={(e) =>
-                handleCategoryChange(catIndex, "categoryDescription", e.target.value)
-              }
+              onChange={(e) => {
+                e.stopPropagation();
+                handleCategoryChange(catIndex, "categoryDescription", e.target.value);
+              }}
               className="text-sm text-gray-700 p-1 border border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/50 w-full shadow-sm resize-none outline-none transition-all"
               placeholder="Category Description (optional)"
               rows={2}
@@ -97,46 +144,24 @@ export default function CategoryHeader({
               onClick={(e) => e.stopPropagation()}
             />
             <div className="text-xs text-gray-500 mt-1 text-right pr-1">
-              {(category.categoryDescription || "").length} /{" "}
-              {CHARACTER_LIMITS.CATEGORY_DESCRIPTION}
+              {(category.categoryDescription || "").length} / {CHARACTER_LIMITS.CATEGORY_DESCRIPTION}
             </div>
           </div>
         </div>
       ) : (
         <div className="flex-1 flex items-start min-w-0">
-          {/* Icon */}
           <div className="flex-shrink-0 mr-3 w-8 h-8 bg-primary bg-opacity-10 rounded-full flex items-center justify-center text-primary">
             <FontAwesomeIcon icon={faUtensils} className="h-4 w-4" />
           </div>
 
-          {/* Display Info */}
-          <div className="flex-grow min-w-0 space-y-1">
-            <input
-              type="text"
-              value={category.categoryName || ""}
-              onChange={(e) =>
-                handleCategoryChange(catIndex, "categoryName", e.target.value)
-              }
-              className="text-sm font-semibold px-2 py-1 border border-gray-200 rounded-md w-full focus:ring-primary focus:border-primary shadow-sm"
-              placeholder="Category Name"
-              maxLength={CHARACTER_LIMITS.CATEGORY_NAME}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <textarea
-              value={category.categoryDescription || ""}
-              onChange={(e) =>
-                handleCategoryChange(catIndex, "categoryDescription", e.target.value)
-              }
-              className="text-xs px-2 py-1 border border-gray-200 rounded-md w-full focus:ring-primary focus:border-primary resize-none shadow-sm"
-              placeholder="Category Description (optional)"
-              rows={1}
-              maxLength={CHARACTER_LIMITS.CATEGORY_DESCRIPTION}
-              onClick={(e) => e.stopPropagation()}
-            />
+          <div className="flex-grow min-w-0">
+            <h3 className="text-base font-semibold text-gray-800 mb-1">{category.categoryName}</h3>
+            {category.categoryDescription && (
+              <p className="text-sm text-gray-600">{category.categoryDescription}</p>
+            )}
           </div>
 
-          {/* Item Count and Toggle */}
-          <div className="ml-3 flex-shrink-0 flex items-center bg-gray-50 px-2 py-1 rounded-md text-gray-600 border border-gray-200 text-xs font-medium">
+          <div className="flex items-center text-sm text-gray-500 ml-4">
             <span>{category.items.length}</span>
             <span className="ml-1">item{category.items.length !== 1 && "s"}</span>
             <FontAwesomeIcon
@@ -147,15 +172,14 @@ export default function CategoryHeader({
         </div>
       )}
 
-      {/* Action buttons container */}
       <div
         className="flex items-center space-x-2 pl-2 flex-shrink-0"
-        onClick={(e) => e.stopPropagation()} // Prevent actions from triggering category click
+        onClick={(e) => e.stopPropagation()}
       >
-        {category.isEditing ? (
+        {isEditing ? (
           <>
             <button
-              onClick={() => handleSaveCategory(category.docId || category.frontendId!)}
+              onClick={handleSaveClick}
               className="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/70 focus:ring-offset-2 transition-colors duration-200 flex items-center shadow-sm disabled:opacity-75"
               disabled={loading}
             >
@@ -164,7 +188,7 @@ export default function CategoryHeader({
             </button>
             {category.docId && (
               <button
-                onClick={() => toggleEditCategory(category.docId || category.frontendId!)}
+                onClick={handleEditClick}
                 className="p-2 text-gray-500 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-gray-500/70 focus:ring-offset-1 transition-colors duration-200 disabled:opacity-75"
                 disabled={loading}
                 title="Cancel"
@@ -176,7 +200,7 @@ export default function CategoryHeader({
         ) : (
           <>
             <button
-              onClick={() => toggleEditCategory(category.docId || category.frontendId!)}
+              onClick={handleEditClick}
               className="p-2 text-blue-600 hover:bg-blue-50 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-600/70 focus:ring-offset-1 transition-colors duration-200 disabled:opacity-75"
               disabled={loading}
               title="Edit Category"
@@ -184,27 +208,7 @@ export default function CategoryHeader({
               <FontAwesomeIcon icon={faEdit} className="h-5 w-5" />
             </button>
             <button
-              onClick={async () => {
-                const categoryId = category.docId || category.frontendId;
-                if (!categoryId) {
-                  console.error("Cannot delete category: No valid ID found");
-                  return;
-                }
-                try {
-                  if (
-                    window.confirm(
-                      "Are you sure you want to delete this category? This action cannot be undone."
-                    )
-                  ) {
-                    await handleDeleteCategory(categoryId);
-                  }
-                } catch (error) {
-                  console.error("Error deleting category:", error);
-                  toast.error(
-                    "Failed to delete category. Please check your permissions and try again."
-                  );
-                }
-              }}
+              onClick={handleDeleteClick}
               className="p-2 text-red-600 hover:bg-red-50 rounded-full focus:outline-none focus:ring-2 focus:ring-red-600/70 focus:ring-offset-1 transition-colors duration-200 disabled:opacity-75"
               disabled={loading}
               title="Delete Category"
