@@ -11,7 +11,6 @@ export async function migrateMenuCategoriesOrder(restaurantId: string): Promise<
     const querySnapshot = await getDocs(menuRef);
     
     if (querySnapshot.empty) {
-      console.log('No menu categories found to migrate');
       return;
     }
 
@@ -30,9 +29,7 @@ export async function migrateMenuCategoriesOrder(restaurantId: string): Promise<
     });
 
     await Promise.all(updatePromises);
-    console.log(`Successfully migrated ${querySnapshot.docs.length} menu categories`);
-  } catch (error) {
-    console.error('Error migrating menu categories order:', error);
+    } catch (error) {
     throw error;
   }
 }
@@ -67,9 +64,7 @@ export async function ensureMenuCategoriesOrder(restaurantId: string): Promise<v
     });
 
     await Promise.all(updatePromises);
-    console.log('Menu categories order verified and updated');
-  } catch (error) {
-    console.error('Error ensuring menu categories order:', error);
+    } catch (error) {
     throw error;
   }
 } 

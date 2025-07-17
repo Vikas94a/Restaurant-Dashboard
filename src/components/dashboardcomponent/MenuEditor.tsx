@@ -134,7 +134,6 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
       // Refresh the menu data
       window.location.reload();
     } catch (error) {
-      console.error("Error fixing category order:", error);
       toast.error("Failed to fix category order");
     }
   };
@@ -464,7 +463,6 @@ function MenuHeader({
         await navigator.clipboard.writeText(orderLink);
         toast.success("Order link copied to clipboard!");
       } catch (err) {
-        console.error("Failed to copy link:", err);
         toast.error("Failed to copy link.");
       }
     }

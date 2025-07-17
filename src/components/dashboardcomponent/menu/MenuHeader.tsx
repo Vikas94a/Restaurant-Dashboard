@@ -30,7 +30,6 @@ const MenuHeader: React.FC<MenuHeaderProps> = ({
         await navigator.clipboard.writeText(orderLink);
         toast.success("Order link copied to clipboard!");
       } catch (err) {
-        console.error("Failed to copy link:", err);
         toast.error("Failed to copy link.");
       }
     }

@@ -51,8 +51,7 @@ export default function MenuPage() {
 
   const handleAddToCart = (item: NestedMenuItem) => {
     // TODO: Implement cart functionality
-    console.log('Adding to cart:', item);
-  };
+    };
 
   if (loading) {
     return <div className="p-4">Loading menu...</div>;

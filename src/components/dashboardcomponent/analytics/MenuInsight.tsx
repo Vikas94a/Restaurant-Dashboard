@@ -83,8 +83,7 @@ export function MenuInsight({ menuItems, orderHistory }: MenuInsightProps) {
           }, {} as Record<string, number>)
         }));
       } catch (err) {
-        console.error('Error fetching sales data:', err);
-      } finally {
+        } finally {
         setLoading(false);
       }
     };

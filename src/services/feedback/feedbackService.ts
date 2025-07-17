@@ -85,9 +85,7 @@ export const sendFeedbackEmail = async (order: Order): Promise<void> => {
       throw new Error('Failed to send feedback email');
     }
 
-    console.log(`Feedback email sent for order ${order.id}`);
-  } catch (error) {
-    console.error('Error sending feedback email:', error);
+    } catch (error) {
     throw error;
   }
 }; 

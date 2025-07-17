@@ -61,8 +61,7 @@ const MenuItemForm: React.FC<MenuItemFormProps> = ({
       onCancel();
     } catch (error) {
       // Error is handled by the reducer
-      console.error('Failed to save menu item:', error);
-    }
+      }
   };
 
   // Handle input changes

@@ -86,7 +86,6 @@ export default function MenuPage() {
         setRestaurantId(restaurantDoc.id);
         setRestaurantName(data.name || data.restaurantType || "Restaurant");
       } catch (error) {
-        console.error("Error fetching restaurant details:", error);
         setError("Error Loading Restaurant");
         setRestaurantName("Error Loading Restaurant");
       } finally {

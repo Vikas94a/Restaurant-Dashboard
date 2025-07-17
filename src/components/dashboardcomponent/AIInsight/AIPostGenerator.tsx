@@ -126,7 +126,6 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
             }
 
         } catch (err) {
-            console.error("Error generating posts:", err);
             setError(err instanceof Error ? err.message : "Failed to generate posts");
         } finally {
             setLoading(false);

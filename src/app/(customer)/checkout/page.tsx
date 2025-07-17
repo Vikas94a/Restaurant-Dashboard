@@ -10,7 +10,6 @@ import { CustomerFormData, RestaurantDetails } from '@/types/checkout';
 import CustomerForm from '@/components/checkout/CustomerForm';
 import OrderSummary from '@/components/checkout/OrderSummary';
 import PickupOptions from '@/components/checkout/PickupOptions';
-import { useOrderStatus } from '@/hooks/useOrderStatus';
 import { useRestaurantTiming } from '@/hooks/useRestaurantTiming';
 import { useOrderSubmission } from '@/hooks/useOrderSubmission';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -36,7 +35,7 @@ export default function CheckoutPage() {
 
   // Custom hooks
   const timing = useRestaurantTiming({ restaurantDetails });
-  const { isSubmitting, orderId, localPlacedOrder, submitOrder, resetOrder } = useOrderSubmission({
+  const { isSubmitting, localPlacedOrder, submitOrder, resetOrder } = useOrderSubmission({
     restaurantId: restaurantId || '',
     pickupOption: timing.pickupOption,
     pickupDate: timing.pickupDate,
@@ -44,12 +43,6 @@ export default function CheckoutPage() {
     isAsapAvailable: timing.isAsapAvailable,
     isDateOpen: timing.isDateOpen,
     getPickupTimeSlots: timing.getPickupTimeSlots
-  });
-
-  const { placedOrder } = useOrderStatus({ 
-    orderId: orderId, 
-    restaurantId: restaurantId,
-    shouldListen: showOrderStatus
   });
 
   // Fetch restaurant details
@@ -73,8 +66,7 @@ export default function CheckoutPage() {
           });
         }
       } catch (error) {
-        console.error('Error fetching restaurant details:', error);
-        toast.error("Failed to load restaurant details");
+        toast.error("Kunne ikke laste restaurantdetaljer");
       } finally {
         setIsLoading(false);
       }
@@ -114,8 +106,8 @@ export default function CheckoutPage() {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Restaurant Not Found</h2>
-          <p className="text-gray-600">Unable to load restaurant details. Please try again later.</p>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">Restaurant ikke funnet</h2>
+          <p className="text-gray-600">Kunne ikke laste restaurantdetaljer. Vennligst prøv igjen senere.</p>
         </div>
       </div>
     );
@@ -126,7 +118,7 @@ export default function CheckoutPage() {
       <div className="max-w-screen-lg mx-auto px-4 sm:px-6 lg:px-8">
         <div className="lg:grid lg:grid-cols-2 lg:gap-8">
           <div className="bg-white shadow-md rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Your Details</h2>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Dine detaljer</h2>
             <form onSubmit={handleSubmit} className="space-y-5">
               <CustomerForm formData={formData} setFormData={setFormData} />
               
@@ -153,17 +145,13 @@ export default function CheckoutPage() {
                     : 'bg-primary hover:bg-primary-dark cursor-pointer'
                 }`}
               >
-                {isSubmitting ? 'Placing Order...' : 'Place Order'}
+                {isSubmitting ? 'Plasserer bestilling...' : 'Plasser bestilling'}
               </button>
             </form>
           </div>
           
           <OrderSummary 
             cart={cart} 
-            handleSubmit={handleSubmit} 
-            pickupOption={timing.pickupOption} 
-            formData={formData} 
-            isAsapAvailable={timing.isAsapAvailable} 
           />
         </div>
         
@@ -181,22 +169,22 @@ export default function CheckoutPage() {
                   <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
                     <FontAwesomeIcon icon={faCheckCircle} className="w-8 h-8 text-green-500" />
                   </div>
-                  <h1 className="text-2xl font-bold text-white mb-2">Order Received!</h1>
-                  <p className="text-green-100">Your order has been received by the restaurant</p>
+                  <h1 className="text-2xl font-bold text-white mb-2">Bestilling mottatt!</h1>
+                  <p className="text-green-100">Din bestilling er mottatt av restauranten</p>
                 </div>
 
                 <div className="p-6">
                   <div className="text-center space-y-4">
                     <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-2">What's Next?</h3>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">Hva skjer nå?</h3>
                       <div className="space-y-2 text-sm text-blue-800">
-                        <p>✓ Restaurant will confirm your order</p>
+                        <p>✓ Restauranten vil bekrefte din bestilling</p>
                         {timing.pickupOption === 'asap' ? (
-                          <p>✓ Pickup time will be notified by email</p>
+                          <p>✓ Hentetid vil bli varslet via e-post</p>
                         ) : (
-                          <p>✓ Order scheduled for {timing.pickupTime}</p>
+                          <p>✓ Bestilling planlagt for {timing.pickupTime}</p>
                         )}
-                        <p>✓ You'll receive email confirmation</p>
+                        <p>✓ Du vil motta e-postbekreftelse</p>
                       </div>
                     </div>
 
@@ -204,7 +192,7 @@ export default function CheckoutPage() {
                       onClick={onReturnToMenu}
                       className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-6 rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-opacity-50"
                     >
-                      Back to Menu
+                      Tilbake til meny
                     </button>
                   </div>
                 </div>

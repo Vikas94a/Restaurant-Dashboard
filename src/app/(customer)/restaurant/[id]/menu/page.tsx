@@ -75,7 +75,6 @@ export default function MenuPage() {
           setRestaurantName("Restaurant Not Found");
         }
       } catch (error) {
-        console.error("Error fetching restaurant details:", error);
         setRestaurantName("Error Loading Restaurant");
       } finally {
         setIsLoading(false);

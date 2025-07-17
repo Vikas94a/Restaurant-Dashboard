@@ -3,21 +3,17 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  subscribeToRestaurantOrders,
   updateOrderStatus,
-  clearOrders,
-  setOrders,
 } from "@/store/features/orderSlice";
 import { Order } from '@/types/checkout';
 import { CartItem as OrderItem } from '@/types/cart';
 import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faClock, faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faClock, faCheck, faXmark, faReceipt, faExclamationTriangle, faCheckCircle } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { RootState } from "@/store/store";
 import { useRouter } from "next/navigation";
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '@/firebase/firebaseConfig';
+import { useSoundNotification } from "@/providers/SoundNotificationProvider";
 import OrderNavBar from '@/components/Orders/OrderNavBar';
 import OrderList from '@/components/Orders/OrderList';
 
@@ -34,73 +30,23 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [estimatedTimes, setEstimatedTimes] = useState<Record<string, string>>({});
   const [selectedTab, setSelectedTab] = useState<'active' | 'completed' | 'rejected'>('active');
+  
+  // Use global sound notification
+  const { SoundControls, stopRepeatingSound, debugAudio } = useSoundNotification();
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-
     if (!user) {
-      toast.error("Please sign in to view orders");
+      toast.error("Vennligst logg inn for å se bestillinger");
       router.replace("/login");
       return;
     }
 
     if (restaurantDetails?.restaurantId) {
-      unsubscribe = dispatch(
-        subscribeToRestaurantOrders(restaurantDetails.restaurantId)
-      );
+      setLoading(false);
     } else {
-      dispatch(clearOrders());
-    }
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-      dispatch(clearOrders());
-    };
-  }, [dispatch, restaurantDetails?.restaurantId, user, router]);
-
-  useEffect(() => {
-    if (!restaurantDetails?.restaurantId) {
       setLoading(false);
-      return;
     }
-
-    const ordersRef = collection(db, 'restaurants', restaurantDetails.restaurantId, 'orders');
-    const q = query(ordersRef, where('restaurantId', '==', restaurantDetails.restaurantId));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ordersData = snapshot.docs.map(doc => {
-        const data = doc.data();
-        
-        // Convert Timestamp fields to strings
-        const convertTimestamp = (timestamp: any) => {
-          if (timestamp && typeof timestamp.toDate === 'function') {
-            return timestamp.toDate().toISOString();
-          }
-          return null;
-        };
-
-        return {
-          id: doc.id,
-          restaurantId: data.restaurantId,
-          customerDetails: data.customerDetails,
-          items: data.items || [],
-          total: data.total,
-          status: data.status,
-          pickupTime: data.pickupTime,
-          pickupOption: data.pickupOption,
-          estimatedPickupTime: data.estimatedPickupTime,
-          createdAt: convertTimestamp(data.createdAt),
-          updatedAt: convertTimestamp(data.updatedAt),
-          completedAt: convertTimestamp(data.completedAt)
-        } as Order;
-      });
-      dispatch(clearOrders());
-      dispatch(setOrders(ordersData));
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [dispatch, restaurantDetails?.restaurantId]);
+  }, [restaurantDetails?.restaurantId, user, router]);
 
   const handleOrderStatus = async (
     orderId: string,
@@ -108,7 +54,7 @@ export default function OrdersPage() {
   ) => {
     try {
       if (!restaurantDetails?.restaurantId) {
-        toast.error("Restaurant ID not found");
+        toast.error("Restaurant-ID ikke funnet");
         return;
       }
 
@@ -117,7 +63,7 @@ export default function OrdersPage() {
       const estimatedPickupTime = isAsapOrder && newStatus === "accepted" ? estimatedTimes[orderId] : undefined;
 
       if (isAsapOrder && newStatus === "accepted" && (!estimatedPickupTime || estimatedPickupTime.trim() === "")) {
-        toast.error("Please provide an estimated pickup time for ASAP orders.");
+        toast.error("Vennligst oppgi estimert hentetid for ASAP-bestillinger.");
         return;
       }
 
@@ -130,16 +76,21 @@ export default function OrdersPage() {
         })
       ).unwrap();
 
+      // Stop sound when order is processed
+      if (newStatus === 'accepted' || newStatus === 'rejected') {
+        stopRepeatingSound();
+      }
+
       // Show success message based on the action
       if (newStatus === 'accepted') {
-        toast.success(`Order accepted! Customer has been notified via email.`);
+        toast.success(`Bestilling akseptert! Kunden har blitt varslet via e-post.`);
       } else if (newStatus === 'rejected') {
-        toast.success(`Order rejected! Customer has been notified via email.`);
+        toast.success(`Bestilling avvist! Kunden har blitt varslet via e-post.`);
       } else if (newStatus === 'completed') {
-        toast.success(`Order marked as completed!`);
+        toast.success(`Bestilling markert som fullført!`);
       }
     } catch {
-      toast.error("Failed to update order status");
+      toast.error("Kunne ikke oppdatere bestillingsstatus");
     }
   };
 
@@ -148,24 +99,34 @@ export default function OrdersPage() {
   };
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner />
+          <p className="mt-4 text-gray-600">Laster bestillinger...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!restaurantDetails) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 p-6">
-        <div className="bg-white rounded shadow p-6 max-w-md w-full text-center">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FontAwesomeIcon icon={faExclamationTriangle} className="w-8 h-8 text-white" />
+          </div>
           <h2 className="text-xl font-semibold text-gray-800 mb-2">
-            No Restaurant Found
+            Ingen restaurant funnet
           </h2>
-          <p className="text-gray-600 mb-4">
-            Please set up your restaurant details first.
+          <p className="text-gray-600 mb-6">
+            Vennligst konfigurer restaurantdetaljene dine først.
           </p>
           <button
             onClick={() => router.push("/dashboard/setup")}
-            className="bg-primary text-white px-4 py-2 rounded hover:bg-primary-dark"
+            className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-xl font-medium hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
-            Go to Setup
+            Gå til oppsett
           </button>
         </div>
       </div>
@@ -188,25 +149,89 @@ export default function OrdersPage() {
   if (selectedTab === 'rejected') displayedOrders = rejectedOrders;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-orange-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Order Management
-            </h1>
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center mr-4">
+                <FontAwesomeIcon icon={faReceipt} className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Bestillingshåndtering
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Administrer og spore alle bestillinger
+                </p>
+              </div>
+            </div>
             <div className="flex items-center space-x-4">
+              {/* Global Sound Controls */}
+              <SoundControls />
+
+              {/* Debug Button */}
+              <button
+                onClick={debugAudio}
+                className="p-3 bg-purple-100 text-purple-600 rounded-xl hover:bg-purple-200 transition-all duration-200"
+                title="Debug Audio"
+              >
+                <FontAwesomeIcon icon={faExclamationTriangle} className="w-5 h-5" />
+              </button>
+
               {status === 'loading' && orders.length > 0 && (
-                <span className="text-sm text-gray-500 flex items-center">
+                <div className="flex items-center bg-orange-100 text-orange-800 px-4 py-2 rounded-lg">
                   <LoadingSpinner />
-                  Updating orders...
-                </span>
+                  <span className="ml-2 text-sm font-medium">Oppdaterer bestillinger...</span>
+                </div>
               )}
             </div>
           </div>
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-orange-100 p-6">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mr-4">
+                <FontAwesomeIcon icon={faClock} className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Aktive bestillinger</p>
+                <p className="text-2xl font-bold text-gray-900">{activeOrders.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-orange-100 p-6">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                <FontAwesomeIcon icon={faCheckCircle} className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Fullførte bestillinger</p>
+                <p className="text-2xl font-bold text-gray-900">{completedOrders.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-orange-100 p-6">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center mr-4">
+                <FontAwesomeIcon icon={faXmark} className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Avviste bestillinger</p>
+                <p className="text-2xl font-bold text-gray-900">{rejectedOrders.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <OrderNavBar selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
         <OrderList
           orders={displayedOrders}

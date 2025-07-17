@@ -49,13 +49,10 @@ export default function CategoryHeader({
   const dispatch = useDispatch();
   const editingCategoryId = useSelector((state: RootState) => state.menu.editingCategoryId);
   const isEditing = editingCategoryId === (category.docId || category.frontendId);
-  console.log('CategoryHeader render:', category.categoryName, 'isEditing:', isEditing, 'editingCategoryId:', editingCategoryId, 'categoryId:', category.docId || category.frontendId);
-
   const handleEditClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const categoryId = category.docId || category.frontendId;
-    console.log('Edit clicked for category:', categoryId, 'Current editing:', editingCategoryId, 'Will set to:', isEditing ? null : categoryId);
     if (categoryId) {
       dispatch(setEditingCategory(isEditing ? null : categoryId));
       toggleEditCategory(categoryId);
@@ -77,7 +74,6 @@ export default function CategoryHeader({
     e.stopPropagation();
     const categoryId = category.docId || category.frontendId;
     if (!categoryId) {
-      console.error("Cannot delete category: No valid ID found");
       return;
     }
     try {
@@ -85,7 +81,6 @@ export default function CategoryHeader({
         await handleDeleteCategory(categoryId);
       }
     } catch (error) {
-      console.error("Error deleting category:", error);
       toast.error("Failed to delete category. Please check your permissions and try again.");
     }
   };

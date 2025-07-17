@@ -3,6 +3,7 @@
 import Sidebar from "@/components/Sidebar";
 import { AuthGuard } from "@/providers/guards/AuthGuard";
 import { ProfileCompletionGuard } from "@/providers/guards/ProfileCompletionGuard";
+import { useGlobalOrderListener } from "@/hooks/useGlobalOrderListener";
 import { useAppSelector } from "@/store/hooks";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -20,6 +21,9 @@ export default function DashboardLayout({
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Initialize global order listener for sound notifications
+  useGlobalOrderListener();
 
   // Check if restaurant details are missing
   const hasRestaurantDetails = restaurantDetails?.streetName && 

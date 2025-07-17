@@ -14,7 +14,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ cart }) => {
   // Calculate MVA (VAT) - 15% of subtotal
   const subtotal = cart.items.reduce((sum, item) => sum + (item.itemPrice * item.quantity), 0);
   const mva = subtotal * 0.15; // 15% MVA
-  const total = subtotal + mva;
+  const total = subtotal ;
 
   return (
     <div className="space-y-4">
@@ -136,21 +136,6 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ cart }) => {
                 <p className="text-xs text-green-600">Cash or card accepted</p>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Order Info */}
-      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-        <div className="flex items-start">
-          <FontAwesomeIcon icon={faInfoCircle} className="w-4 h-4 text-blue-500 mr-2 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">Order Information</p>
-            <ul className="space-y-1 text-xs">
-              <li>• Orders are prepared fresh when you arrive</li>
-              <li>• Please bring your order confirmation</li>
-              <li>• Payment is due at pickup</li>
-            </ul>
           </div>
         </div>
       </div>

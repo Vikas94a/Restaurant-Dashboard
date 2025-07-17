@@ -105,7 +105,6 @@ export const WeatherData: React.FC<WeatherDataProps> = ({ location, onWeatherDat
             }
             
         } catch (err) {
-            console.error("Failed to fetch weather data", err);
             setError(err instanceof Error ? err.message : "Failed to fetch weather data");
         } finally {
             setLoading(false);

@@ -16,11 +16,15 @@ import {
   faTimes,
   faChevronLeft,
   faChevronRight,
+  faCalendarAlt,
+  faVolumeUp,
+  faVolumeMute,
 } from "@fortawesome/free-solid-svg-icons";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { logout } from "@/store/features/authSlice";
 import { useRouter } from "next/navigation";
 import { Button } from "@headlessui/react";
+import { useSoundNotification } from "@/providers/SoundNotificationProvider";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -34,6 +38,7 @@ const Sidebar = ({ isOpen = true, onToggle, isMobile = false, onCollapseChange }
   const dispatch = useAppDispatch();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { soundEnabled, toggleSound } = useSoundNotification();
 
   // Handle window resize for mobile responsiveness
   useEffect(() => {
@@ -60,8 +65,7 @@ const Sidebar = ({ isOpen = true, onToggle, isMobile = false, onCollapseChange }
       // Force a hard refresh to clear all state
       window.location.href = '/';
     } catch (error) {
-      console.error('Error during sign out:', error);
-    }
+      }
   };
 
   const toggleCollapse = () => {
@@ -195,6 +199,23 @@ const Sidebar = ({ isOpen = true, onToggle, isMobile = false, onCollapseChange }
               </Link>
             </li>
 
+            {/* Reservations */}
+            <li>
+              <Link
+                href="/dashboard/reservations"
+                className={`flex items-center gap-3 py-2.5 rounded-lg text-gray-700 hover:bg-orange-100 hover:text-orange-700 transition duration-150 ease-in-out group ${
+                  isCollapsed ? 'px-2 justify-center' : 'px-4'
+                }`}
+              >
+                <FontAwesomeIcon
+                  icon={faCalendarAlt}
+                  className="w-5 h-5 text-gray-400 group-hover:text-orange-600 transition-colors duration-150 ease-in-out flex-shrink-0"
+                  aria-hidden="true"
+                />
+                {(!isCollapsed || isMobile) && <span>Reservations</span>}
+              </Link>
+            </li>
+
             {/* Analytics */}
             <li>
               <Link
@@ -264,6 +285,25 @@ const Sidebar = ({ isOpen = true, onToggle, isMobile = false, onCollapseChange }
             </li>
           </ul>
         </nav>
+
+        {/* Sound Controls */}
+        <div className={`py-2 border-t border-gray-200 ${
+          isCollapsed ? 'px-2' : 'px-4'
+        }`}>
+          <Button
+            onClick={toggleSound}
+            className={`w-full flex items-center gap-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition duration-150 ease-in-out group ${
+              isCollapsed ? 'px-2 justify-center' : 'px-4'
+            }`}
+          >
+                         <FontAwesomeIcon
+               icon={soundEnabled ? faVolumeUp : faVolumeMute}
+               className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors duration-150 ease-in-out flex-shrink-0"
+               aria-hidden="true"
+             />
+             {(!isCollapsed || isMobile) && <span>Sound: {soundEnabled ? 'On' : 'Off'}</span>}
+          </Button>
+        </div>
 
         {/* Sign Out Button */}
         <div className={`py-2 border-t border-gray-200 ${

@@ -150,7 +150,6 @@ export const useRestaurantSetup = ({
 
       toast.success("Restaurant details updated successfully!");
     } catch (error) {
-      console.error("Error updating restaurant:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to update restaurant details";
       toast.error(errorMessage);
     } finally {

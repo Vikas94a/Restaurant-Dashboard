@@ -24,8 +24,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    console.log('Setting up auth state listener');
-    
     // Clear any existing persisted data
     const clearPersistedData = () => {
       // Clear localStorage items
@@ -36,8 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Set up auth state listener
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user ? 'User logged in' : 'No user');
-      
       if (!user) {
         // If no user, clear all persisted data
         clearPersistedData();
@@ -49,7 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await user.getIdToken(true);
           setUser(user);
         } catch (error) {
-          console.error('Session validation failed:', error);
           // If session is invalid, sign out
           await signOut(auth);
           clearPersistedData();
@@ -71,10 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (expirationTime && expirationTime - currentTime < 300) { // 5 minutes
             // Token is about to expire, refresh it
             await user.getIdToken(true);
-            console.log('Token refreshed successfully');
-          }
+            }
         } catch (error) {
-          console.error('Error refreshing token:', error);
           // If token refresh fails, sign out
           await signOut(auth);
           clearPersistedData();
@@ -87,7 +80,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set loading to false after a timeout if auth state hasn't changed
     const timeoutId = setTimeout(() => {
       if (loading) {
-        console.log('Auth state timeout - setting loading to false');
         setLoading(false);
       }
     }, 2000);

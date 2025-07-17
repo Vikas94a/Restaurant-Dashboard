@@ -146,8 +146,6 @@ export default function CheckoutForm({ isOpen, onClose, restaurantHours }: Check
         // You might want to add restaurant ID here
     };
 
-    console.log('Submitting order:', orderData);
-
     try {
       // Here you would typically send the order to your backend
       // For now, we'll just show a success message
@@ -159,7 +157,6 @@ export default function CheckoutForm({ isOpen, onClose, restaurantHours }: Check
       // Close the form
       onClose();
     } catch (error) {
-      console.error('Error placing order:', error);
       toast.error('Failed to place order. Please try again.');
     }
   };

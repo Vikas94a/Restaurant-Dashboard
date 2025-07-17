@@ -167,7 +167,6 @@ Return the response as a JSON array with exactly 2 posts.`;
                 throw new Error('No JSON array found in response');
             }
         } catch (parseError) {
-            console.error('JSON parsing error:', parseError);
             // If JSON parsing fails, create fallback posts in Norwegian
             parsedResponse = [
                 {
@@ -218,7 +217,6 @@ Return the response as a JSON array with exactly 2 posts.`;
         });
 
     } catch (error) {
-        console.error('Error generating marketing posts:', error);
         return NextResponse.json(
             { error: 'Failed to generate marketing posts' },
             { status: 500 }

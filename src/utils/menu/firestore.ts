@@ -60,7 +60,6 @@ export async function fetchMenuData(restaurantId: string): Promise<Category[]> {
 
     return categories;
   } catch (error) {
-    console.error('Error fetching menu data:', error);
     const errorMessage = getMenuEditorErrorMessage(error);
     toast.error(errorMessage);
     throw new Error(errorMessage);
@@ -88,7 +87,6 @@ export async function saveCategory(restaurantId: string, category: Category): Pr
 
     return newCategoryRef.id;
   } catch (error) {
-    console.error('Error saving category:', error);
     const errorMessage = getMenuEditorErrorMessage(error);
     toast.error(errorMessage);
     throw new Error(errorMessage);
@@ -109,7 +107,6 @@ export async function deleteCategory(restaurantId: string, categoryId: string): 
     // Invalidate cache
     menuCache.delete(restaurantId);
   } catch (error) {
-    console.error('Error deleting category:', error);
     const errorMessage = getMenuEditorErrorMessage(error);
     toast.error(errorMessage);
     throw new Error(errorMessage);
@@ -129,7 +126,6 @@ export async function fetchReusableExtras(restaurantId: string): Promise<Reusabl
       ...doc.data(),
     })) as ReusableExtraGroup[];
   } catch (error) {
-    console.error('Error fetching reusable extras:', error);
     const errorMessage = getMenuEditorErrorMessage(error);
     toast.error(errorMessage);
     throw new Error(errorMessage);
@@ -146,7 +142,6 @@ export async function saveReusableExtraGroup(restaurantId: string, group: Reusab
     });
     return docRef.id;
   } catch (error) {
-    console.error('Error saving reusable extra group:', error);
     const errorMessage = getMenuEditorErrorMessage(error);
     toast.error(errorMessage);
     throw new Error(errorMessage);
@@ -162,7 +157,6 @@ export async function updateReusableExtraGroup(restaurantId: string, groupId: st
       choices: group.choices,
     });
   } catch (error) {
-    console.error('Error updating reusable extra group:', error);
     const errorMessage = getMenuEditorErrorMessage(error);
     toast.error(errorMessage);
     throw new Error(errorMessage);
@@ -175,7 +169,6 @@ export async function deleteReusableExtraGroup(restaurantId: string, groupId: st
     await deleteDoc(groupRef);
     await cleanupOrphanedExtraReferences(restaurantId, groupId);
   } catch (error) {
-    console.error('Error deleting reusable extra group:', error);
     const errorMessage = getMenuEditorErrorMessage(error);
     toast.error(errorMessage);
     throw new Error(errorMessage);
@@ -216,7 +209,6 @@ async function cleanupOrphanedExtraReferences(restaurantId: string, groupId: str
     await batch.commit();
     menuCache.delete(restaurantId);
   } catch (error) {
-    console.error('Error cleaning up orphaned extra references:', error);
     const errorMessage = getMenuEditorErrorMessage(error);
     toast.error(errorMessage);
     throw new Error(errorMessage);

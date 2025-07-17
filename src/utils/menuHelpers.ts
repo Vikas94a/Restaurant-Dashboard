@@ -27,7 +27,6 @@ export const getItemId = (item: NestedMenuItem): string => {
 // Helper to validate category and item IDs
 export const validateIds = (categoryId: string, itemId: string): boolean => {
   if (!categoryId || !itemId) {
-    console.error('Invalid category or item ID');
     return false;
   }
   return true;

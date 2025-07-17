@@ -113,7 +113,6 @@ export const useMenuOperations = ({
         toast.success("Category added successfully");
       }
     } catch (error) {
-      console.error("[MenuEditor] Error saving category:", error);
       const errorMessage = getMenuEditorErrorMessage(error);
       setError(errorMessage);
       toast.error(errorMessage);
@@ -147,7 +146,6 @@ export const useMenuOperations = ({
 
           toast.success("Category deleted successfully");
         } catch (error) {
-          console.error("[MenuEditor] Error deleting category:", error);
           const errorMessage = getMenuEditorErrorMessage(error);
           setError(errorMessage);
           toast.error(errorMessage);
@@ -190,7 +188,6 @@ export const useMenuOperations = ({
 
           toast.success("Item deleted successfully");
         } catch (error) {
-          console.error("[MenuEditor] Error deleting item:", error);
           const errorMessage = getMenuEditorErrorMessage(error);
           setError(errorMessage);
           toast.error(errorMessage);
@@ -223,7 +220,6 @@ export const useMenuOperations = ({
       await Promise.all(updatePromises);
       toast.success("Category order saved successfully");
     } catch (error) {
-      console.error("[MenuEditor] Error saving category order:", error);
       const errorMessage = getMenuEditorErrorMessage(error);
       setError(errorMessage);
       toast.error(errorMessage);

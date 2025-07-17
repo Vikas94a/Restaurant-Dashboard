@@ -86,7 +86,6 @@ export const useWeatherData = (location: string) => {
             setWeatherData(processedData);
             
         } catch (err) {
-            console.error("Failed to fetch weather data", err);
             setError(err instanceof Error ? err.message : "Failed to fetch weather data");
         } finally {
             setLoading(false);

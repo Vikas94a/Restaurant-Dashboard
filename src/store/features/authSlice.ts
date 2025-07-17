@@ -193,7 +193,6 @@ const withRetry = async <T>(
         throw error;
       }
       
-      console.log(`[Auth] Retry attempt ${attempt + 1}/${maxRetries} after error:`, error.code);
       await delay(delayMs * Math.pow(2, attempt)); // Exponential backoff
     }
   }
@@ -271,7 +270,6 @@ export const fetchRestaurantData = createAsyncThunk(
       }
       return undefined;
     } catch (error: any) {
-      console.error('[Auth] Error fetching restaurant data:', error);
       return rejectWithValue(getAuthErrorMessage(error));
     }
   }
@@ -326,7 +324,6 @@ export const setAuthPersistence = createAsyncThunk(
       await setPersistence(auth, persistence);
       return rememberMe;
     } catch (error: any) {
-      console.error('[Auth] Error setting auth persistence:', error);
       return rejectWithValue(getAuthErrorMessage(error));
     }
   }
@@ -350,7 +347,6 @@ const authSlice = createSlice({
 
       import('firebase/auth').then(({ signOut }) => {
         signOut(auth).catch((error) => {
-          console.error('[Auth] Error during sign out:', error);
           toast.error('Error signing out. Please try again.');
         });
       });
@@ -384,7 +380,6 @@ const authSlice = createSlice({
           state.error = null;
 
         } catch (e) {
-          console.error('[Auth] Error during logout cleanup:', e);
           toast.error('Error clearing session data. Please try again.');
         } finally {
           isLoggingOut = false;
@@ -418,8 +413,10 @@ const authSlice = createSlice({
         if (action.payload?.restaurantName) {
           state.restaurantName = action.payload.restaurantName;
         }
-        if (action.payload?.domain) {
+        if (action.payload?.domain && typeof action.payload.domain === 'string') {
           state.domain = action.payload.domain;
+        } else {
+          state.domain = '';
         }
       })
       .addCase(fetchUserData.rejected, (state, action) => {
@@ -471,11 +468,8 @@ export const initializeAuth = () => {
 
     // Return the unsubscribe function from onAuthStateChanged
     return onAuthStateChanged(auth, (user) => {
-      console.log('[AutoLogout] Auth state changed', { hasUser: !!user, isLoggingOut, isInitialized });
-
       // Skip if we're in the middle of logging out
       if (isLoggingOut) {
-        console.log('[AutoLogout] Skipping auth state change during logout');
         return;
       }
 
@@ -500,7 +494,6 @@ export const initializeAuth = () => {
               }
             })
             .catch((error: unknown) => {
-              console.error('[Auth] Error during initialization:', error);
               toast.error('Failed to initialize application');
             })
             .finally(() => {

@@ -54,7 +54,6 @@ export const useReusableExtraOperations = ({
       const restaurantDoc = await getDoc(restaurantRef);
       
       if (!restaurantDoc.exists()) {
-        console.warn("Restaurant document does not exist");
         setReusableExtras([]);
         return;
       }
@@ -75,7 +74,6 @@ export const useReusableExtraOperations = ({
       setReusableExtras(fetchedExtras);
     } catch (error) {
       const fbError = error as FirebaseError;
-      console.error("Error fetching reusable extras:", error);
       if (fbError.code !== 'permission-denied') {
         toast.error("Failed to load reusable extras.");
       }
@@ -99,7 +97,6 @@ export const useReusableExtraOperations = ({
       toast.success("Reusable extra group added successfully.");
       return docRef.id;
     } catch (error) {
-      console.error("Error adding reusable extra group:", error);
       toast.error("Failed to add reusable extra group.");
       return null;
     } finally {
@@ -119,7 +116,6 @@ export const useReusableExtraOperations = ({
       setReusableExtras(prev => prev.map(g => g.id === groupId ? transformToCustomizationGroup({ ...g, ...groupData, id: groupId }) : g));
       toast.success("Reusable extra group updated successfully.");
     } catch (error) {
-      console.error("Error updating reusable extra group:", error);
       toast.error("Failed to update reusable extra group.");
     } finally {
       setLoadingExtras(false);
@@ -143,7 +139,6 @@ export const useReusableExtraOperations = ({
           setReusableExtras(prev => prev.filter(g => g.id !== groupId));
           toast.success("Reusable extra group deleted successfully.");
         } catch (error) {
-          console.error("Error deleting reusable extra group:", error);
           toast.error("Failed to delete reusable extra group.");
         } finally {
           setLoadingExtras(false);

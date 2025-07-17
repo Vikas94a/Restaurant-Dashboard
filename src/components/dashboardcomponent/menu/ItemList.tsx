@@ -102,8 +102,7 @@ export default function ItemList({
       toast.success("Image uploaded successfully!");
     } catch (error) {
       toast.error("Failed to upload image.");
-      console.error(error);
-    } finally {
+      } finally {
       setUploadingItemIndex(null);
     }
   };

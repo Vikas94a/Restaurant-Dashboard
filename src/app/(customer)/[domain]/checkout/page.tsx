@@ -6,12 +6,11 @@ import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useCart } from "@/hooks/useCart";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUtensils, faArrowLeft, faCreditCard, faClock, faUser, faPhone, faEnvelope, faCheckCircle } from "@fortawesome/free-solid-svg-icons";
+import { faUtensils, faArrowLeft, faCreditCard, faClock, faUser, faCheckCircle } from "@fortawesome/free-solid-svg-icons";
 import { useRouter } from "next/navigation";
 import CustomerForm from "@/components/checkout/CustomerForm";
 import OrderSummary from "@/components/checkout/OrderSummary";
 import PickupOptions from "@/components/checkout/PickupOptions";
-import PickupTimeSelector from "@/components/checkout/PickupTimeSelector";
 import { CustomerFormData } from "@/types/checkout";
 import { toast } from "sonner";
 import { useDispatch } from "react-redux";
@@ -72,7 +71,6 @@ export default function CheckoutPage() {
           name: data.name || data.restaurantType || "Restaurant"
         });
       } catch (error) {
-        console.error("Error fetching restaurant details:", error);
         setError("Error Loading Restaurant");
       } finally {
         setIsLoading(false);
@@ -102,15 +100,12 @@ export default function CheckoutPage() {
   };
 
   const handlePickupSubmit = (pickupFormData: any) => {
-    console.log('Pickup submitted with data:', pickupFormData);
     setPickupData(pickupFormData);
     setCurrentStep('summary');
   };
 
   const handleOrderConfirm = async () => {
     try {
-      console.log('handleOrderConfirm called');
-      
       // Validate that we have all required data
       if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim()) {
         toast.error('Please fill in all contact details');
@@ -129,24 +124,10 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Here you would typically send the order to your backend
-      // For now, we'll just simulate a successful order
-      console.log('Placing order:', {
-        customer: formData,
-        pickup: pickupData,
-        cart: cart,
-        restaurantId,
-        restaurantName
-      });
-      
-      // Simulate order placement
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       // Clear cart and show success dialog
       dispatch(clearCart());
       setShowOrderDialog(true);
     } catch (error) {
-      console.error('Error placing order:', error);
       toast.error('Failed to place order. Please try again.');
     }
   };
@@ -324,7 +305,6 @@ export default function CheckoutPage() {
                             pickupDate: pickupOption === 'asap' ? new Date().toISOString().split('T')[0] : pickupDate,
                             pickupTime: pickupOption === 'asap' ? 'As Soon As Possible' : pickupTime
                           };
-                          console.log('Submitting pickup data:', pickupFormData);
                           handlePickupSubmit(pickupFormData);
                         }}
                         disabled={pickupOption === 'later' && (!pickupDate || !pickupTime)}

@@ -84,10 +84,10 @@ export function validateDomain(domain: string): { isValid: boolean; error?: stri
 /**
  * Formats a domain for display
  * @param domain - The domain to format
- * @returns Formatted domain with .aieateasy.com suffix
+ * @returns Formatted domain with .aieateasy.no suffix
  */
 export function formatDomain(domain: string): string {
-  return `${domain}.aieateasy.com`;
+  return `${domain}.aieateasy.no`;
 }
 
 /**
@@ -100,9 +100,9 @@ export function extractDomainFromUrl(url: string): string | null {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname;
     
-    // Remove .aieateasy.com suffix if present
-    if (hostname.endsWith('.aieateasy.com')) {
-      return hostname.replace('.aieateasy.com', '');
+    // Remove .aieateasy.no suffix if present
+    if (hostname.endsWith('.aieateasy.no')) {
+      return hostname.replace('.aieateasy.no', '');
     }
     
     return hostname;

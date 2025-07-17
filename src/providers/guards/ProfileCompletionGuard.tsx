@@ -23,8 +23,7 @@ export function ProfileCompletionGuard({ children }: { children: React.ReactNode
             await dispatch(fetchRestaurantData(userData.uid)).unwrap();
           }
         } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
+          }
       }
     };
 

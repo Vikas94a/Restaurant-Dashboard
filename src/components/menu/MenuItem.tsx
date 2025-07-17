@@ -21,7 +21,6 @@ export const MenuItem: React.FC<MenuItemProps> = ({
   const itemId = item.id || item.frontendId;
   
   if (!itemId) {
-    console.warn('MenuItem is missing both id and frontendId:', item);
     return null;
   }
 

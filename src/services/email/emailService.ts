@@ -8,8 +8,6 @@ interface EmailData {
 
 export const sendEmail = async ({ to, subject, html }: EmailData) => {
   try {
-    console.log('📧 Attempting to send email:', { to, subject });
-    
     const response = await fetch('/api/send-email', {
       method: 'POST',
       headers: {
@@ -19,17 +17,12 @@ export const sendEmail = async ({ to, subject, html }: EmailData) => {
     });
 
     const data = await response.json();
-    console.log('📧 Email API response:', { status: response.status, data });
-
     if (!response.ok) {
-      console.error('❌ Email API error:', data);
       throw new Error(data.error || 'Failed to send email');
     }
 
-    console.log('✅ Email sent successfully');
     return data;
   } catch (error) {
-    console.error('❌ Failed to send email:', error);
     // Don't throw the error, just log it and return null
     // This way the order status update can still proceed
     return null;
@@ -37,7 +30,6 @@ export const sendEmail = async ({ to, subject, html }: EmailData) => {
 };
 
 export const sendOrderConfirmationEmail = async (order: Order) => {
-  console.log('📧 Preparing confirmation email for order:', order.id);
   const { customerDetails, items, total, estimatedPickupTime } = order;
   
   const itemsList = items.map(item => `
@@ -67,7 +59,6 @@ export const sendOrderConfirmationEmail = async (order: Order) => {
     </div>
   `;
 
-  console.log('📧 Sending confirmation email to:', customerDetails.email);
   return sendEmail({
     to: customerDetails.email,
     subject: 'Order Confirmed - AI Eat Easy',
@@ -76,7 +67,6 @@ export const sendOrderConfirmationEmail = async (order: Order) => {
 };
 
 export const sendOrderRejectionEmail = async (order: Order) => {
-  console.log('📧 Preparing rejection email for order:', order.id);
   const { customerDetails, items, total } = order;
   
   const itemsList = items.map(item => `
@@ -105,7 +95,6 @@ export const sendOrderRejectionEmail = async (order: Order) => {
     </div>
   `;
 
-  console.log('📧 Sending rejection email to:', customerDetails.email);
   return sendEmail({
     to: customerDetails.email,
     subject: 'Order Update - AI Eat Easy',

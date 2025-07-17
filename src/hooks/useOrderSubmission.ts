@@ -114,7 +114,6 @@ export function useOrderSubmission({
       
       return { success: true, orderData };
     } catch (error: unknown) {
-      console.error('Order submission error:', error);
       toast.error("Failed to place order. Please try again.");
       return { success: false };
     } finally {

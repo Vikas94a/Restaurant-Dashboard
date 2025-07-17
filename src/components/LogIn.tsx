@@ -71,7 +71,6 @@ export default function Login({ isOpen, onClose }: LogInProps) {
         toast.success("Verification email sent! Please check your inbox.");
       }
     } catch (error) {
-      console.error('Error sending verification email:', error);
       toast.error("Failed to send verification email. Please try again.");
     } finally {
       setLoading(false);
@@ -120,8 +119,6 @@ export default function Login({ isOpen, onClose }: LogInProps) {
         }
       }
     } catch (error) {
-      console.error("Login error:", error);
-      
       // Handle specific Firebase auth errors
       if (error instanceof FirebaseError) {
         switch (error.code) {

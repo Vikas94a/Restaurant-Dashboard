@@ -163,8 +163,7 @@ export default function PerformanceChart({ onDataUpdate }: PerformanceChartProps
           onDataUpdate(totalOrders, totalRevenue);
         }
       } catch (error) {
-        console.error('Error fetching sales data:', error);
-      } finally {
+        } finally {
         setIsLoading(false);
       }
     };

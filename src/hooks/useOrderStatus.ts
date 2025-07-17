@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { OrderStatus } from '@/types/order';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/firebase/firebaseConfig';
+import { db } from '@/lib/firebase';
 import { Order } from '@/types/checkout';
 
 interface OrderStatusState {
@@ -46,8 +46,7 @@ export function useOrderStatus({ orderId, restaurantId, shouldListen = false }: 
         } as Order);
       }
     }, (error) => {
-      console.error('Error listening to order status:', error);
-    });
+      });
 
     return () => unsubscribe();
   }, [orderId, restaurantId, shouldListen]);

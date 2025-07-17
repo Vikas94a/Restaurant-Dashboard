@@ -43,8 +43,7 @@ export const useMenuCategoryOperations = ({
   const toggleEditCategory = useCallback((categoryIndex: number) => {
     // No longer managing edit state locally - this is now handled by Redux
     // This function is kept for compatibility but doesn't change local state
-    console.log(`Category ${categoryIndex} edit state is now managed by Redux`);
-  }, []);
+    }, []);
 
   const handleCategoryChange = useCallback((
     catIndex: number,

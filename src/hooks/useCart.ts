@@ -23,8 +23,7 @@ export const useCart = () => {
       dispatch(addToCart(cartItem));
       
     } catch (error) {
-      console.error('Error adding item to cart:', error);
-    }
+      }
   };
 
   const handleIncreaseQuantity = (itemId: string) => {

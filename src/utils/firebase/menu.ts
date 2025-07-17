@@ -135,7 +135,6 @@ export const migrateRestaurantMenuData = async (
     
     return { success: true, message: 'All menu data is already in the new format' };
   } catch (error) {
-    console.error('Error migrating menu data:', error);
     return { 
       success: false, 
       message: `Failed to migrate menu data: ${(error as Error).message}` 

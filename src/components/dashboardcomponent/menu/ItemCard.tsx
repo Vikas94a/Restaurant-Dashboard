@@ -269,7 +269,6 @@ export default function ItemCard({
                 try {
                   const itemId = item.id;
                   if (!categoryId || !itemId) {
-                    console.error("Cannot delete item: Missing IDs");
                     return;
                   }
                   if (
@@ -280,7 +279,6 @@ export default function ItemCard({
                     await handleDeleteItem(categoryId, itemId);
                   }
                 } catch (error) {
-                  console.error("Error deleting item:", error);
                   toast.error(
                     "Failed to delete item. Please check your permissions and try again."
                   );

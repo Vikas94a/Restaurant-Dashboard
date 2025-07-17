@@ -2,6 +2,7 @@
 
 import { ReduxProvider } from "@/providers/ReduxProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
+import { SoundNotificationProvider } from "@/providers/SoundNotificationProvider";
 import { Toaster } from "@/components/ui/sonner";
 import NavBar from "@/components/NavBar";
 import { useState, useEffect } from 'react';
@@ -22,10 +23,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ReduxProvider>
       <AuthProvider>
-        {showNavbar && <NavBar />}
-        {children}
-        <SessionWarningModal />
-        {mounted && <Toaster />}
+        <SoundNotificationProvider>
+          {showNavbar && <NavBar />}
+          {children}
+          <SessionWarningModal />
+          {mounted && <Toaster />}
+        </SoundNotificationProvider>
       </AuthProvider>
     </ReduxProvider>
   );

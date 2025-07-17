@@ -62,8 +62,7 @@ const MenuEditor: React.FC<MenuEditorProps> = ({ restaurantId }) => {
         toast.success('Item deleted successfully');
       } catch (error) {
         // Error is handled by the reducer
-        console.error('Failed to delete item:', error);
-      }
+        }
     }
   };
 

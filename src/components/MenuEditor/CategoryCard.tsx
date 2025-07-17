@@ -44,8 +44,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
       onEditCancel();
     } catch (error) {
       // Error is handled by the reducer
-      console.error('Failed to update category:', error);
-    }
+      }
   };
 
   const handleDelete = async () => {
@@ -56,8 +55,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
       })).unwrap();
     } catch (error) {
       // Error is handled by the reducer
-      console.error('Failed to delete category:', error);
-    }
+      }
   };
 
   return (

@@ -7,7 +7,6 @@ import { PublicRouteGuard } from "@/providers/guards/PublicRouteGuard";
 
 export default function Home() {
   const user = useAppSelector((state) => state.auth.user);
-  console.log(user);
   return (
     <PublicRouteGuard>
       <div className="min-h-screen bg-gradient-to-b from-white to-gray-100 flex items-center">

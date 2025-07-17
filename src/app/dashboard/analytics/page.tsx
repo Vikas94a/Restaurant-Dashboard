@@ -88,8 +88,7 @@ export default function AnalyticsPage() {
                 })) as Order[];
                 setOrderHistory(orders);
             } catch (error) {
-                console.error('Error fetching menu data:', error);
-            } finally {
+                } finally {
                 setIsMenuLoading(false);
             }
         };
@@ -280,8 +279,7 @@ export default function AnalyticsPage() {
 
     // Test the new simplified function
     getTopSellingItemsLast3Months().then(data => {
-        console.log('NEW SIMPLIFIED DATA FORMAT:', data);
-    });
+        });
 
     // Helper to flatten Order[] to OrderItem[] for MenuInsight
     function flattenOrdersToOrderItems(orders: Order[]): import('@/utils/menuTypes').OrderItem[] {

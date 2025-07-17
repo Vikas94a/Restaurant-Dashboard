@@ -18,19 +18,14 @@ export default function VerifyEmail() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
 
   useEffect(() => {
-    console.log('Checking auth state...');
     const checkAuthState = () => {
       const user = auth.currentUser;
-      console.log('Current user:', user?.email, 'Verified:', user?.emailVerified);
-
       if (!user) {
-        console.log('No user found, redirecting to home...');
         router.push('/');
         return;
       }
 
       if (user.emailVerified) {
-        console.log('User already verified, redirecting to dashboard...');
         router.push('/dashboard/overview');
         return;
       }
@@ -42,26 +37,20 @@ export default function VerifyEmail() {
 
     // Set up an interval to check verification status
     const interval = setInterval(async () => {
-      console.log('Checking verification status...');
       const user = auth.currentUser;
       if (user) {
         try {
           await user.reload();
-          console.log('User reloaded, verified status:', user.emailVerified);
           if (user.emailVerified) {
-            console.log('Email verified, redirecting to dashboard...');
             router.push('/dashboard/overview');
           }
         } catch (error) {
-          console.error('Error reloading user:', error);
-        }
+          }
       } else {
-        console.log('No user found during interval check');
-      }
+        }
     }, 3000);
 
     return () => {
-      console.log('Cleaning up interval');
       clearInterval(interval);
     };
   }, [router]);
@@ -71,17 +60,17 @@ export default function VerifyEmail() {
     try {
       const user = auth.currentUser;
       if (user) {
-        console.log('Resending verification email...');
-        await sendEmailVerification(user)
+        await sendEmailVerification(user, {
+          url: `${window.location.origin}/verify-email`,
+          handleCodeInApp: false,
+        });
         setVerificationSent(true);
         toast.success("Verification email sent! Please check your inbox.");
       } else {
-        console.log('No user found for resending verification');
         toast.error("No user found. Please sign up again.");
         router.push('/signup');
       }
     } catch (error) {
-      console.error('Error sending verification email:', error);
       toast.error("Failed to send verification email. Please try again.");
     } finally {
       setIsLoading(false);

@@ -181,14 +181,13 @@ function RestaurantDialog({ isOpen, setIsOpen, isMandatory = false }: Restaurant
         toast.success("Restaurant information updated successfully");
       }
     } catch (error) {
-      console.error("Error saving restaurant:", error);
       toast.error("Failed to save restaurant information");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  console.log(restaurantData); // Debug: log current form state on each render
+  // Debug: log current form state on each render
 
   if (isLoading || !user) {
     return null;

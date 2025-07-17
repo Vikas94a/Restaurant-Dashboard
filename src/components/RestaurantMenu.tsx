@@ -95,7 +95,6 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
       if (isNetworkError(error)) {
         handleError(error as Error, "load menu");
       } else {
-        console.error("Error fetching menu:", error);
         toast.error("Failed to load menu. Please try again later.");
       }
     } finally {

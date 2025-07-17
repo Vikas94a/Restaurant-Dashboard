@@ -16,11 +16,8 @@ export class AIPostsService {
      */
     static async testConnection(): Promise<boolean> {
         try {
-            console.log('Testing Firestore connection...');
-            
             // First check if Firebase is properly initialized
             if (!db) {
-                console.error('Firestore instance is not initialized');
                 return false;
             }
 
@@ -32,7 +29,6 @@ export class AIPostsService {
             
             const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
             if (missingVars.length > 0) {
-                console.error('Missing required Firebase environment variables:', missingVars);
                 return false;
             }
 
@@ -49,21 +45,15 @@ export class AIPostsService {
             // Verify the write by reading it back
             const readResult = await getDoc(testDoc);
             if (!readResult.exists()) {
-                console.error('Test document write succeeded but read failed');
                 return false;
             }
 
             // Clean up the test document
             await deleteDoc(testDoc);
             
-            console.log('Firestore connection test successful');
             return true;
         } catch (error) {
-            console.error('Firestore connection test failed:', error);
-            console.error('Error details:', {
-                message: error instanceof Error ? error.message : 'Unknown error',
-                stack: error instanceof Error ? error.stack : undefined,
-                code: error instanceof Error ? (error as any).code : undefined
+            .code : undefined
             });
             return false;
         }
@@ -74,11 +64,7 @@ export class AIPostsService {
      */
     static async savePosts(restaurantId: string, posts: MarketingPost[]): Promise<void> {
         try {
-            console.log('=== START: savePosts ===');
-            console.log('Input validation:', {
-                restaurantId,
-                postsLength: posts?.length,
-                postsContent: posts?.map(p => ({ id: p.id, title: p.title, day: p.day }))
+            )
             });
 
             if (!restaurantId) {
@@ -105,30 +91,18 @@ export class AIPostsService {
                 updatedAt: new Date()
             };
 
-            console.log('Preparing to save:', {
-                documentId: postData.id,
-                date: postData.date,
-                postsCount: postData.posts.length,
-                path: `restaurants/${restaurantId}/aiPosts/${postData.id}`,
-                postDataKeys: Object.keys(postData),
+            ,
                 firstPostTitle: postData.posts[0]?.title
             });
 
             const docRef = doc(db, 'restaurants', restaurantId, 'aiPosts', postData.id);
-            console.log('Document reference created:', {
-                path: docRef.path,
-                id: docRef.id
-            });
-            
             // First check if document exists
             const existingDoc = await getDoc(docRef);
-            console.log('Existing document check:', {
-                exists: existingDoc.exists(),
+            ,
                 data: existingDoc.exists() ? 'Document exists' : 'No existing document'
             });
 
             // Save the document
-            console.log('Attempting to save document...');
             await setDoc(docRef, {
                 ...postData,
                 createdAt: postData.createdAt,
@@ -137,8 +111,7 @@ export class AIPostsService {
             
             // Verify save
             const savedDoc = await getDoc(docRef);
-            console.log('Save verification:', {
-                exists: savedDoc.exists(),
+            ,
                 savedData: savedDoc.exists() ? {
                     id: savedDoc.id,
                     postsCount: savedDoc.data()?.posts?.length,
@@ -146,16 +119,7 @@ export class AIPostsService {
                 } : null
             });
 
-            console.log('=== END: savePosts - Success ===');
-        } catch (error) {
-            console.error('=== ERROR: savePosts ===');
-            console.error('Error saving AI posts:', error);
-            console.error('Error details:', {
-                message: error instanceof Error ? error.message : 'Unknown error',
-                stack: error instanceof Error ? error.stack : undefined,
-                restaurantId,
-                postsCount: posts?.length
-            });
+            } catch (error) {
             throw error;
         }
     }
@@ -176,7 +140,6 @@ export class AIPostsService {
             
             return null;
         } catch (error) {
-            console.error('Error getting AI posts:', error);
             return null;
         }
     }
@@ -189,7 +152,6 @@ export class AIPostsService {
             const posts = await this.getPostsForDate(restaurantId);
             return posts !== null && posts.length > 0;
         } catch (error) {
-            console.error('Error checking if posts exist for today:', error);
             return false;
         }
     }
@@ -216,7 +178,6 @@ export class AIPostsService {
             
             return null;
         } catch (error) {
-            console.error('Error getting latest AI posts:', error);
             return null;
         }
     }
@@ -227,9 +188,7 @@ export class AIPostsService {
     static async deletePostsForDate(restaurantId: string, date: string): Promise<void> {
         try {
             await deleteDoc(doc(db, 'restaurants', restaurantId, 'aiPosts', date));
-            console.log('AI posts deleted for date:', date);
-        } catch (error) {
-            console.error('Error deleting AI posts:', error);
+            } catch (error) {
             throw error;
         }
     }

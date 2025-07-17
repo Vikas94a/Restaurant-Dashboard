@@ -84,7 +84,6 @@ function Signup() {
         return;
       }
     } catch (error) {
-      console.error("Error checking domain uniqueness:", error);
       toast.error("Error checking domain availability. Please try again.");
       setIsLoading(false);
       return;
@@ -98,37 +97,29 @@ function Signup() {
         form.password
       );
       const userID = userCredential.user.uid;
-      try {
-        // Send verification email
-        await sendEmailVerification(userCredential.user)
-
-        router.push("/verify-email");
-        // Store user details in Firestore
-        console.log('Storing user details in Firestore...');
-        await setDoc(doc(db, "users", userID), {
-          restaurantName: form.restaurantName,
-          domain: form.domain,
-          firstName: form.firstName,
-          lastName: form.lastName,
-          email: form.email,
-          emailVerified: false,
-          createdAt: new Date().toISOString(),
-        });
-        console.log('User details stored successfully');
-
-        // Make sure to sign out the user
-     
-        // Show success message and redirect
-        toast.success("Account created! Please check your email to verify your account.");
-        router.push("/verify-email");
-      } catch (verificationError) {
-        console.error('Error during verification process:', verificationError);
-        // If verification fails, delete the user and throw error
-        await userCredential.user.delete();
-        throw new Error('Failed to complete signup process. Please try again.');
-      }
+      
+      // Store user details in Firestore first
+      await setDoc(doc(db, "users", userID), {
+        restaurantName: form.restaurantName,
+        domain: form.domain,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        emailVerified: false,
+        createdAt: new Date().toISOString(),
+      });
+      // Send verification email
+      await sendEmailVerification(userCredential.user, {
+        url: `${window.location.origin}/verify-email`,
+        handleCodeInApp: false,
+      });
+      // Sign out the user after successful signup
+      await auth.signOut();
+      
+      // Show success message and redirect
+      toast.success("Account created! Please check your email to verify your account.");
+      router.push("/verify-email");
     } catch (error) {
-      console.error('Signup error:', error);
       const authError = error as AuthError;
       let errorMessage = "Signup failed. Please try again.";
       
@@ -206,11 +197,11 @@ function Signup() {
                     className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition pr-20"
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <span className="text-gray-500 text-sm">.aieateasy.com</span>
+                    <span className="text-gray-500 text-sm">.aieateasy.no</span>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  This will be your unique URL: <span className="font-mono text-blue-600">{form.domain || 'your-domain'}.aieateasy.com</span>
+                  This will be your unique URL: <span className="font-mono text-blue-600">{form.domain || 'your-domain'}.aieateasy.no</span>
                 </p>
               </div>
 

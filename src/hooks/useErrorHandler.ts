@@ -15,8 +15,6 @@ export function useErrorHandler(maxRetries = 3) {
   });
 
   const handleError = useCallback((error: Error, operation: string) => {
-    console.error(`Error during ${operation}:`, error);
-    
     setErrorState(prev => ({
       error,
       isError: true,

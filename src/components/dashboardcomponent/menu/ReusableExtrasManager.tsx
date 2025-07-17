@@ -73,7 +73,6 @@ const ReusableExtrasManager: React.FC<ReusableExtrasManagerProps> = ({
       setEditingGroup(null);
       setIsCreatingNewGroup(false);
     } catch (error) {
-      console.error('Error saving group:', error);
       toast.error('Failed to save extra group.');
     }
   };
@@ -88,7 +87,6 @@ const ReusableExtrasManager: React.FC<ReusableExtrasManagerProps> = ({
                 setIsCreatingNewGroup(false);
             }
         } catch (error) {
-            console.error('Error deleting group:', error);
             toast.error('Failed to delete extra group.');
         }
     }

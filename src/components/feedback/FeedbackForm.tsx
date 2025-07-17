@@ -31,7 +31,6 @@ export default function FeedbackForm({ onSubmit }: FeedbackFormProps) {
       await onSubmit(feedback);
       router.push('/thank-you');
     } catch (error) {
-      console.error('Error submitting feedback:', error);
       alert('Failed to submit feedback. Please try again.');
     } finally {
       setIsSubmitting(false);

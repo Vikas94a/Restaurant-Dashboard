@@ -57,7 +57,6 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
       toast.success(`${item.name} updated with selected extras.`);
       onClose();
     } catch (error) {
-      console.error('Error saving linked extras:', error);
       toast.error('Failed to save linked extras.');
     } finally {
       setIsSaving(false);

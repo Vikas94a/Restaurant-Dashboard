@@ -25,6 +25,11 @@ service cloud.firestore {
       return !exists(/databases/$(database)/documents/restaurants/$(domain));
     }
 
+    // Helper function to check if user is allowed to sign up (only specific email)
+    function isAllowedSignup() {
+      return request.auth.token.email == 'tredev.randaberg@gmail.com';
+    }
+
     // Restaurants collection rules
     match /restaurants/{restaurantId} {
       allow read: if true;  // Anyone can read restaurant details
@@ -66,9 +71,19 @@ service cloud.firestore {
       }
     }
 
-    // Users collection rules
+    // Users collection rules - STRICT ACCESS CONTROL
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+      // Only allow read/write if user is authenticated and it's their own data
+      // AND only allow creation if the user is the allowed email address
+      allow read, update, delete: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if isAuthenticated() && 
+        request.auth.uid == userId && 
+        isAllowedSignup();
+    }
+
+    // Additional security: Block all other collections by default
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

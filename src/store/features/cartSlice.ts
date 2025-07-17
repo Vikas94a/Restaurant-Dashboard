@@ -53,14 +53,12 @@ const loadCartFromStorage = (): CartState => {
         
         // Validate the parsed data structure
         if (!isValidCartState(parsedCart)) {
-          console.error('[Cart] Invalid cart data structure:', parsedCart);
           toast.error(getCartErrorMessage('invalid-data'));
           return getInitialCartState();
         }
         
         return parsedCart;
       } catch (error) {
-        console.error('[Cart] Error parsing cart from localStorage:', error);
         toast.error(getCartErrorMessage('storage-parse'));
         return getInitialCartState();
       }
@@ -126,7 +124,6 @@ const saveCartToStorage = (state: CartState) => {
     try {
       localStorage.setItem('cart', JSON.stringify(state));
     } catch (error) {
-      console.error('[Cart] Error saving cart to localStorage:', error);
       toast.error(getCartErrorMessage('storage-save'));
     }
   }
@@ -138,7 +135,6 @@ const clearCartFromStorage = () => {
     try {
       localStorage.removeItem('cart');
     } catch (error) {
-      console.error('[Cart] Error clearing cart from localStorage:', error);
       toast.error(getCartErrorMessage('storage-clear'));
     }
   }

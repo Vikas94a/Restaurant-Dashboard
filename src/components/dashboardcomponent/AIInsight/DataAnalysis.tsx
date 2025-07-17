@@ -286,7 +286,6 @@ export const DataAnalysis: React.FC<DataAnalysisProps> = ({
             onAnalysisComplete(analysisResult);
 
         } catch (err) {
-            console.error("Error in data analysis:", err);
             setError(err instanceof Error ? err.message : "Failed to analyze data");
         } finally {
             setLoading(false);
@@ -329,8 +328,6 @@ export const DataAnalysis: React.FC<DataAnalysisProps> = ({
     if (!analysis) {
         return null;
     }
-
-    console.log(analysis);
 
     return (
         <div className="space-y-6">

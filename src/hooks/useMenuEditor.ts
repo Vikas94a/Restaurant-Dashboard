@@ -56,6 +56,8 @@ export interface MenuEditorResult {
   updateItemLinkedExtras: (itemId: string, groupIds: string[]) => Promise<void>;
   migrateMenuData: () => Promise<{ success: boolean; message: string }>;
   toggleItemAvailability: (itemId: string) => void;
+  reorderCategories: (startIndex: number, endIndex: number) => void;
+  saveCategoryOrder: () => Promise<void>;
 }
 
 export function useMenuEditor(restaurantId: string): MenuEditorResult {
@@ -159,7 +161,6 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
           setCategories(fetchedCategories);
         }
       } catch (error) {
-        console.error("Error fetching menu data:", error);
         setError("Failed to load menu data. Please try again.");
         toast.error("Failed to load menu data");
       } finally {
@@ -175,7 +176,6 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
       await migrateRestaurantMenuData(restaurantId);
       return { success: true, message: "Menu data migrated successfully" };
     } catch (error) {
-      console.error("Error migrating menu data:", error);
       return { success: false, message: "Failed to migrate menu data" };
     }
   }, [restaurantId]);

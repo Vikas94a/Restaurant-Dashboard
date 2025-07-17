@@ -100,7 +100,6 @@ export default function AIInsightPage() {
 
             return result;
         } catch (error) {
-            console.error('Error fetching sales data:', error);
             return [];
         }
     };
