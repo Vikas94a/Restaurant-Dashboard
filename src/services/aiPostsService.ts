@@ -53,8 +53,7 @@ export class AIPostsService {
             
             return true;
         } catch (error) {
-            .code : undefined
-            });
+            console.error('Firestore connection test failed:', error);
             return false;
         }
     }
@@ -64,8 +63,6 @@ export class AIPostsService {
      */
     static async savePosts(restaurantId: string, posts: MarketingPost[]): Promise<void> {
         try {
-            )
-            });
 
             if (!restaurantId) {
                 throw new Error('restaurantId is required');
@@ -91,14 +88,17 @@ export class AIPostsService {
                 updatedAt: new Date()
             };
 
-            ,
+            console.log('Preparing to save:', {
+                restaurantId,
+                postsCount: postData.posts.length,
                 firstPostTitle: postData.posts[0]?.title
             });
 
             const docRef = doc(db, 'restaurants', restaurantId, 'aiPosts', postData.id);
             // First check if document exists
             const existingDoc = await getDoc(docRef);
-            ,
+            console.log('Existing document check:', {
+                exists: existingDoc.exists(),
                 data: existingDoc.exists() ? 'Document exists' : 'No existing document'
             });
 
@@ -111,7 +111,8 @@ export class AIPostsService {
             
             // Verify save
             const savedDoc = await getDoc(docRef);
-            ,
+            console.log('Save verification:', {
+                saved: savedDoc.exists(),
                 savedData: savedDoc.exists() ? {
                     id: savedDoc.id,
                     postsCount: savedDoc.data()?.posts?.length,
@@ -119,7 +120,8 @@ export class AIPostsService {
                 } : null
             });
 
-            } catch (error) {
+        } catch (error) {
+            console.error('Error saving AI posts:', error);
             throw error;
         }
     }
@@ -188,7 +190,8 @@ export class AIPostsService {
     static async deletePostsForDate(restaurantId: string, date: string): Promise<void> {
         try {
             await deleteDoc(doc(db, 'restaurants', restaurantId, 'aiPosts', date));
-            } catch (error) {
+        } catch (error) {
+            console.error('Error deleting AI posts:', error);
             throw error;
         }
     }

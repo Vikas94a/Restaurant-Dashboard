@@ -56,7 +56,7 @@ class Logger {
     const entry = this.createLogEntry('debug', message, data, context);
     
     if (this.shouldLog('debug')) {
-      , data || '');
+      console.log(this.formatMessage(entry), data || '');
     }
     
     this.addToBuffer(entry);
@@ -76,7 +76,7 @@ class Logger {
     const entry = this.createLogEntry('warn', message, data, context);
     
     if (this.shouldLog('warn')) {
-      , data || '');
+      console.warn(this.formatMessage(entry), data || '');
     }
     
     this.addToBuffer(entry);
@@ -86,7 +86,7 @@ class Logger {
     const entry = this.createLogEntry('error', message, error, context);
     
     if (this.shouldLog('error')) {
-      , error || '');
+      console.error(this.formatMessage(entry), error || '');
     }
     
     this.addToBuffer(entry);
