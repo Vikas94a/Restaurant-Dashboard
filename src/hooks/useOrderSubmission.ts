@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { useAppDispatch } from '@/store/hooks';
 import { clearCart } from '@/store/features/cartSlice';
 import { db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { CustomerFormData, Order } from '@/types/checkout';
 import { useCart } from '@/hooks/useCart';
 
@@ -65,7 +65,17 @@ export function useOrderSubmission({
   };
 
   const submitOrder = async (formData: CustomerFormData) => {
-    if (!validateOrder(formData)) return;
+    // Basic guards
+    if (!restaurantId || restaurantId.trim() === '') {
+      toast.error('Restaurant is missing. Please return to the menu and try again.');
+      return { success: false };
+    }
+    if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
+      toast.error('Your cart is empty. Please add items before placing an order.');
+      return { success: false };
+    }
+
+    if (!validateOrder(formData)) return { success: false };
 
     setIsSubmitting(true);
     try {
@@ -107,14 +117,22 @@ export function useOrderSubmission({
       };
 
       const orderRef = doc(db, "restaurants", restaurantId, "orders", orderData.id);
-      await setDoc(orderRef, orderData);
+      // Write to Firestore with proper server timestamps to enable ordering queries
+      const firestorePayload = {
+        ...orderData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      } as any;
+      await setDoc(orderRef, firestorePayload);
       
       dispatch(clearCart());
       setLocalPlacedOrder(orderData);
       
       return { success: true, orderData };
     } catch (error: unknown) {
-      toast.error("Failed to place order. Please try again.");
+      const message = (error as any)?.message || 'Failed to place order. Please try again.';
+      console.error('Order submission failed:', error);
+      toast.error(message);
       return { success: false };
     } finally {
       setIsSubmitting(false);

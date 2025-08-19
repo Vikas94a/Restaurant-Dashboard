@@ -35,7 +35,7 @@ export const useGlobalOrderListener = () => {
     };
   }, [dispatch, restaurantDetails?.restaurantId, user]);
 
-  // Listen for real-time order updates
+  // Listen for real-time order updates only for notifications (state is populated by subscribeToRestaurantOrders)
   useEffect(() => {
     if (!restaurantDetails?.restaurantId) return;
 
@@ -45,34 +45,11 @@ export const useGlobalOrderListener = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const ordersData = snapshot.docs.map(doc => {
         const data = doc.data();
-        
-        // Convert Timestamps to strings
-        const convertTimestamp = (timestamp: any) => {
-          if (timestamp && typeof timestamp.toDate === 'function') {
-            return timestamp.toDate().toISOString();
-          }
-          return null;
-        };
-
         return {
           id: doc.id,
-          restaurantId: data.restaurantId,
-          customerDetails: data.customerDetails,
-          items: data.items || [],
-          total: data.total,
-          status: data.status,
-          pickupTime: data.pickupTime,
-          pickupOption: data.pickupOption,
-          estimatedPickupTime: data.estimatedPickupTime,
-          createdAt: convertTimestamp(data.createdAt),
-          updatedAt: convertTimestamp(data.updatedAt),
-          completedAt: convertTimestamp(data.completedAt)
-        } as Order;
+          status: data.status as string,
+        } as Pick<Order, 'id' | 'status'> as Order;
       });
-
-      // Update orders in store
-      dispatch(clearOrders());
-      dispatch(setOrders(ordersData));
 
       // Check for new pending orders
       const pendingOrders = ordersData.filter(
@@ -95,10 +72,7 @@ export const useGlobalOrderListener = () => {
       const hasNewOrderIds = pendingOrders.some(order => !previousOrderIdsRef.current.has(order.id));
 
       if ((hasNewPendingOrders || hasNewOrderIds) && pendingOrders.length > 0) {
-        // New order received - start sound notification
         startRepeatingSound();
-        
-        // Show toast notification
         toast.success('🎉 Ny bestilling mottatt!', {
           duration: 4000,
           position: 'top-right',
@@ -111,7 +85,7 @@ export const useGlobalOrderListener = () => {
     });
 
     return () => unsubscribe();
-  }, [dispatch, restaurantDetails?.restaurantId, startRepeatingSound]);
+  }, [restaurantDetails?.restaurantId, startRepeatingSound]);
 
   // Stop sound when no pending orders
   useEffect(() => {

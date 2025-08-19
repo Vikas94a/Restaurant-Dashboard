@@ -1,4 +1,6 @@
 import * as functions from 'firebase-functions';
+import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
 import { Resend } from 'resend';
 
@@ -71,11 +73,9 @@ const generateFeedbackEmailTemplate = (data: {
   `;
 };
 
-export const onOrderAccepted = functions.firestore
-  .document('restaurants/{restaurantId}/orders/{orderId}')
-  .onUpdate(async (change, ) => {
-    const newData = change.after.data() as Order;
-    const previousData = change.before.data() as Order;
+export const onOrderAccepted = onDocumentUpdated('restaurants/{restaurantId}/orders/{orderId}', async (event) => {
+    const newData = event.data?.after?.data() as Order;
+    const previousData = event.data?.before?.data() as Order;
 
     // Only proceed if the order was just accepted
     if (previousData.status !== 'accepted' && newData.status === 'accepted') {
@@ -167,9 +167,7 @@ export const onOrderAccepted = functions.firestore
     }
   });
 
-export const processScheduledTasks = functions.pubsub
-  .schedule('every 1 minutes')
-  .onRun(async () => {
+export const processScheduledTasks = onSchedule('every 1 minutes', async (event) => {
     const now = admin.firestore.Timestamp.now();
     const tasksRef = admin.firestore().collection('scheduledTasks');
     
@@ -231,4 +229,4 @@ export const processScheduledTasks = functions.pubsub
         }
       }
     }
-  }); 
+  });

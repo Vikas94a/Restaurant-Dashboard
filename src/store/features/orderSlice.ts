@@ -18,13 +18,21 @@ const initialState: OrderState = {
   error: null,
 };
 
-// Helper function to convert Firestore Timestamp to string
-const convertTimestampToString = (timestamp: Timestamp | { seconds: number, nanoseconds: number } | undefined): string => {
-  if (timestamp && typeof (timestamp as Timestamp).toDate === 'function') {
-    return (timestamp as Timestamp).toDate().toLocaleString();
-  } else if (timestamp && typeof (timestamp as { seconds: number, nanoseconds: number }).seconds === 'number') {
-     const date = new Date((timestamp as { seconds: number, nanoseconds: number }).seconds * 1000);
-     return date.toLocaleString();
+// Helper function to convert Firestore Timestamp (or compatible values) to string
+const convertTimestampToString = (
+  timestamp: Timestamp | { seconds: number; nanoseconds: number } | string | undefined
+): string => {
+  if (!timestamp) return '';
+  // Already a string (e.g., ISO stored by older writes)
+  if (typeof timestamp === 'string') return timestamp;
+  // Firestore Timestamp instance
+  if (typeof (timestamp as Timestamp).toDate === 'function') {
+    return (timestamp as Timestamp).toDate().toISOString();
+  }
+  // Firestore timestamp object as plain data
+  if (typeof (timestamp as { seconds: number; nanoseconds: number }).seconds === 'number') {
+    const date = new Date((timestamp as { seconds: number; nanoseconds: number }).seconds * 1000);
+    return date.toISOString();
   }
   return '';
 };

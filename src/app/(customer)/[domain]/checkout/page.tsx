@@ -12,6 +12,8 @@ import CustomerForm from "@/components/checkout/CustomerForm";
 import OrderSummary from "@/components/checkout/OrderSummary";
 import PickupOptions from "@/components/checkout/PickupOptions";
 import { CustomerFormData } from "@/types/checkout";
+import { useRestaurantTiming } from '@/hooks/useRestaurantTiming';
+import { useOrderSubmission } from '@/hooks/useOrderSubmission';
 import { toast } from "sonner";
 import { useDispatch } from "react-redux";
 import { clearCart } from "@/store/features/cartSlice";
@@ -33,6 +35,19 @@ export default function CheckoutPage() {
   const [pickupDate, setPickupDate] = useState<string>('');
   const [pickupTime, setPickupTime] = useState<string>('');
   const [showOrderDialog, setShowOrderDialog] = useState(false);
+  // Timing helpers (opening hours, slots, ASAP availability)
+  const timing = useRestaurantTiming({ restaurantDetails });
+
+  // Order submission hook to persist order in Firestore
+  const { isSubmitting, localPlacedOrder, submitOrder, resetOrder } = useOrderSubmission({
+    restaurantId: restaurantId || '',
+    pickupOption: pickupOption,
+    pickupDate: pickupOption === 'asap' ? timing.pickupDate : (pickupDate || timing.pickupDate),
+    pickupTime: pickupOption === 'asap' ? timing.pickupTime : (pickupTime || timing.pickupTime),
+    isAsapAvailable: timing.isAsapAvailable,
+    isDateOpen: timing.isDateOpen,
+    getPickupTimeSlots: timing.getPickupTimeSlots
+  });
 
   // Form data state
   const [formData, setFormData] = useState<CustomerFormData>({
@@ -124,9 +139,10 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Clear cart and show success dialog
-      dispatch(clearCart());
-      setShowOrderDialog(true);
+      const result = await submitOrder(formData);
+      if (result?.success) {
+        setShowOrderDialog(true);
+      }
     } catch (error) {
       toast.error('Failed to place order. Please try again.');
     }
@@ -138,6 +154,7 @@ export default function CheckoutPage() {
 
   const handleCloseOrderDialog = () => {
     setShowOrderDialog(false);
+    resetOrder();
     router.push(`/${domain}/menu`);
   };
 
