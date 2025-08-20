@@ -12,17 +12,27 @@ function getResendClient() {
 export async function POST(request: Request) {
   try {
     // Basic same-origin protection
-    const allowedOrigins = new Set([
-      process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    // Build allowed origins dynamically for local, env-defined app URL, Vercel URL, and current host
+    const staticAllowed = [
       'http://localhost:3000',
       'https://localhost:3000',
-    ]);
+      process.env.NEXT_PUBLIC_APP_URL,
+      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+      // Explicitly allow the provided deployment URL
+      'https://restaurant-dashboard-kkqq.vercel.app',
+    ].filter(Boolean) as string[];
+    const allowedOrigins = new Set(staticAllowed);
     const originHeader = request.headers.get('origin');
     const refererHeader = request.headers.get('referer');
     let originFromReferer: string | null = null;
     try {
       originFromReferer = refererHeader ? new URL(refererHeader).origin : null;
     } catch {}
+    // Also allow the current deployment host from the request headers
+    const hostHeader = request.headers.get('host');
+    if (hostHeader) {
+      allowedOrigins.add(`https://${hostHeader}`);
+    }
     const effectiveOrigin = originHeader || originFromReferer;
     if (effectiveOrigin && !allowedOrigins.has(effectiveOrigin)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
