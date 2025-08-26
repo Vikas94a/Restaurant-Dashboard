@@ -12,6 +12,36 @@ export interface StoredAIPost {
 
 export class AIPostsService {
     /**
+     * Find the aiPosts document that contains a given postId within recent documents
+     */
+    private static async findDocumentContainingPost(
+        restaurantId: string,
+        postId: string,
+        lookbackDocuments: number = 30
+    ): Promise<{ docId: string; posts: MarketingPost[] } | null> {
+        try {
+            const aiPostsRef = collection(db, 'restaurants', restaurantId, 'aiPosts');
+            const q = query(
+                aiPostsRef,
+                orderBy('date', 'desc'),
+                limit(lookbackDocuments)
+            );
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return null;
+
+            for (const docSnap of snapshot.docs) {
+                const data = docSnap.data() as StoredAIPost;
+                const posts = data?.posts || [];
+                if (posts.some((p) => p.id === postId)) {
+                    return { docId: docSnap.id, posts };
+                }
+            }
+            return null;
+        } catch (error) {
+            return null;
+        }
+    }
+    /**
      * Test Firestore connection
      */
     static async testConnection(): Promise<boolean> {
@@ -185,6 +215,72 @@ export class AIPostsService {
     }
 
     /**
+     * Get any upcoming posts from today onward (returns flattened list)
+     */
+    static async getUpcomingPosts(restaurantId: string): Promise<MarketingPost[] | null> {
+        try {
+            const today = new Date();
+            const ymd = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString().split('T')[0];
+
+            const aiPostsRef = collection(db, 'restaurants', restaurantId, 'aiPosts');
+            // Look back over recent documents and filter by each post's scheduledDate
+            const q = query(
+                aiPostsRef,
+                orderBy('date', 'desc'),
+                limit(14)
+            );
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return [];
+
+            const upcoming: MarketingPost[] = [];
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data() as StoredAIPost;
+                (data.posts || []).forEach((p) => {
+                    if (p.scheduledDate && p.scheduledDate >= ymd) {
+                        upcoming.push(p);
+                    }
+                });
+            });
+            upcoming.sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+            return upcoming;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Get past posts that still need feedback (scheduledDate < today and no feedback)
+     */
+    static async getPostsNeedingFeedback(restaurantId: string): Promise<MarketingPost[] | null> {
+        try {
+            const today = new Date();
+            const ymd = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString().split('T')[0];
+            const aiPostsRef = collection(db, 'restaurants', restaurantId, 'aiPosts');
+            const q = query(
+                aiPostsRef,
+                orderBy('date', 'desc'),
+                limit(14)
+            );
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) return [];
+
+            const pending: MarketingPost[] = [];
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data() as StoredAIPost;
+                (data.posts || []).forEach((p) => {
+                    if ((p.scheduledDate && p.scheduledDate < ymd) && !p.feedback) {
+                        pending.push(p);
+                    }
+                });
+            });
+            pending.sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''));
+            return pending;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
      * Delete posts for a specific date (hard delete)
      */
     static async deletePostsForDate(restaurantId: string, date: string): Promise<void> {
@@ -192,6 +288,133 @@ export class AIPostsService {
             await deleteDoc(doc(db, 'restaurants', restaurantId, 'aiPosts', date));
         } catch (error) {
             console.error('Error deleting AI posts:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update feedback for a specific post within the date's posts array
+     */
+    static async updatePostFeedback(
+        restaurantId: string,
+        date: string,
+        postId: string,
+        feedback: 'helpful' | 'not_helpful'
+    ): Promise<void> {
+        try {
+            if (!restaurantId) {
+                throw new Error('restaurantId is required');
+            }
+            if (!date) {
+                throw new Error('date is required (YYYY-MM-DD)');
+            }
+            if (!postId) {
+                throw new Error('postId is required');
+            }
+
+            // Try the specified date first
+            let targetDocId = date;
+            let dataPosts: MarketingPost[] | null = null;
+
+            const primaryDocRef = doc(db, 'restaurants', restaurantId, 'aiPosts', date);
+            const primarySnapshot = await getDoc(primaryDocRef);
+            if (primarySnapshot.exists()) {
+                const data = primarySnapshot.data() as StoredAIPost;
+                dataPosts = data.posts || [];
+            } else {
+                // Fallback: search recent documents to locate the post by id
+                const found = await this.findDocumentContainingPost(restaurantId, postId);
+                if (!found) {
+                    throw new Error('AI posts document not found for the specified date or containing the post');
+                }
+                targetDocId = found.docId;
+                dataPosts = found.posts;
+            }
+
+            const updatedPosts = (dataPosts || []).map((p) =>
+                p.id === postId ? { ...p, feedback } : p
+            );
+
+            await setDoc(
+                doc(db, 'restaurants', restaurantId, 'aiPosts', targetDocId),
+                {
+                    posts: updatedPosts,
+                    updatedAt: new Date()
+                },
+                { merge: true }
+            );
+        } catch (error) {
+            console.error('Error updating AI post feedback:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update detailed feedback for a specific post within the date's posts array
+     */
+    static async updatePostDetailedFeedback(
+        restaurantId: string,
+        date: string,
+        postId: string,
+        category: string,
+        value: string
+    ): Promise<void> {
+        try {
+            if (!restaurantId) {
+                throw new Error('restaurantId is required');
+            }
+            if (!date) {
+                throw new Error('date is required (YYYY-MM-DD)');
+            }
+            if (!postId) {
+                throw new Error('postId is required');
+            }
+            if (!category) {
+                throw new Error('category is required');
+            }
+
+            // Try the specified date first
+            let targetDocId = date;
+            let dataPosts: MarketingPost[] | null = null;
+
+            const primaryDocRef = doc(db, 'restaurants', restaurantId, 'aiPosts', date);
+            const primarySnapshot = await getDoc(primaryDocRef);
+            if (primarySnapshot.exists()) {
+                const data = primarySnapshot.data() as StoredAIPost;
+                dataPosts = data.posts || [];
+            } else {
+                // Fallback: search recent documents to locate the post by id
+                const found = await this.findDocumentContainingPost(restaurantId, postId);
+                if (!found) {
+                    throw new Error('AI posts document not found for the specified date or containing the post');
+                }
+                targetDocId = found.docId;
+                dataPosts = found.posts;
+            }
+
+            const updatedPosts = (dataPosts || []).map((p) => {
+                if (p.id === postId) {
+                    return {
+                        ...p,
+                        detailedFeedback: {
+                            ...p.detailedFeedback,
+                            [category]: value
+                        }
+                    };
+                }
+                return p;
+            });
+
+            await setDoc(
+                doc(db, 'restaurants', restaurantId, 'aiPosts', targetDocId),
+                {
+                    posts: updatedPosts,
+                    updatedAt: new Date()
+                },
+                { merge: true }
+            );
+        } catch (error) {
+            console.error('Error updating AI post detailed feedback:', error);
             throw error;
         }
     }

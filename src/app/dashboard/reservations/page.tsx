@@ -5,18 +5,11 @@ import { useAppSelector } from '@/store/hooks';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, collection } from 'firebase/firestore';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCalendarAlt, faLink, faCopy, faCheck, faUsers, faClock, faUtensils } from '@fortawesome/free-solid-svg-icons';
+import { faCalendarAlt, faLink, faCopy, faCheck, faUsers, faClock, faUtensils, faList } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'sonner';
 
-interface ReservationSettings {
-  enabled: boolean;
-  maxPartySize: number;
-  minPartySize: number;
-  advanceBookingDays: number;
-  openingTime: string;
-  closingTime: string;
-  reservationLink: string;
-}
+import { ReservationSettings } from '@/types/reservation';
+import ReservationList from '@/components/dashboardcomponent/reservations/ReservationList';
 
 export default function ReservationsPage() {
   const { user, restaurantDetails } = useAppSelector((state) => state.auth);
@@ -24,6 +17,7 @@ export default function ReservationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<'settings' | 'reservations'>('settings');
 
   useEffect(() => {
     loadReservationSettings();
@@ -52,7 +46,10 @@ export default function ReservationsPage() {
             advanceBookingDays: 30,
             openingTime: '11:00',
             closingTime: '22:00',
-            reservationLink: `https://aieateasy.no/reserve/${data.domain || 'restaurant'}`
+            reservationLink: `https://aieateasy.no/reserve/${data.domain || 'restaurant'}`,
+            reservationDuration: 90,
+            maxReservationsPerTimeSlot: 3,
+            timeSlotInterval: 30
           });
         }
       }
@@ -121,13 +118,44 @@ export default function ReservationsPage() {
         </p>
       </div>
 
-      {!settings ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      {/* Tab Navigation */}
+      <div className="mb-6">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'settings'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <FontAwesomeIcon icon={faCalendarAlt} className="w-4 h-4 mr-2" />
+              Settings
+            </button>
+            <button
+              onClick={() => setActiveTab('reservations')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'reservations'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <FontAwesomeIcon icon={faList} className="w-4 h-4 mr-2" />
+              Reservations
+            </button>
+          </nav>
         </div>
-      ) : (
-        <div className="space-y-6">
+      </div>
+
+              {activeTab === 'settings' ? (
+          !settings ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
           {/* Enable/Disable Reservations */}
           <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
             <div className="flex items-center justify-between">
@@ -227,6 +255,51 @@ export default function ReservationsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reservation Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  min="30"
+                  max="240"
+                  step="30"
+                  value={settings.reservationDuration}
+                  onChange={(e) => handleSettingChange('reservationDuration', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Reservations per Time Slot
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={settings.maxReservationsPerTimeSlot}
+                  onChange={(e) => handleSettingChange('maxReservationsPerTimeSlot', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Time Slot Interval (minutes)
+                </label>
+                <select
+                  value={settings.timeSlotInterval}
+                  onChange={(e) => handleSettingChange('timeSlotInterval', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                >
+                  <option value={15}>15 minutes</option>
+                  <option value={30}>30 minutes</option>
+                  <option value={45}>45 minutes</option>
+                  <option value={60}>60 minutes</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -290,7 +363,18 @@ export default function ReservationsPage() {
             </button>
           </div>
         </div>
-      )}
+      )
+    ) : (
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <FontAwesomeIcon icon={faList} className="w-5 h-5 text-orange-500 mr-2" />
+            Manage Reservations
+          </h2>
+          <ReservationList />
+        </div>
+      </div>
+    )}
     </div>
   );
 } 

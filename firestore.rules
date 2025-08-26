@@ -58,6 +58,13 @@ service cloud.firestore {
         allow write: if isRestaurantOwner(restaurantId);  // Only restaurant owner can modify categories
       }
 
+      // Rules for the 'aiPosts' subcollection
+      match /aiPosts/{dateId} {
+        // Only the restaurant owner can read/write AI posts
+        allow read: if isRestaurantOwner(restaurantId);
+        allow create, update, delete: if isRestaurantOwner(restaurantId);
+      }
+
       // Rules for the 'reusableExtraGroups' subcollection
       match /reusableExtraGroups/{groupId} {
         allow list, get: if true; // Anyone can read

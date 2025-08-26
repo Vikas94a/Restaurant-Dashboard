@@ -10,7 +10,8 @@ export async function POST(request: NextRequest) {
             restaurantName,
             restaurantType,
             city,
-            restaurantDetails
+            restaurantDetails,
+            previousPosts
         } = body;
 
         if (!process.env.OPENAI_API_KEY) {
@@ -73,6 +74,51 @@ export async function POST(request: NextRequest) {
             });
             context += "\n";
         }
+
+        // Add previous posts and feedback context to guide the model
+        if (previousPosts && previousPosts.length > 0) {
+            context += "Previous AI Posts and Feedback (most recent first):\n";
+            previousPosts.slice(0, 4).forEach((p: any, idx: number) => {
+                const fb = p.feedback ? (p.feedback === 'helpful' ? 'HELPFUL' : 'NOT_HELPFUL') : 'UNKNOWN';
+                context += `#${idx + 1} [${fb}] Title: ${p.title}\n`;
+            });
+            context += "\nWhen creating new posts, AVOID repeating topics that were NOT_HELPFUL and PREFER styles, themes, or items from posts marked HELPFUL.\n\n";
+        }
+
+        // Server-side structured logs of inputs for debugging
+        try {
+            console.groupCollapsed('[AI-POST][API] Build Prompt Context');
+            console.log('Restaurant', { restaurantName, restaurantType, city });
+            console.log('Sales categories', topSellingItems?.length || 0);
+            console.log('Weather days', weatherData?.length || 0);
+            console.log('City events', cityEvents?.length || 0);
+            console.log('Prev posts', previousPosts?.length || 0);
+            console.groupEnd();
+        } catch {}
+
+        // Build input summary for debugging (no chain-of-thought)
+        const inputSummary = {
+            salesCategories: Array.isArray(topSellingItems) ? topSellingItems.length : 0,
+            topItemsPreview: Array.isArray(topSellingItems) && topSellingItems[0]?.items
+                ? topSellingItems[0].items.slice(0, 3).map((i: any) => i.name)
+                : [],
+            weatherDays: Array.isArray(weatherData) ? weatherData.length : 0,
+            weatherPreview: Array.isArray(weatherData)
+                ? weatherData.slice(0, 2).map((d: any) => ({ day: d.day, condition: d.condition, category: d.weatherCategory }))
+                : [],
+            cityEventsCount: Array.isArray(cityEvents) ? cityEvents.length : 0,
+            cityEventsPreview: Array.isArray(cityEvents)
+                ? cityEvents.slice(0, 2).map((e: any) => e.title)
+                : [],
+            previousPostsCount: Array.isArray(previousPosts) ? previousPosts.length : 0,
+            previousFeedback: Array.isArray(previousPosts)
+                ? previousPosts.reduce((acc: any, p: any) => {
+                    if (p.feedback === 'helpful') acc.helpful += 1;
+                    else if (p.feedback === 'not_helpful') acc.notHelpful += 1;
+                    return acc;
+                }, { helpful: 0, notHelpful: 0 })
+                : { helpful: 0, notHelpful: 0 },
+        } as any;
 
         const prompt = `Based on the restaurant data provided, automatically generate 2 Facebook marketing posts in NORWEGIAN language.
 
@@ -189,6 +235,10 @@ Return the response as a JSON array with exactly 2 posts.`;
         }
 
         // Convert to MarketingPost format and ensure hashtags is always an array
+        const todayIso = new Date();
+        const dayOffset = (index: number) => (index === 0 ? 0 : 2); // Day 1 and Day 3 pattern
+        const toYmd = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().split('T')[0];
+
         const posts = parsedResponse.map((post: any, index: number) => ({
             id: `auto-post-${index + 1}-${Date.now()}`,
             title: post.title || `Dag ${index === 0 ? '1' : '3'} Markedsføringspost`,
@@ -203,6 +253,7 @@ Return the response as a JSON array with exactly 2 posts.`;
             paidPromotion: post.paidPromotion || false,
             budgetRecommendation: post.budgetRecommendation || null,
             day: post.day || `Dag ${index === 0 ? '1' : '3'}`,
+            scheduledDate: toYmd(new Date(todayIso.getFullYear(), todayIso.getMonth(), todayIso.getDate() + dayOffset(index))),
             imageRecommendations: post.imageRecommendations || {
                 whatToPhotograph: "Fotografer restaurantens beste retter",
                 photoTips: ["Bruk god belysning", "Fokuser på detaljer", "Inkluder restaurantmiljø"],
@@ -211,9 +262,53 @@ Return the response as a JSON array with exactly 2 posts.`;
             }
         }));
 
+        // Create a concise, programmatic reasoning summary (no chain-of-thought)
+        const previousNotHelpful = Array.isArray(previousPosts)
+            ? previousPosts.filter((p: any) => p.feedback === 'not_helpful').map((p: any) => p.title)
+            : [];
+        const previousHelpful = Array.isArray(previousPosts)
+            ? previousPosts.filter((p: any) => p.feedback === 'helpful').map((p: any) => p.title)
+            : [];
+
+        const reasoningSummary = {
+            factors: [
+                inputSummary.salesCategories > 0 ? 'Top-selling items' : null,
+                inputSummary.weatherDays > 0 ? 'Weather conditions' : null,
+                inputSummary.cityEventsCount > 0 ? 'City events' : null,
+                inputSummary.previousPostsCount > 0 ? 'Previous post feedback' : null,
+            ].filter(Boolean),
+            strategy: previousHelpful.length > previousNotHelpful.length
+                ? 'Emphasize themes and items from previously helpful posts; align with weather and events.'
+                : 'Explore varied themes while avoiding previously not-helpful topics; align with weather and events.',
+            avoidedTopics: previousNotHelpful.slice(0, 5),
+            reusedThemes: previousHelpful.slice(0, 5),
+            confidence: Math.min(1, 0.4
+                + (inputSummary.salesCategories > 0 ? 0.2 : 0)
+                + (inputSummary.weatherDays > 0 ? 0.2 : 0)
+                + (inputSummary.cityEventsCount > 0 ? 0.1 : 0)
+                + (inputSummary.previousPostsCount > 0 ? 0.1 : 0)
+            )
+        } as any;
+
+        // Server-side structured output logs
+        try {
+            console.groupCollapsed('[AI-POST][API] OpenAI Response Parsed');
+            console.log('Posts count', posts.length);
+            console.log('Titles', posts.map((p: any) => p.title));
+            console.groupEnd();
+        } catch {}
+
         return NextResponse.json({
             success: true,
-            posts: posts
+            posts: posts,
+            debug: {
+                inputSummary,
+                reasoningSummary,
+                openai: {
+                    finishReason: data.choices?.[0]?.finish_reason || null,
+                    usage: data.usage || null
+                }
+            }
         });
 
     } catch (error) {

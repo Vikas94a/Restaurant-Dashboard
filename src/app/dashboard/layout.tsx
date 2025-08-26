@@ -1,6 +1,8 @@
 "use client";
 
 import Sidebar from "@/components/Sidebar";
+import QuickActionsBar from "@/components/QuickActionsBar";
+import DashboardHeader from "@/components/DashboardHeader";
 import { AuthGuard } from "@/providers/guards/AuthGuard";
 import { ProfileCompletionGuard } from "@/providers/guards/ProfileCompletionGuard";
 import { useGlobalOrderListener } from "@/hooks/useGlobalOrderListener";
@@ -62,10 +64,13 @@ export default function DashboardLayout({
     setSidebarCollapsed(isCollapsed);
   };
 
+  // Don't show header on overview page (setup page)
+  const showHeader = pathname !== '/dashboard/overview';
+
   return (
     <AuthGuard>
       <ProfileCompletionGuard>
-        <div className="flex min-h-screen">
+        <div className="flex min-h-screen bg-gray-50">
           {/* Mobile menu button */}
           {isMobile && (
             <button
@@ -90,12 +95,22 @@ export default function DashboardLayout({
               ? 'ml-0' 
               : sidebarCollapsed 
                 ? 'ml-20' // Collapsed sidebar width (80px)
-                : 'ml-60' // Expanded sidebar width (240px)
+                : 'ml-64' // Expanded sidebar width (256px)
           }`}>
             {/* Mobile top padding to account for menu button */}
             {isMobile && <div className="h-16" />}
-            {children}
+            
+            {/* Dashboard Header */}
+            {showHeader && <DashboardHeader />}
+            
+            {/* Page Content */}
+            <div className="min-h-screen">
+              {children}
+            </div>
           </main>
+
+          {/* Quick Actions Bar */}
+          {showHeader && <QuickActionsBar />}
         </div>
       </ProfileCompletionGuard>
     </AuthGuard>
