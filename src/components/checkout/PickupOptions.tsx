@@ -14,6 +14,7 @@ interface PickupOptionsProps {
   availablePickupTimes: string[];
   isDateOpen: (date: string) => boolean;
   restaurantDetails: any;
+  isTimeValid?: (date: string, time: string) => boolean;
 }
 
 export default function PickupOptions({
@@ -27,7 +28,8 @@ export default function PickupOptions({
   availableDates,
   availablePickupTimes,
   isDateOpen,
-  restaurantDetails
+  restaurantDetails,
+  isTimeValid
 }: PickupOptionsProps) {
   const handleOptionChange = (option: 'asap' | 'later') => {
     setPickupOption(option);
@@ -117,6 +119,7 @@ export default function PickupOptions({
           </div>
         </div>
         
+
         {/* Later Options Details */}
         {pickupOption === 'later' && (
           <div className="space-y-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -197,9 +200,23 @@ export default function PickupOptions({
                   <div className="flex items-start">
                     <FontAwesomeIcon icon={faExclamationTriangle} className="w-4 h-4 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
                     <div className="text-sm text-yellow-800">
-                      {!restaurantDetails?.openingHours ? "Restaurantens åpningstider er ikke tilgjengelige" :
-                        !isDateOpen(pickupDate) ? "Restauranten er stengt på valgt dato" :
-                        "Ingen tilgjengelige hentetider for valgt dato"}
+                      {!restaurantDetails?.openingHours || restaurantDetails.openingHours.length === 0 
+                        ? "Restaurantens åpningstider er ikke tilgjengelige. Vennligst kontakt restauranten direkte." :
+                        !isDateOpen(pickupDate) 
+                          ? "Restauranten er stengt på valgt dato. Velg en annen dato." :
+                          "Ingen tilgjengelige hentetider for valgt dato. Prøv en annen dato eller kontakt restauranten."}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Show warning if selected time is invalid */}
+              {pickupTime && isTimeValid && !isTimeValid(pickupDate, pickupTime) && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="flex items-start">
+                    <FontAwesomeIcon icon={faExclamationTriangle} className="w-4 h-4 text-red-600 mr-2 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-red-800">
+                      Valgt tid er i fortiden. Vennligst velg en fremtidig tid.
                     </div>
                   </div>
                 </div>

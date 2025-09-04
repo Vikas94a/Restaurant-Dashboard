@@ -1,6 +1,6 @@
 # AI Eat Easy
 
-A comprehensive restaurant management platform built with Next.js 15 and Firebase, enabling restaurant owners to manage their business and customers to place orders seamlessly. The platform features real-time order tracking, automated email notifications, and a modern responsive interface.
+A comprehensive restaurant management platform built with Next.js 15 and Firebase, enabling restaurant owners to manage their business and customers to place orders and make reservations seamlessly. The platform features real-time order tracking, table reservation system, automated email notifications, and a modern responsive interface.
 
 ## 🚀 Features
 
@@ -9,18 +9,22 @@ A comprehensive restaurant management platform built with Next.js 15 and Firebas
 - 🏪 **Restaurant Dashboard** - Complete business management interface
 - 🍽️ **Advanced Menu Management** - Create, edit, and organize menu items with categories
 - 📊 **Real-time Order Tracking** - Live updates on incoming orders
+- 📅 **Table Reservation Management** - Manage customer reservations with calendar view
 - ⏰ **Business Hours Configuration** - Set opening/closing times for each day
 - 📧 **Automated Email System** - Order confirmations and customer feedback emails
 - 🎨 **Restaurant Profile Setup** - Complete business information management
 - 📱 **Responsive Design** - Works perfectly on all devices
+- 🔧 **Reusable Menu Components** - Create reusable extra groups and items
 
 ### For Customers
 
 - 🛒 **Smart Shopping Cart** - Add items with customizations and special instructions
-- ⏰ **Flexible Pickup Options** - Choose ASAP or schedule for later
+- ⏰ **Flexible Pickup Options** - Choose ASAP or schedule for later with restaurant timing integration
+- 📅 **Table Reservations** - Book tables with calendar view and restaurant timing validation
 - 💳 **Seamless Checkout** - User-friendly order placement process
 - 📱 **Order Status Tracking** - Real-time updates on order progress
 - 📧 **Email Notifications** - Order confirmations and feedback requests
+- 🕐 **Restaurant Timing Integration** - Pickup times and reservations respect actual restaurant hours
 
 ### Advanced Features
 
@@ -29,6 +33,9 @@ A comprehensive restaurant management platform built with Next.js 15 and Firebas
 - 📊 **Redux State Management** - Persistent cart and optimized state handling
 - 🌙 **Route Protection** - Role-based access control with authentication guards
 - 📧 **Automated Feedback System** - Scheduled emails 2 minutes after pickup time
+- 🕐 **Smart Timing Logic** - Restaurant hours integration for orders and reservations
+- 📅 **Reservation System** - Full calendar view with time slot management
+- 🔒 **Firestore Security Rules** - Restaurant-specific data isolation with subcollections
 
 ## 🛠️ Tech Stack
 
@@ -54,10 +61,12 @@ ai-eat-easy/
 ├── src/
 │   ├── app/                     # Next.js App Router
 │   │   ├── (customer)/         # Customer-facing routes
-│   │   │   └── checkout/       # Checkout process
+│   │   │   ├── checkout/       # Checkout process
+│   │   │   └── reserve/        # Table reservation system
 │   │   ├── dashboard/          # Restaurant owner dashboard
 │   │   │   ├── menu/          # Menu management
 │   │   │   ├── orders/        # Order management
+│   │   │   ├── reservations/  # Reservation management
 │   │   │   ├── overview/      # Restaurant setup
 │   │   │   └── settings/      # Restaurant configuration
 │   │   ├── api/               # API routes
@@ -68,23 +77,30 @@ ai-eat-easy/
 │   ├── components/            # Reusable UI components
 │   │   ├── auth/             # Authentication components
 │   │   ├── checkout/         # Checkout flow components
+│   │   ├── reservation/      # Reservation system components
 │   │   ├── dashboardcomponent/ # Dashboard-specific components
 │   │   ├── feedback/         # Feedback system components
 │   │   ├── menu/             # Menu display components
 │   │   └── ui/               # shadcn/ui components
 │   ├── hooks/                # Custom React hooks
-│   │   └── menu/             # Menu-specific hooks
+│   │   ├── menu/             # Menu-specific hooks
+│   │   ├── useRestaurantTiming.ts # Restaurant timing logic
+│   │   └── useReservationTiming.ts # Reservation timing logic
 │   ├── providers/            # Context providers and guards
 │   │   └── guards/           # Route protection guards
 │   ├── services/             # External service integrations
 │   │   ├── email/            # Email service logic
-│   │   └── feedback/         # Feedback service logic
+│   │   ├── feedback/         # Feedback service logic
+│   │   └── reservationService.ts # Reservation management
 │   ├── store/                # Redux store configuration
 │   │   ├── features/         # Redux slices
 │   │   └── middleware/       # Custom middleware
 │   ├── types/                # TypeScript type definitions
+│   │   ├── checkout.ts       # Checkout types
+│   │   └── reservation.ts    # Reservation types
 │   └── utils/                # Utility functions
-└── firebase.json               # Firebase configuration
+├── firebase.json               # Firebase configuration
+└── firestore.rules            # Firestore security rules
 ```
 
 ## 🚀 Getting Started
@@ -198,22 +214,33 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 - **Operating hours configuration** with day-specific settings
 - **Menu management** with categories, items, and customizations
 - **Real-time order tracking** with status updates
+- **Table reservation management** with calendar view
 - **Dashboard analytics** and business overview
 
 ### Customer Ordering System
 
 - **Interactive menu browsing** with item customizations
 - **Smart shopping cart** with persistent storage
-- **Flexible pickup scheduling** (ASAP or scheduled)
+- **Flexible pickup scheduling** (ASAP or scheduled) with restaurant timing integration
 - **Real-time order status** tracking
 - **Email notifications** for order updates
+
+### Table Reservation System
+
+- **Full calendar view** for date selection
+- **Time slot management** with restaurant timing integration
+- **Restaurant hours validation** for availability
+- **Customer information collection** with special requests
+- **Reservation management** in restaurant dashboard
+- **Email confirmations** for reservations
 
 ### Email Automation System
 
 - **Order confirmation emails** sent immediately upon acceptance
 - **Feedback request emails** sent 2 minutes after pickup time
+- **Reservation confirmation emails** for table bookings
 - **Automated scheduling** using Firebase Cloud Functions
-- **Professional email templates** with order details
+- **Professional email templates** with order/reservation details
 - **Error handling and retry logic**
 
 ## ⚙️ Important Configuration Details
@@ -228,16 +255,24 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 **Pickup Time Management:**
 
-- **ASAP orders:** 15-minute buffer from current time
+- **ASAP orders:** 30-minute buffer from current time
 - **Scheduled orders:** 30-minute intervals, up to 7 days ahead
 - **Time slots:** Only generated for open days
 - **Display format:** 12-hour format with AM/PM for customers
+- **Restaurant timing integration:** Respects actual opening hours
+
+**Reservation Time Management:**
+
+- **Time slots:** Generated based on restaurant opening hours
+- **Interval configuration:** Customizable (15, 30, 45, 60 minutes)
+- **Past time prevention:** Cannot book times that have passed
+- **Restaurant hours validation:** Only available during operating hours
 
 ### Email System Configuration
 
 **Sender Address:** `AI Eat Easy <onboarding@resend.dev>`  
 **Feedback Timing:** 2 minutes after pickup time  
-**Email Templates:** Professional HTML with order details  
+**Email Templates:** Professional HTML with order/reservation details  
 **Error Handling:** Automatic retry and failure tracking
 
 ### Firebase Collections Structure
@@ -252,6 +287,23 @@ restaurants/
         - status
         - pickupTime
         - estimatedPickupTime
+    reservations/
+      {reservationId}/
+        - customerDetails
+        - reservationDetails
+        - status
+        - createdAt
+        - updatedAt
+    menu/
+      {menuItemId}/
+        - name, price, description
+        - categories, extras
+    reusableExtraGroups/
+      {groupId}/
+        - name, items[]
+    reusableExtras/
+      {extraId}/
+        - name, price, type
 
 scheduledTasks/
   {taskId}/
@@ -311,13 +363,20 @@ npm run build
 firebase deploy --only hosting
 ```
 
+### Deploy Firestore Rules Only
+
+```bash
+firebase deploy --only firestore:rules
+```
+
 ## 🛡️ Security Features
 
 - **Environment variable protection** for sensitive keys
-- **Firestore security rules** for data access control
+- **Firestore security rules** for data access control with restaurant-specific subcollections
 - **Route protection** with authentication guards
 - **Input validation** with Zod schemas
 - **XSS protection** with proper data sanitization
+- **Restaurant data isolation** with subcollection structure
 
 ## 🤝 Contributing
 
@@ -352,6 +411,12 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Check Firestore security rules
 - Verify restaurant ID is correct
 - Check Redux state management
+
+**Reservation Issues:**
+
+- Verify restaurant opening hours are set
+- Check Firestore security rules for reservations subcollection
+- Ensure reservation settings are properly configured
 
 ### Getting Help
 

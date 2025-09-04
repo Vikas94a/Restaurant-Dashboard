@@ -76,6 +76,14 @@ service cloud.firestore {
         allow list, get: if true;
         allow create, update, delete: if isRestaurantOwner(restaurantId);
       }
+
+      // Rules for the 'reservations' subcollection
+      match /reservations/{reservationId} {
+        allow create: if true;  // Anyone can create a reservation for this restaurant
+        allow read: if isAuthenticated() && isRestaurantOwner(restaurantId);  // Only restaurant owner can read reservations
+        allow update: if isAuthenticated() && isRestaurantOwner(restaurantId);  // Only restaurant owner can update reservations
+        allow delete: if false;  // No one can delete reservations (for audit trail)
+      }
     }
 
     // Users collection rules - STRICT ACCESS CONTROL

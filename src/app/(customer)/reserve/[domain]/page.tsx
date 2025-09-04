@@ -6,6 +6,10 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { ReservationService } from '@/services/reservationService';
 import { ReservationSettings, AvailabilityResponse, CreateReservationRequest } from '@/types/reservation';
+import { RestaurantDetails } from '@/types/checkout';
+import { useReservationTiming } from '@/hooks/useReservationTiming';
+import ReservationCalendar from '@/components/reservation/ReservationCalendar';
+import ReservationTimeSelector from '@/components/reservation/ReservationTimeSelector';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faCalendarAlt, 
@@ -34,18 +38,13 @@ export default function ReservationPage() {
   const params = useParams();
   const domain = params.domain as string;
   
-  console.log('ReservationPage rendered with params:', params);
-  console.log('Domain extracted:', domain);
   
   const [restaurantInfo, setRestaurantInfo] = useState<RestaurantInfo | null>(null);
   const [reservationSettings, setReservationSettings] = useState<ReservationSettings | null>(null);
+  const [restaurantDetails, setRestaurantDetails] = useState<RestaurantDetails | null>(null);
   const [restaurantId, setRestaurantId] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedTime, setSelectedTime] = useState<string>('');
   const [partySize, setPartySize] = useState<number>(2);
-  const [availability, setAvailability] = useState<AvailabilityResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form fields
@@ -54,13 +53,22 @@ export default function ReservationPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
 
+  // Use the new reservation timing hook
+  const timing = useReservationTiming({ restaurantDetails, reservationSettings });
+  const { 
+    selectedDate, 
+    setSelectedDate, 
+    selectedTime, 
+    setSelectedTime, 
+    isDateOpen, 
+    getAvailableDates, 
+    getTimeSlots, 
+    isTimeValid 
+  } = timing;
+
   useEffect(() => {
-    console.log('useEffect triggered with domain:', domain);
     if (domain && domain.trim() !== '') {
-      console.log('Loading restaurant data for domain:', domain);
       loadRestaurantData();
-    } else {
-      console.log('Invalid domain, not loading restaurant data');
     }
   }, [domain]);
 
@@ -68,12 +76,9 @@ export default function ReservationPage() {
 
   const loadRestaurantData = async () => {
     try {
-      console.log('Setting loading state to true');
       setIsLoading(true);
-      console.log('Loading restaurant data for domain:', domain);
       
       if (!domain) {
-        console.log('No domain provided');
         toast.error('Invalid restaurant URL');
         return;
       }
@@ -84,25 +89,21 @@ export default function ReservationPage() {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        console.log('No restaurant found for domain:', domain);
         toast.error('Restaurant not found');
         return;
       }
 
       const restaurantDoc = querySnapshot.docs[0];
       const restaurantData = restaurantDoc.data();
-      console.log('Restaurant found:', { id: restaurantDoc.id, data: restaurantData });
       
       // Validate restaurant data
       if (!restaurantData.name) {
-        console.log('Restaurant data missing name');
         toast.error('Restaurant information is incomplete');
         return;
       }
       
       // Set restaurant ID
       setRestaurantId(restaurantDoc.id);
-      console.log('Restaurant ID set:', restaurantDoc.id);
       
       setRestaurantInfo({
         name: restaurantData.name || 'Restaurant',
@@ -113,93 +114,38 @@ export default function ReservationPage() {
         logo: restaurantData.logo
       });
 
+      // Set restaurant details for timing logic
+      setRestaurantDetails({
+        restaurantId: restaurantDoc.id,
+        openingHours: restaurantData.openingHours || [],
+        name: restaurantData.name || 'Restaurant'
+      });
+
       // Load reservation settings
-      console.log('Loading reservation settings for restaurant:', restaurantDoc.id);
       const settings = await ReservationService.getReservationSettings(restaurantDoc.id);
-      console.log('Reservation settings loaded:', settings);
-      
-      if (settings) {
-        console.log('Settings structure:', {
-          enabled: settings.enabled,
-          hasRequiredFields: !!(settings.openingTime && settings.closingTime && settings.timeSlotInterval && settings.maxReservationsPerTimeSlot)
-        });
-      }
       
       setReservationSettings(settings);
       
       if (!settings?.enabled) {
-        console.log('Reservations not enabled for restaurant');
         toast.error('Reservations are not currently available at this restaurant');
         return;
       }
       
       // Check if settings have all required fields
-      if (!settings.openingTime || !settings.closingTime || !settings.timeSlotInterval || !settings.maxReservationsPerTimeSlot) {
-        console.log('Reservation settings missing required fields:', {
-          openingTime: settings.openingTime,
-          closingTime: settings.closingTime,
-          timeSlotInterval: settings.timeSlotInterval,
-          maxReservationsPerTimeSlot: settings.maxReservationsPerTimeSlot
-        });
+      if (!settings.timeSlotInterval || !settings.maxReservationsPerTimeSlot) {
         toast.error('Reservation settings are incomplete. Please contact the restaurant.');
         return;
       }
-      
-      console.log('Reservation settings validated successfully');
     } catch (error) {
       console.error('Error loading restaurant data:', error);
       toast.error('Failed to load restaurant information');
     } finally {
-      console.log('Setting loading state to false');
       setIsLoading(false);
     }
   };
 
-  const checkAvailability = async () => {
-    console.log('checkAvailability called with:', { selectedDate, reservationSettings: !!reservationSettings, restaurantId });
-    
-    if (!selectedDate || !reservationSettings || !restaurantId) {
-      console.log('Missing required data:', { selectedDate, reservationSettings: !!reservationSettings, restaurantId });
-      return;
-    }
-    
-    console.log('All required data present, proceeding with availability check');
-
-    try {
-      console.log('Setting availability checking state to true');
-      setIsCheckingAvailability(true);
-      console.log('Calling ReservationService.checkAvailability with:', { restaurantId, selectedDate });
-      
-      const availabilityData = await ReservationService.checkAvailability(
-        restaurantId,
-        selectedDate
-      );
-      
-      console.log('Availability data received:', availabilityData);
-      setAvailability(availabilityData);
-    } catch (error) {
-      console.error('Error checking availability:', error);
-      toast.error('Failed to check availability');
-    } finally {
-      console.log('Setting availability checking state to false');
-      setIsCheckingAvailability(false);
-    }
-  };
-
   const handleDateChange = (date: string) => {
-    console.log('Date changed to:', date);
     setSelectedDate(date);
-    setSelectedTime(''); // Reset time when date changes
-    
-    // Check availability after a short delay to ensure state is updated
-    setTimeout(() => {
-      console.log('Checking availability in timeout with:', { date, reservationSettings: !!reservationSettings, restaurantId });
-      if (date && reservationSettings && restaurantId) {
-        checkAvailability();
-      } else {
-        console.log('Cannot check availability - missing data:', { date, reservationSettings: !!reservationSettings, restaurantId });
-      }
-    }, 100);
   };
 
   const handleTimeSelect = (time: string) => {
@@ -209,32 +155,23 @@ export default function ReservationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Form submission attempted with:', {
-      restaurantId,
-      reservationSettings: !!reservationSettings,
-      selectedDate,
-      selectedTime,
-      customerName,
-      customerEmail,
-      customerPhone
-    });
-    
     if (!restaurantId || !reservationSettings || !selectedDate || !selectedTime) {
-      console.log('Form validation failed - missing reservation data');
       toast.error('Please select a date and time');
       return;
     }
 
     if (!customerName || !customerEmail || !customerPhone) {
-      console.log('Form validation failed - missing customer data');
       toast.error('Please fill in all required fields');
       return;
     }
-    
-    console.log('Form validation passed, proceeding with reservation creation');
+
+    // Validate time selection
+    if (!isTimeValid(selectedDate, selectedTime)) {
+      toast.error('Selected time is in the past. Please choose a future time.');
+      return;
+    }
 
     try {
-      console.log('Setting submission state to true');
       setIsSubmitting(true);
       
       const reservationRequest: CreateReservationRequest = {
@@ -244,7 +181,7 @@ export default function ReservationPage() {
           name: customerName,
           email: customerEmail,
           phone: customerPhone,
-          specialRequests: specialRequests || undefined
+          ...(specialRequests && { specialRequests })
         },
         reservationDetails: {
           date: selectedDate,
@@ -253,13 +190,9 @@ export default function ReservationPage() {
         }
       };
 
-      console.log('Creating reservation with request:', reservationRequest);
       const reservation = await ReservationService.createReservation(reservationRequest);
-      console.log('Reservation created successfully:', reservation);
       
       toast.success('Reservation submitted successfully!');
-      
-      console.log('Resetting form after successful submission');
       
       // Reset form
       setSelectedDate('');
@@ -270,30 +203,14 @@ export default function ReservationPage() {
       setSpecialRequests('');
       setPartySize(2);
       
-      // Show confirmation
-      // You could redirect to a confirmation page here
-      
     } catch (error: any) {
       console.error('Error creating reservation:', error);
       toast.error(error.message || 'Failed to submit reservation');
     } finally {
-      console.log('Setting submission state to false');
       setIsSubmitting(false);
     }
   };
 
-  const getMinDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
-
-  const getMaxDate = () => {
-    if (!reservationSettings?.advanceBookingDays) return '';
-    const today = new Date();
-    const maxDate = new Date(today);
-    maxDate.setDate(today.getDate() + reservationSettings.advanceBookingDays);
-    return maxDate.toISOString().split('T')[0];
-  };
 
   if (!domain) {
     return (
@@ -406,17 +323,6 @@ export default function ReservationPage() {
               Make a Reservation
             </h2>
             
-            {/* Debug Info - Remove this in production */}
-            {process.env.NODE_ENV === 'development' && restaurantId && reservationSettings && restaurantInfo && (
-              <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
-                <strong>Debug Info:</strong><br />
-                Restaurant ID: {restaurantId}<br />
-                Settings: Loaded<br />
-                Restaurant Info: Loaded<br />
-                Selected Date: {selectedDate || 'None'}<br />
-                Selected Time: {selectedTime || 'None'}
-              </div>
-            )}
 
             {!restaurantId || !reservationSettings || !restaurantInfo ? (
               <div className="text-center py-8">
@@ -426,77 +332,24 @@ export default function ReservationPage() {
             ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Date Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <FontAwesomeIcon icon={faCalendarAlt} className="w-4 h-4 mr-2" />
-                  Select Date
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => handleDateChange(e.target.value)}
-                  min={getMinDate()}
-                  max={getMaxDate()}
-                  disabled={!restaurantId || !reservationSettings || isLoading}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                  required
-                />
-                {!restaurantId && (
-                  <p className="text-xs text-red-500 mt-1">
-                    Loading restaurant information...
-                  </p>
-                )}
-                {!reservationSettings && restaurantId && (
-                  <p className="text-xs text-red-500 mt-1">
-                    Loading reservation settings...
-                  </p>
-                )}
-                {reservationSettings && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Reservations can be made up to {reservationSettings.advanceBookingDays} days in advance
-                  </p>
-                )}
-              </div>
+              <ReservationCalendar
+                availableDates={getAvailableDates()}
+                selectedDate={selectedDate}
+                onDateSelect={handleDateChange}
+                isDateOpen={isDateOpen}
+                restaurantDetails={restaurantDetails}
+              />
 
               {/* Time Selection */}
               {selectedDate && reservationSettings && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <FontAwesomeIcon icon={faClock} className="w-4 h-4 mr-2" />
-                    Select Time
-                  </label>
-                  {isCheckingAvailability ? (
-                    <div className="flex items-center justify-center py-4">
-                      <FontAwesomeIcon icon={faSpinner} className="w-5 h-5 text-orange-500 animate-spin mr-2" />
-                      <span className="text-gray-600">Checking availability...</span>
-                    </div>
-                  ) : availability?.timeSlots ? (
-                    <div className="grid grid-cols-3 gap-2">
-                      {availability.timeSlots.map((slot) => (
-                        <button
-                          key={slot.time}
-                          type="button"
-                          onClick={() => handleTimeSelect(slot.time)}
-                          disabled={!slot.available}
-                          className={`p-3 text-sm rounded-md border transition-colors ${
-                            selectedTime === slot.time
-                              ? 'bg-orange-500 text-white border-orange-500'
-                              : slot.available
-                              ? 'border-gray-300 hover:border-orange-500 hover:bg-orange-50'
-                              : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
-                          }`}
-                        >
-                          {slot.time}
-                          {!slot.available && (
-                            <div className="text-xs mt-1">Full</div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-sm">No available time slots for this date</p>
-                  )}
-                </div>
+                <ReservationTimeSelector
+                  selectedDate={selectedDate}
+                  selectedTime={selectedTime}
+                  onTimeSelect={handleTimeSelect}
+                  availableTimes={getTimeSlots(selectedDate)}
+                  isTimeValid={isTimeValid}
+                  restaurantDetails={restaurantDetails}
+                />
               )}
 
               {/* Party Size */}
@@ -592,7 +445,7 @@ export default function ReservationPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isSubmitting || !selectedDate || !selectedTime || !restaurantId || !reservationSettings || isLoading}
+                disabled={isSubmitting || !selectedDate || !selectedTime || !restaurantId || !reservationSettings || isLoading || !isTimeValid(selectedDate, selectedTime)}
                 className="w-full py-3 px-6 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {isSubmitting ? (
@@ -656,7 +509,7 @@ export default function ReservationPage() {
                           <div>
                             <p className="text-sm font-medium text-gray-900">Hours</p>
                             <p className="text-sm text-gray-600">
-                              {reservationSettings.openingTime} - {reservationSettings.closingTime}
+                              Based on restaurant operating hours
                             </p>
                           </div>
                         </div>

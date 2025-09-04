@@ -18,7 +18,8 @@ import {
   CreateReservationRequest, 
   AvailabilityResponse,
   TimeSlot,
-  ReservationConflict 
+  ReservationConflict,
+  ReservationStatus
 } from '@/types/reservation';
 
 export class ReservationService {
@@ -50,14 +51,11 @@ export class ReservationService {
     restaurantId: string, 
     date: string
   ): Promise<AvailabilityResponse> {
-    console.log('ReservationService.checkAvailability called with:', { restaurantId, date });
     
     try {
       const settings = await this.getReservationSettings(restaurantId);
-      console.log('Reservation settings loaded:', settings);
       
       if (!settings || !settings.enabled) {
-        console.log('Reservations not enabled or no settings found');
         return {
           date,
           timeSlots: [],
@@ -65,34 +63,30 @@ export class ReservationService {
         };
       }
 
-      // Get existing reservations for the date
+      // Get existing reservations for the date from restaurant subcollection
       let existingReservations: Reservation[] = [];
       
       try {
-        console.log('Querying reservations collection...');
-        const reservationsRef = collection(db, 'reservations');
+        const reservationsRef = collection(db, 'restaurants', restaurantId, 'reservations');
         const reservationsQuery = query(
           reservationsRef,
-          where('restaurantId', '==', restaurantId),
           where('reservationDetails.date', '==', date),
           where('status', 'in', ['pending', 'confirmed'])
         );
         
-        console.log('Executing reservations query...');
         const reservationsSnapshot = await getDocs(reservationsQuery);
-        existingReservations = reservationsSnapshot.docs.map(doc => doc.data() as Reservation);
-        console.log('Found existing reservations:', existingReservations.length);
+        existingReservations = reservationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Reservation));
       } catch (reservationError) {
-        // If there's an error reading reservations (e.g., collection doesn't exist yet),
+        // If there's an error reading reservations (e.g., subcollection doesn't exist yet),
         // just continue with empty reservations array
-        console.log('Error reading reservations, continuing with empty array:', reservationError);
         existingReservations = [];
       }
 
       // Generate time slots
-      console.log('Generating time slots with settings:', settings);
       const timeSlots = this.generateTimeSlots(settings, existingReservations);
-      console.log('Generated time slots:', timeSlots);
 
       return {
         date,
@@ -110,37 +104,12 @@ export class ReservationService {
     settings: ReservationSettings, 
     existingReservations: Reservation[]
   ): TimeSlot[] {
-    console.log('generateTimeSlots called with:', { settings, existingReservationsCount: existingReservations.length });
-    
     const slots: TimeSlot[] = [];
-    const { openingTime, closingTime, timeSlotInterval, maxReservationsPerTimeSlot } = settings;
+    const { timeSlotInterval, maxReservationsPerTimeSlot } = settings;
     
-    console.log('Time settings:', { openingTime, closingTime, timeSlotInterval, maxReservationsPerTimeSlot });
-    
-    // Convert times to minutes for easier calculation
-    const openingMinutes = this.timeToMinutes(openingTime);
-    const closingMinutes = this.timeToMinutes(closingTime);
-    
-    console.log('Time in minutes:', { openingMinutes, closingMinutes });
-    
-    // Generate slots every timeSlotInterval minutes
-    for (let time = openingMinutes; time < closingMinutes; time += timeSlotInterval) {
-      const timeString = this.minutesToTime(time);
-      
-      // Count existing reservations for this time slot
-      const currentBookings = existingReservations.filter(
-        res => res.reservationDetails.time === timeString
-      ).length;
-      
-      slots.push({
-        time: timeString,
-        available: currentBookings < maxReservationsPerTimeSlot,
-        currentBookings,
-        maxBookings: maxReservationsPerTimeSlot
-      });
-    }
-    
-    console.log('Generated slots:', slots);
+    // For now, return empty slots since we're using restaurant timing logic
+    // This method is kept for compatibility but the actual time slot generation
+    // is now handled by the restaurant timing hooks
     return slots;
   }
 
@@ -181,7 +150,7 @@ export class ReservationService {
         updatedAt: new Date().toISOString()
       };
 
-      const docRef = await addDoc(collection(db, 'reservations'), reservationData);
+      const docRef = await addDoc(collection(db, 'restaurants', request.restaurantId, 'reservations'), reservationData);
       
       return {
         id: docRef.id,
@@ -227,21 +196,18 @@ export class ReservationService {
         };
       }
 
-      // Check if time slot is available
-      const availability = await this.checkAvailability(request.restaurantId, request.reservationDetails.date);
-      const timeSlot = availability.timeSlots.find(slot => slot.time === request.reservationDetails.time);
+      // Check if time slot is available using restaurant timing logic
+      const isTimeSlotValid = await this.validateTimeSlotWithRestaurantHours(
+        request.restaurantId, 
+        request.reservationDetails.date, 
+        request.reservationDetails.time
+      );
       
-      if (!timeSlot || !timeSlot.available) {
+      if (!isTimeSlotValid) {
         return {
           type: 'time_conflict',
           message: 'This time slot is not available.',
-          suggestedAlternatives: availability.timeSlots
-            .filter(slot => slot.available)
-            .slice(0, 3)
-            .map(slot => ({
-              date: request.reservationDetails.date,
-              time: slot.time
-            }))
+          suggestedAlternatives: []
         };
       }
 
@@ -261,17 +227,15 @@ export class ReservationService {
     status?: ReservationStatus
   ): Promise<Reservation[]> {
     try {
-      const reservationsRef = collection(db, 'reservations');
+      const reservationsRef = collection(db, 'restaurants', restaurantId, 'reservations');
       let reservationsQuery = query(
         reservationsRef,
-        where('restaurantId', '==', restaurantId),
         orderBy('reservationDetails.date', 'desc')
       );
       
       if (status) {
         reservationsQuery = query(
           reservationsRef,
-          where('restaurantId', '==', restaurantId),
           where('status', '==', status),
           orderBy('reservationDetails.date', 'desc')
         );
@@ -283,20 +247,21 @@ export class ReservationService {
         ...doc.data()
       })) as Reservation[];
     } catch (error) {
-      // If there's an error (e.g., collection doesn't exist yet), return empty array
-      console.log('No reservations collection found yet, returning empty array');
+      // If there's an error (e.g., subcollection doesn't exist yet), return empty array
+      console.log('No reservations subcollection found yet, returning empty array');
       return [];
     }
   }
 
   // Update reservation status
   static async updateReservationStatus(
+    restaurantId: string,
     reservationId: string, 
     status: ReservationStatus,
     notes?: string
   ): Promise<void> {
     try {
-      const reservationRef = doc(db, 'reservations', reservationId);
+      const reservationRef = doc(db, 'restaurants', restaurantId, 'reservations', reservationId);
       const updateData: Partial<Reservation> = {
         status,
         updatedAt: new Date().toISOString()
@@ -320,9 +285,9 @@ export class ReservationService {
   }
 
   // Get reservation by ID
-  static async getReservationById(reservationId: string): Promise<Reservation | null> {
+  static async getReservationById(restaurantId: string, reservationId: string): Promise<Reservation | null> {
     try {
-      const reservationRef = doc(db, 'reservations', reservationId);
+      const reservationRef = doc(db, 'restaurants', restaurantId, 'reservations', reservationId);
       const reservationDoc = await getDoc(reservationRef);
       
       if (reservationDoc.exists()) {
@@ -335,6 +300,109 @@ export class ReservationService {
     } catch (error) {
       console.error('Error fetching reservation:', error);
       throw new Error('Failed to fetch reservation');
+    }
+  }
+
+  // Validate time slot using restaurant timing logic
+  private static async validateTimeSlotWithRestaurantHours(
+    restaurantId: string,
+    date: string,
+    time: string
+  ): Promise<boolean> {
+    try {
+      // Get restaurant details to access opening hours
+      const restaurantRef = doc(db, 'restaurants', restaurantId);
+      const restaurantDoc = await getDoc(restaurantRef);
+      
+      if (!restaurantDoc.exists()) {
+        return false;
+      }
+      
+      const restaurantData = restaurantDoc.data();
+      const openingHours = restaurantData.openingHours || [];
+      
+      if (openingHours.length === 0) {
+        return false;
+      }
+      
+      // Check if the date is open
+      const dateObj = new Date(date + 'T00:00:00');
+      const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      
+      // Find matching day in opening hours
+      const dayHours = openingHours.find((hour: any) => {
+        const normalizedDay = hour.day.toLowerCase().trim();
+        const normalizedCurrentDay = dayOfWeek.toLowerCase().trim();
+        
+        // Handle common variations
+        const dayMappings: { [key: string]: string } = {
+          'monday': 'monday', 'mon': 'monday', 'm': 'monday',
+          'tuesday': 'tuesday', 'tue': 'tuesday', 'tues': 'tuesday', 't': 'tuesday',
+          'wednesday': 'wednesday', 'wed': 'wednesday', 'w': 'wednesday',
+          'thursday': 'thursday', 'thu': 'thursday', 'thurs': 'thursday', 'th': 'thursday',
+          'friday': 'friday', 'fri': 'friday', 'f': 'friday',
+          'saturday': 'saturday', 'sat': 'saturday', 's': 'saturday',
+          'sunday': 'sunday', 'sun': 'sunday', 'su': 'sunday',
+          'mandag': 'monday', 'tirsdag': 'tuesday', 'onsdag': 'wednesday',
+          'torsdag': 'thursday', 'fredag': 'friday', 'lørdag': 'saturday', 'søndag': 'sunday'
+        };
+        
+        const mappedDay = dayMappings[normalizedDay] || normalizedDay;
+        const mappedCurrentDay = dayMappings[normalizedCurrentDay] || normalizedCurrentDay;
+        
+        return mappedDay === mappedCurrentDay;
+      });
+      
+      if (!dayHours || dayHours.closed) {
+        return false;
+      }
+      
+      // Check if time is within opening hours
+      const [openHour, openMinute] = dayHours.open.split(':').map(Number);
+      const [closeHour, closeMinute] = dayHours.close.split(':').map(Number);
+      
+      // Parse the selected time
+      const [timeStr, period] = time.replace(/\s/g, '').split(/(AM|PM)/i);
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      
+      let selectedHour = hours;
+      if (period?.toUpperCase() === 'PM' && hours !== 12) {
+        selectedHour += 12;
+      } else if (period?.toUpperCase() === 'AM' && hours === 12) {
+        selectedHour = 0;
+      }
+      
+      // Check if time is within opening hours
+      const openingMinutes = openHour * 60 + openMinute;
+      const closingMinutes = closeHour * 60 + closeMinute;
+      const selectedMinutes = selectedHour * 60 + minutes;
+      
+      if (selectedMinutes < openingMinutes || selectedMinutes >= closingMinutes) {
+        return false;
+      }
+      
+      // If it's today, check if time is not in the past
+      const now = new Date();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      dateObj.setHours(0, 0, 0, 0);
+      
+      if (dateObj.getTime() === today.getTime()) {
+        const selectedDateTime = new Date(now);
+        selectedDateTime.setHours(selectedHour, minutes, 0, 0);
+        
+        const minimumTime = new Date(now);
+        minimumTime.setMinutes(minimumTime.getMinutes() + 30); // 30 minutes buffer
+        
+        if (selectedDateTime < minimumTime) {
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error validating time slot:', error);
+      return false;
     }
   }
 }

@@ -35,6 +35,7 @@ export default function CheckoutPage() {
 
   // Custom hooks
   const timing = useRestaurantTiming({ restaurantDetails });
+  const { isTimeValid } = timing;
   const { isSubmitting, localPlacedOrder, submitOrder, resetOrder } = useOrderSubmission({
     restaurantId: restaurantId || '',
     pickupOption: timing.pickupOption,
@@ -78,6 +79,30 @@ export default function CheckoutPage() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate pickup options
+    if (timing.pickupOption === 'later') {
+      if (!timing.pickupDate) {
+        toast.error('Vennligst velg en hentedato');
+        return;
+      }
+      if (!timing.pickupTime) {
+        toast.error('Vennligst velg en hentetid');
+        return;
+      }
+      if (!timing.isDateOpen(timing.pickupDate)) {
+        toast.error('Restauranten er stengt på valgt dato');
+        return;
+      }
+      if (timing.availablePickupTimes.length === 0) {
+        toast.error('Ingen tilgjengelige hentetider for valgt dato');
+        return;
+      }
+      if (!isTimeValid(timing.pickupDate, timing.pickupTime)) {
+        toast.error('Valgt tid er i fortiden. Vennligst velg en fremtidig tid.');
+        return;
+      }
+    }
     
     const result = await submitOrder(formData);
     if (result?.success) {
@@ -134,13 +159,14 @@ export default function CheckoutPage() {
                 availablePickupTimes={timing.availablePickupTimes}
                 isDateOpen={timing.isDateOpen}
                 restaurantDetails={restaurantDetails}
+                isTimeValid={isTimeValid}
               />
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (timing.pickupOption === 'later' && (!timing.pickupDate || !timing.pickupTime || !timing.isDateOpen(timing.pickupDate) || timing.availablePickupTimes.length === 0 || !isTimeValid(timing.pickupDate, timing.pickupTime)))}
                 className={`w-full mt-6 py-3 px-4 rounded-lg font-medium text-white transition-colors ${
-                  isSubmitting
+                  isSubmitting || (timing.pickupOption === 'later' && (!timing.pickupDate || !timing.pickupTime || !timing.isDateOpen(timing.pickupDate) || timing.availablePickupTimes.length === 0 || !isTimeValid(timing.pickupDate, timing.pickupTime)))
                     ? 'bg-gray-300 cursor-not-allowed'
                     : 'bg-primary hover:bg-primary-dark cursor-pointer'
                 }`}

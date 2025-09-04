@@ -31,12 +31,26 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<'form' | 'pickup' | 'summary'>('form');
   const [pickupData, setPickupData] = useState<any>(null);
-  const [pickupOption, setPickupOption] = useState<'asap' | 'later'>('asap');
-  const [pickupDate, setPickupDate] = useState<string>('');
-  const [pickupTime, setPickupTime] = useState<string>('');
   const [showOrderDialog, setShowOrderDialog] = useState(false);
   // Timing helpers (opening hours, slots, ASAP availability)
   const timing = useRestaurantTiming({ restaurantDetails });
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('Restaurant Details:', restaurantDetails);
+    console.log('Timing Hook Values:', timing);
+  }, [restaurantDetails, timing]);
+  
+  // Destructure timing values for easier access
+  const { 
+    pickupOption, 
+    setPickupOption, 
+    pickupDate, 
+    setPickupDate, 
+    pickupTime, 
+    setPickupTime,
+    isTimeValid
+  } = timing;
 
   // Order submission hook to persist order in Firestore
   const { isSubmitting, localPlacedOrder, submitOrder, resetOrder } = useOrderSubmission({
@@ -82,6 +96,7 @@ export default function CheckoutPage() {
         setRestaurantId(restaurantDoc.id);
         setRestaurantName(data.name || data.restaurantType || "Restaurant");
         setRestaurantDetails({
+          restaurantId: restaurantDoc.id,
           openingHours: data.openingHours || [],
           name: data.name || data.restaurantType || "Restaurant"
         });
@@ -300,33 +315,54 @@ export default function CheckoutPage() {
                     <PickupOptions 
                       pickupOption={pickupOption}
                       setPickupOption={setPickupOption}
-                      isAsapAvailable={true}
+                      isAsapAvailable={timing.isAsapAvailable}
                       pickupDate={pickupDate}
                       setPickupDate={setPickupDate}
                       pickupTime={pickupTime}
                       setPickupTime={setPickupTime}
-                      availableDates={[
-                        { date: '2024-01-15', display: 'Today' },
-                        { date: '2024-01-16', display: 'Tomorrow' },
-                        { date: '2024-01-17', display: 'Wednesday' }
-                      ]}
-                      availablePickupTimes={['12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM']}
-                      isDateOpen={() => true}
+                      availableDates={timing.getAvailableDates()}
+                      availablePickupTimes={timing.availablePickupTimes}
+                      isDateOpen={timing.isDateOpen}
                       restaurantDetails={restaurantDetails || {}}
+                      isTimeValid={isTimeValid}
                     />
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       <button
                         onClick={() => {
+                          // Validate pickup options before proceeding
+                          if (pickupOption === 'later') {
+                            if (!pickupDate) {
+                              toast.error('Please select a pickup date');
+                              return;
+                            }
+                            if (!pickupTime) {
+                              toast.error('Please select a pickup time');
+                              return;
+                            }
+                            if (!timing.isDateOpen(pickupDate)) {
+                              toast.error('Restaurant is closed on selected date');
+                              return;
+                            }
+                            if (timing.availablePickupTimes.length === 0) {
+                              toast.error('No available pickup times for selected date');
+                              return;
+                            }
+                            if (!isTimeValid(pickupDate, pickupTime)) {
+                              toast.error('Selected time is in the past. Please choose a future time.');
+                              return;
+                            }
+                          }
+                          
                           const pickupFormData = {
                             pickupOption,
-                            pickupDate: pickupOption === 'asap' ? new Date().toISOString().split('T')[0] : pickupDate,
+                            pickupDate: pickupOption === 'asap' ? timing.pickupDate : pickupDate,
                             pickupTime: pickupOption === 'asap' ? 'As Soon As Possible' : pickupTime
                           };
                           handlePickupSubmit(pickupFormData);
                         }}
-                        disabled={pickupOption === 'later' && (!pickupDate || !pickupTime)}
+                        disabled={pickupOption === 'later' && (!pickupDate || !pickupTime || !timing.isDateOpen(pickupDate) || timing.availablePickupTimes.length === 0 || !isTimeValid(pickupDate, pickupTime))}
                         className={`w-full py-4 px-6 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-opacity-50 ${
-                          pickupOption === 'later' && (!pickupDate || !pickupTime)
+                          pickupOption === 'later' && (!pickupDate || !pickupTime || !timing.isDateOpen(pickupDate) || timing.availablePickupTimes.length === 0 || !isTimeValid(pickupDate, pickupTime))
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600'
                         }`}

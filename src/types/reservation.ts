@@ -30,8 +30,6 @@ export interface ReservationSettings {
   maxPartySize: number;
   minPartySize: number;
   advanceBookingDays: number;
-  openingTime: string; // HH:MM format
-  closingTime: string; // HH:MM format
   reservationLink: string;
   reservationDuration: number; // in minutes
   maxReservationsPerTimeSlot: number;

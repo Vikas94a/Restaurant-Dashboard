@@ -39,8 +39,10 @@ export function useReservations(status?: ReservationStatus) {
     newStatus: ReservationStatus, 
     notes?: string
   ) => {
+    if (!restaurantDetails?.restaurantId) return false;
+    
     try {
-      await ReservationService.updateReservationStatus(reservationId, newStatus, notes);
+      await ReservationService.updateReservationStatus(restaurantDetails.restaurantId, reservationId, newStatus, notes);
       // Reload reservations after update
       await loadReservations();
       return true;
