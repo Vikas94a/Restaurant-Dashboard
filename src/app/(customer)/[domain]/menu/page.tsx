@@ -111,7 +111,7 @@ export default function MenuPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-25 via-red-25 to-yellow-25">
-      {/* Add custom styles for scrollbar hiding */}
+      {/* Add custom styles for scrollbar hiding and mobile optimizations */}
       <style jsx global>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
@@ -126,17 +126,40 @@ export default function MenuPage() {
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
+        .scrollbar-thin {
+          scrollbar-width: thin;
+        }
+        .scrollbar-thin::-webkit-scrollbar {
+          width: 6px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 3px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 3px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+        /* Mobile touch improvements */
+        @media (max-width: 640px) {
+          .touch-manipulation {
+            touch-action: manipulation;
+          }
+        }
       `}</style>
 
       {/* Floating Cart Button */}
       <CartButton isOpen={isCartOpen} onOpen={() => setIsCartOpen(true)} />
 
       {/* Header with Restaurant Name */}
-      <div className="bg-gradient-to-r from-orange-400 to-red-400 shadow-md">
+      <div className="bg-gradient-to-r from-orange-400 to-red-400 shadow-md sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-white text-center">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-white text-center">
             {isLoading ? (
-              <div className="animate-pulse bg-orange-200 h-5 sm:h-6 w-32 sm:w-48 rounded mx-auto"></div>
+              <div className="animate-pulse bg-orange-200 h-4 sm:h-5 md:h-6 w-24 sm:w-32 md:w-48 rounded mx-auto"></div>
             ) : (
               <span className="drop-shadow-md">{restaurantName}</span>
             )}
@@ -148,7 +171,7 @@ export default function MenuPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-6">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6">
         {restaurantId && <RestaurantMenu restaurantId={restaurantId} />}
       </div>
 

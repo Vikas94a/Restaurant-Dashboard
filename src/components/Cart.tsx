@@ -77,7 +77,7 @@ export default function Cart({ isOpen, onClose }: CartProps) {
           </button>
         </div>
 
-        <div className="flex-grow overflow-y-auto p-4 space-y-3">
+        <div className="flex-grow overflow-y-auto p-3 sm:p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
           {isNavigating ? (
             <div className="flex items-center justify-center h-24">
               <FontAwesomeIcon icon={faSpinner} className="animate-spin text-2xl text-orange-400" />
@@ -96,12 +96,12 @@ export default function Cart({ isOpen, onClose }: CartProps) {
               ))}
             </ul>
           ) : (
-            <div className="flex flex-col items-center justify-center h-40 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-40 text-gray-500 p-4">
               <div className="bg-gradient-to-br from-orange-50 to-red-50 p-4 rounded-full mb-3">
-                <FontAwesomeIcon icon={faShoppingCart} className="w-12 h-12 text-orange-300" />
+                <FontAwesomeIcon icon={faShoppingCart} className="w-10 h-10 sm:w-12 sm:h-12 text-orange-300" />
               </div>
-              <p className="text-lg font-semibold text-gray-600">Your cart is empty</p>
-              <p className="text-gray-500 mt-1 text-sm">Add some delicious items to get started!</p>
+              <p className="text-base sm:text-lg font-semibold text-gray-600 text-center">Your cart is empty</p>
+              <p className="text-gray-500 mt-1 text-xs sm:text-sm text-center">Add some delicious items to get started!</p>
             </div>
           )}
         </div>
