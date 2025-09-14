@@ -1,4 +1,3 @@
-import * as functions from 'firebase-functions';
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
@@ -6,10 +5,9 @@ import { Resend } from 'resend';
 
 admin.initializeApp();
 
-// Get environment variables from Firebase config
-const config = functions.config();
-const resend = new Resend(config.resend?.api_key || process.env.RESEND_API_KEY);
-const appUrl = config.app?.url || process.env.APP_URL;
+// Get environment variables
+const resend = new Resend(process.env.RESEND_API_KEY || 're_1234567890');
+const appUrl = process.env.APP_URL || 'https://www.aieateasy.no';
 
 interface Order {
   id: string;

@@ -128,8 +128,8 @@ export default function CategoryItem({
 
         {/* Expandable content area */}
         <div
-          className={`transition-all duration-300 ease-in-out overflow-hidden relative ${
-            isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
+          className={`transition-all duration-300 ease-in-out overflow-visible relative ${
+            isExpanded ? "max-h-none opacity-100" : "max-h-0 opacity-0"
           }`}
         >
           <div className="p-3 border-t border-gray-200 bg-gray-50 relative z-0">

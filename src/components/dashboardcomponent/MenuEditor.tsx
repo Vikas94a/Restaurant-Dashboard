@@ -335,7 +335,7 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
   };
 
   return (
-    <div className="p-3 max-w-full overflow-x-hidden">
+    <div className="p-3 max-w-full overflow-x-hidden min-h-screen">
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       
       {/* Reusable Extras at the top */}
@@ -373,7 +373,7 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
           onFixOrder={handleFixCategoryOrder}
           orderModified={orderModified}
         />
-        <div className="overflow-y-auto mt-2">
+        <div className="overflow-visible mt-2">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
