@@ -65,6 +65,23 @@ service cloud.firestore {
         allow create, update, delete: if isRestaurantOwner(restaurantId);
       }
 
+      // Rules for the 'feedbackSummaries' subcollection
+      match /feedbackSummaries/{feedbackId} {
+        // Only the restaurant owner can read/write feedback summaries
+        allow read: if isRestaurantOwner(restaurantId);
+        allow create, update, delete: if isRestaurantOwner(restaurantId);
+      }
+
+      // Rules for the 'customerFeedback' subcollection
+      match /customerFeedback/{orderId} {
+        // Anyone can create customer feedback (for feedback form)
+        allow create: if true;
+        // Only restaurant owner can read customer feedback
+        allow read: if isRestaurantOwner(restaurantId);
+        // No updates or deletes allowed (for data integrity)
+        allow update, delete: if false;
+      }
+
       // Rules for the 'reusableExtraGroups' subcollection
       match /reusableExtraGroups/{groupId} {
         allow list, get: if true; // Anyone can read

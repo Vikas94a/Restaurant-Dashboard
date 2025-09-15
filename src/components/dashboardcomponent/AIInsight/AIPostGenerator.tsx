@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { AIPostsService } from '@/services/aiPostsService';
+import { FeedbackProcessor } from '@/services/feedbackProcessor';
 import type { WeatherDay } from "./weatherData";
 import type { CityEvent } from "../events";
 
@@ -96,6 +97,7 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
     const [upcomingPosts, setUpcomingPosts] = useState<MarketingPost[]>([]);
     const [needsFeedbackPosts, setNeedsFeedbackPosts] = useState<MarketingPost[]>([]);
     const [aiInsights, setAiInsights] = useState<string[]>([]);
+    const [processingFeedback, setProcessingFeedback] = useState<Set<string>>(new Set());
 
     // Auto-refresh logic: check for expired posts and update state
     const refreshPosts = useCallback(async () => {
@@ -119,7 +121,7 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
             setNeedsFeedbackPosts(pending || []);
 
             // Generate AI insights based on feedback
-            const insights = generateAIInsights(upcomingPosts, needsFeedbackPosts);
+            const insights = await generateAIInsights(upcomingPosts, needsFeedbackPosts);
             setAiInsights(insights);
 
         } catch (error) {
@@ -128,19 +130,27 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
     }, [restaurantDetails?.restaurantId, upcomingPosts, needsFeedbackPosts]);
 
     // Generate AI insights based on feedback patterns
-    const generateAIInsights = (upcoming: MarketingPost[], needsFeedback: MarketingPost[]): string[] => {
+    const generateAIInsights = async (upcoming: MarketingPost[], needsFeedback: MarketingPost[]): Promise<string[]> => {
         const insights: string[] = [];
         const allPosts = [...upcoming, ...needsFeedback];
         
         if (allPosts.length === 0) return insights;
 
+        // Feedback progress insight
+        if (needsFeedback.length > 0) {
+            const feedbackProvided = needsFeedback.filter(p => p.feedback);
+            const feedbackProgress = feedbackProvided.length;
+            const totalNeedingFeedback = needsFeedback.length;
+            insights.push(`📝 Feedback Progress: ${feedbackProgress}/${totalNeedingFeedback} posts have received feedback. ${totalNeedingFeedback - feedbackProgress} still need feedback.`);
+        }
+
         // Analyze feedback patterns
         const helpfulPosts = allPosts.filter(p => p.feedback === 'helpful');
         const notHelpfulPosts = allPosts.filter(p => p.feedback === 'not_helpful');
         
-        if (helpfulPosts.length > notHelpfulPosts.length) {
+        if (helpfulPosts.length > notHelpfulPosts.length && helpfulPosts.length > 0) {
             insights.push("✅ Your customers respond well to AI-generated posts. Keep providing feedback to improve quality.");
-        } else if (notHelpfulPosts.length > helpfulPosts.length) {
+        } else if (notHelpfulPosts.length > helpfulPosts.length && notHelpfulPosts.length > 0) {
             insights.push("⚠️ Recent posts haven't performed well. Consider adjusting your feedback to help AI learn.");
         }
 
@@ -160,7 +170,34 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
         // Weather-based insights
         const weatherPosts = allPosts.filter(p => p.type === 'weather-based');
         if (weatherPosts.length > 0) {
-            insights.push("🌤️ Weather-based posts are being generated to match local conditions.");
+            insights.push("🌤️ Weather-based posts are being generated to match local conditions across your 3-day weekly schedule.");
+        }
+
+        // Smart paid promotion insights
+        const paidPosts = allPosts.filter(p => p.paidPromotion);
+        const totalPosts = allPosts.length;
+        if (totalPosts > 0) {
+            const paidPercentage = Math.round((paidPosts.length / totalPosts) * 100);
+            if (paidPercentage > 60) {
+                insights.push("💰 High paid promotion usage detected. AI is recommending paid ads strategically for maximum value.");
+            } else if (paidPercentage < 30) {
+                insights.push("💡 Conservative paid promotion approach. AI is focusing on organic reach when sufficient.");
+            } else {
+                insights.push("⚖️ Balanced paid promotion strategy. AI recommends paid ads only when they create real value.");
+            }
+        }
+
+        // Get AI learning insights from processed feedback
+        try {
+            const restaurantId = restaurantDetails?.restaurantId;
+            if (restaurantId) {
+                const learningInsights = await FeedbackProcessor.generateLearningInsights(restaurantId);
+                insights.push(...learningInsights);
+            }
+        } catch (error) {
+            console.error('Failed to generate learning insights:', error);
+            // Don't break the insights generation if feedback processing fails
+            insights.push('Learning insights will be available once feedback is processed.');
         }
 
         return insights;
@@ -186,7 +223,7 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
                 }
 
                 // Generate initial insights
-                const insights = generateAIInsights(upcoming || [], pending || []);
+                const insights = await generateAIInsights(upcoming || [], pending || []);
                 setAiInsights(insights);
             } catch (error) {
                 console.error('Failed to load existing posts:', error);
@@ -317,15 +354,55 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
         // Update UI optimistically
         setGeneratedPosts((prev) => prev.map((p) => p.id === postId ? { ...p, feedback: value } : p));
         setUpcomingPosts((prev) => prev.map((p) => p.id === postId ? { ...p, feedback: value } : p));
+        setNeedsFeedbackPosts((prev) => prev.map((p) => p.id === postId ? { ...p, feedback: value } : p));
 
-        // Persist feedback
+        // Persist feedback and process it with AI
         try {
             const restaurantId = restaurantDetails?.restaurantId;
             if (!restaurantId) return;
             const today = new Date().toISOString().split('T')[0];
+            
+            // Update feedback in database
             await AIPostsService.updatePostFeedback(restaurantId, today, postId, value);
             
-            // Refresh insights after feedback
+            // Find the post to get complete feedback data
+            const allPosts = [...generatedPosts, ...upcomingPosts, ...needsFeedbackPosts];
+            const post = allPosts.find(p => p.id === postId);
+            
+            if (post) {
+                // Process feedback through AI for learning
+                const feedbackData = {
+                    postId: post.id,
+                    postTitle: post.title,
+                    postContent: post.content,
+                    postType: post.type,
+                    feedback: value,
+                    detailedFeedback: post.detailedFeedback || {},
+                    restaurantId: restaurantId,
+                    restaurantName: restaurantName,
+                    restaurantType: restaurantType
+                };
+                
+                // Process feedback asynchronously (don't wait for it)
+                setProcessingFeedback(prev => new Set(prev).add(postId));
+                FeedbackProcessor.processFeedback(feedbackData).then((summary) => {
+                    if (summary) {
+                        console.log('Feedback processed by AI:', summary);
+                        // Refresh insights after AI processing
+                        setTimeout(refreshPosts, 2000);
+                    }
+                }).catch((error) => {
+                    console.error('Failed to process feedback with AI:', error);
+                }).finally(() => {
+                    setProcessingFeedback(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(postId);
+                        return newSet;
+                    });
+                });
+            }
+            
+            // Refresh insights and posts after feedback
             setTimeout(refreshPosts, 1000);
         } catch (e) {
             console.error('Failed to update feedback:', e);
@@ -348,6 +425,7 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
         
         setGeneratedPosts(updatePost);
         setUpcomingPosts(updatePost);
+        setNeedsFeedbackPosts(updatePost);
 
         // Persist detailed feedback
         try {
@@ -355,6 +433,58 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
             if (!restaurantId) return;
             const today = new Date().toISOString().split('T')[0];
             await AIPostsService.updatePostDetailedFeedback(restaurantId, today, postId, category, value);
+            
+            // If this completes the feedback (all fields filled), trigger AI processing
+            const allPosts = [...generatedPosts, ...upcomingPosts, ...needsFeedbackPosts];
+            const post = allPosts.find(p => p.id === postId);
+            
+            if (post) {
+                const updatedPost = {
+                    ...post,
+                    detailedFeedback: {
+                        ...post.detailedFeedback,
+                        [category]: value
+                    }
+                };
+                
+                // Check if feedback is complete enough to process
+                const hasBasicFeedback = updatedPost.feedback;
+                const hasDetailedFeedback = updatedPost.detailedFeedback?.engagement && 
+                                          updatedPost.detailedFeedback?.salesImpact &&
+                                          updatedPost.detailedFeedback?.contentQuality &&
+                                          updatedPost.detailedFeedback?.timing;
+                
+                if (hasBasicFeedback && hasDetailedFeedback) {
+                    // Process complete feedback through AI
+                    const feedbackData = {
+                        postId: updatedPost.id,
+                        postTitle: updatedPost.title,
+                        postContent: updatedPost.content,
+                        postType: updatedPost.type,
+                        feedback: updatedPost.feedback,
+                        detailedFeedback: updatedPost.detailedFeedback,
+                        restaurantId: restaurantId,
+                        restaurantName: restaurantName,
+                        restaurantType: restaurantType
+                    };
+                    
+                    setProcessingFeedback(prev => new Set(prev).add(postId));
+                    FeedbackProcessor.processFeedback(feedbackData).then((summary) => {
+                        if (summary) {
+                            console.log('Complete feedback processed by AI:', summary);
+                            setTimeout(refreshPosts, 2000);
+                        }
+                    }).catch((error) => {
+                        console.error('Failed to process complete feedback with AI:', error);
+                    }).finally(() => {
+                        setProcessingFeedback(prev => {
+                            const newSet = new Set(prev);
+                            newSet.delete(postId);
+                            return newSet;
+                        });
+                    });
+                }
+            }
         } catch (e) {
             console.error('Failed to update detailed feedback:', e);
         }
@@ -392,14 +522,14 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
                 </div>
                 
                 <p className="text-gray-600 mb-4">
-                    Generate 2 days of Facebook marketing posts based on weather, events, and sales data. 
-                    Includes image recommendations and ChatGPT prompts for image enhancement.
+                    Generate 3 days of Facebook marketing posts (Day 1, Day 3, Day 5) based on weather, events, and sales data. 
+                    Includes image recommendations and ChatGPT prompts for image enhancement. Smart paid promotion recommendations only when it creates real value.
                 </p>
 
                 {loading && (
                     <div className="text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                        <p className="mt-2 text-gray-600">Generating your 2-day marketing plan with AI...</p>
+                        <p className="mt-2 text-gray-600">Generating your 3-day marketing plan with AI...</p>
                     </div>
                 )}
 
@@ -429,16 +559,277 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
                     </div>
                 )}
 
-                {/* Needs feedback section */}
+                {/* Needs feedback section - now shows posts that need feedback with full feedback options */}
                 {needsFeedbackPosts && needsFeedbackPosts.length > 0 && (
-                    <div className="mt-4 p-4 rounded-lg border border-blue-300 bg-blue-50 text-blue-800">
-                        <p className="font-semibold mb-1">Please provide feedback for past AI posts:</p>
-                        <ul className="list-disc list-inside text-sm">
-                            {needsFeedbackPosts.map((p) => (
-                                <li key={p.id}>{p.scheduledDate} – {p.title}</li>
+                    <div className="mt-6 space-y-6">
+                        <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg shadow p-6 border border-red-200">
+                            <h3 className="text-lg font-semibold text-red-800 mb-3 flex items-center gap-2">
+                                ⚠️ Posts Requiring Feedback
+                            </h3>
+                            <p className="text-red-700 mb-4">
+                                Please provide feedback for these past AI posts to help improve future recommendations.
+                            </p>
+                        </div>
+
+                        {needsFeedbackPosts
+                            .sort((a, b) => (a.scheduledDate || '').localeCompare(b.scheduledDate || ''))
+                            .map((post, index) => (
+                                <div key={post.id} className="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h4 className="text-lg font-semibold text-red-600">{post.day || (index === 0 ? 'Day 1' : index === 1 ? 'Day 3' : 'Day 5')}</h4>
+                                            <p className="text-sm text-gray-500">Facebook Post - Posted on {post.scheduledDate}</p>
+                                        </div>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            processingFeedback.has(post.id)
+                                                ? 'bg-blue-100 text-blue-800'
+                                                : post.feedback 
+                                                    ? 'bg-green-100 text-green-800' 
+                                                    : 'bg-red-100 text-red-800'
+                                        }`}>
+                                            {processingFeedback.has(post.id) 
+                                                ? 'AI PROCESSING' 
+                                                : post.feedback 
+                                                    ? 'FEEDBACK PROVIDED' 
+                                                    : 'NEEDS FEEDBACK'}
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {/* Post Title */}
+                                        <div>
+                                            <h5 className="font-semibold text-gray-800 mb-2">Title:</h5>
+                                            <p className="text-lg font-medium text-red-600">{post.title}</p>
+                                        </div>
+
+                                        {/* Post Content */}
+                                        <div>
+                                            <h5 className="font-semibold text-gray-800 mb-2">Content:</h5>
+                                            <div className="bg-gray-50 p-4 rounded-lg">
+                                                <pre className="whitespace-pre-wrap text-sm text-gray-800">{post.content}</pre>
+                                            </div>
+                                        </div>
+
+                                        {/* Post Details */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <h5 className="font-semibold text-gray-800 mb-2">Posting Details:</h5>
+                                                <ul className="space-y-1 text-sm">
+                                                    <li><span className="font-medium">Platform:</span> {post.suggestedPlatforms.join(', ')}</li>
+                                                    <li><span className="font-medium">Best time:</span> {post.postingTime}</li>
+                                                    <li><span className="font-medium">Estimated reach:</span> {post.estimatedReach}</li>
+                                                    <li><span className="font-medium">Paid promotion:</span> {post.paidPromotion ? 'Recommended' : 'Not necessary'}</li>
+                                                    {post.budgetRecommendation && (
+                                                        <li><span className="font-medium">Budget:</span> {post.budgetRecommendation}</li>
+                                                    )}
+                                                </ul>
+                                            </div>
+
+                                            <div>
+                                                <h5 className="font-semibold text-gray-800 mb-2">Hashtags:</h5>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {post.hashtags.map((hashtag, hashtagIndex) => (
+                                                        <span key={hashtagIndex} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+                                                            {hashtag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Call to Action */}
+                                        <div>
+                                            <h5 className="font-semibold text-gray-800 mb-2">Call to Action:</h5>
+                                            <p className="text-green-600 font-medium">{post.callToAction}</p>
+                                        </div>
+
+                                        {/* Image Recommendations */}
+                                        {post.imageRecommendations && (
+                                            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                                <h5 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                                                    📸 Image Recommendations
+                                                </h5>
+                                                
+                                                <div className="space-y-4">
+                                                    {/* What to Photograph */}
+                                                    <div>
+                                                        <h6 className="font-medium text-blue-700 mb-2">What to photograph:</h6>
+                                                        <p className="text-blue-800">{post.imageRecommendations.whatToPhotograph}</p>
+                                                    </div>
+
+                                                    {/* Photo Tips */}
+                                                    <div>
+                                                        <h6 className="font-medium text-blue-700 mb-2">Photo tips:</h6>
+                                                        <ul className="list-disc list-inside space-y-1 text-blue-800">
+                                                            {post.imageRecommendations.photoTips.map((tip, tipIndex) => (
+                                                                <li key={tipIndex}>{tip}</li>
                             ))}
                         </ul>
-                        <p className="text-sm mt-2">Your feedback helps AI improve future posts.</p>
+                                                    </div>
+
+                                                    {/* Image Description */}
+                                                    <div>
+                                                        <h6 className="font-medium text-blue-700 mb-2">How the image should look:</h6>
+                                                        <p className="text-blue-800">{post.imageRecommendations.imageDescription}</p>
+                                                    </div>
+
+                                                    {/* ChatGPT Prompt */}
+                                                    <div>
+                                                        <h6 className="font-medium text-blue-700 mb-2">ChatGPT Prompt for image enhancement:</h6>
+                                                        <div className="bg-white p-3 rounded border border-blue-300">
+                                                            <p className="text-sm text-gray-700 font-mono">{post.imageRecommendations.chatgptPrompt}</p>
+                                                        </div>
+                                                        <p className="text-xs text-blue-600 mt-2">
+                                                            💡 Copy this prompt and send it to ChatGPT along with your image to get an enhanced image back!
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Enhanced Feedback Section */}
+                                        <div className={`mt-6 p-4 rounded-lg border ${
+                                            post.feedback 
+                                                ? 'bg-green-50 border-green-200' 
+                                                : 'bg-red-50 border-red-200'
+                                        }`}>
+                                            <h5 className={`font-semibold mb-3 flex items-center gap-2 ${
+                                                processingFeedback.has(post.id)
+                                                    ? 'text-blue-800'
+                                                    : post.feedback 
+                                                        ? 'text-green-800' 
+                                                        : 'text-red-800'
+                                            }`}>
+                                                {processingFeedback.has(post.id) ? '🤖' : '📝'} Post Performance Feedback {
+                                                    processingFeedback.has(post.id) 
+                                                        ? '(AI Learning)' 
+                                                        : post.feedback 
+                                                            ? '(Completed)' 
+                                                            : '(Required)'
+                                                }
+                                            </h5>
+                                            
+                                            {/* Basic Feedback */}
+                                            <div className="mb-4">
+                                                <h6 className={`font-medium mb-2 ${
+                                                    post.feedback 
+                                                        ? 'text-green-700' 
+                                                        : 'text-red-700'
+                                                }`}>Overall Rating:</h6>
+                                                <div className="flex items-center gap-4 text-sm">
+                                                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name={`feedback-${post.id}`}
+                                                            checked={post.feedback === 'helpful'}
+                                                            onChange={() => handleFeedbackChange(post.id, 'helpful')}
+                                                        />
+                                                        <span className="text-green-700">Helpful</span>
+                                                    </label>
+                                                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name={`feedback-${post.id}`}
+                                                            checked={post.feedback === 'not_helpful'}
+                                                            onChange={() => handleFeedbackChange(post.id, 'not_helpful')}
+                                                        />
+                                                        <span className="text-red-700">Not helpful</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            {/* Detailed Feedback */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <h6 className={`font-medium mb-2 ${
+                                                        post.feedback 
+                                                            ? 'text-green-700' 
+                                                            : 'text-red-700'
+                                                    }`}>Engagement Level:</h6>
+                                                    <select 
+                                                        value={post.detailedFeedback?.engagement || ''}
+                                                        onChange={(e) => handleDetailedFeedbackChange(post.id, 'engagement', e.target.value)}
+                                                        className="w-full p-2 border rounded text-sm"
+                                                    >
+                                                        <option value="">Select...</option>
+                                                        <option value="high">High engagement</option>
+                                                        <option value="medium">Medium engagement</option>
+                                                        <option value="low">Low engagement</option>
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <h6 className={`font-medium mb-2 ${
+                                                        post.feedback 
+                                                            ? 'text-green-700' 
+                                                            : 'text-red-700'
+                                                    }`}>Sales Impact:</h6>
+                                                    <select 
+                                                        value={post.detailedFeedback?.salesImpact || ''}
+                                                        onChange={(e) => handleDetailedFeedbackChange(post.id, 'salesImpact', e.target.value)}
+                                                        className="w-full p-2 border rounded text-sm"
+                                                    >
+                                                        <option value="">Select...</option>
+                                                        <option value="positive">Positive impact</option>
+                                                        <option value="neutral">No impact</option>
+                                                        <option value="negative">Negative impact</option>
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <h6 className={`font-medium mb-2 ${
+                                                        post.feedback 
+                                                            ? 'text-green-700' 
+                                                            : 'text-red-700'
+                                                    }`}>Content Quality:</h6>
+                                                    <select 
+                                                        value={post.detailedFeedback?.contentQuality || ''}
+                                                        onChange={(e) => handleDetailedFeedbackChange(post.id, 'contentQuality', e.target.value)}
+                                                        className="w-full p-2 border rounded text-sm"
+                                                    >
+                                                        <option value="">Select...</option>
+                                                        <option value="excellent">Excellent</option>
+                                                        <option value="good">Good</option>
+                                                        <option value="poor">Poor</option>
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <h6 className={`font-medium mb-2 ${
+                                                        post.feedback 
+                                                            ? 'text-green-700' 
+                                                            : 'text-red-700'
+                                                    }`}>Posting Timing:</h6>
+                                                    <select 
+                                                        value={post.detailedFeedback?.timing || ''}
+                                                        onChange={(e) => handleDetailedFeedbackChange(post.id, 'timing', e.target.value)}
+                                                        className="w-full p-2 border rounded text-sm"
+                                                    >
+                                                        <option value="">Select...</option>
+                                                        <option value="perfect">Perfect timing</option>
+                                                        <option value="good">Good timing</option>
+                                                        <option value="poor">Poor timing</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4">
+                                                <h6 className={`font-medium mb-2 ${
+                                                    post.feedback 
+                                                        ? 'text-green-700' 
+                                                        : 'text-red-700'
+                                                }`}>Additional Notes:</h6>
+                                                <textarea 
+                                                    value={post.detailedFeedback?.notes || ''}
+                                                    onChange={(e) => handleDetailedFeedbackChange(post.id, 'notes', e.target.value)}
+                                                    placeholder="Any additional feedback to help AI improve..."
+                                                    className="w-full p-2 border rounded text-sm h-20"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                     </div>
                 )}
             </div>
@@ -452,10 +843,10 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
                         .map((post, index) => (
                             <div key={post.id} className="bg-white rounded-lg shadow p-6">
                                 <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h4 className="text-lg font-semibold text-blue-600">{post.day || `Day ${index + 1}`}</h4>
-                                        <p className="text-sm text-gray-500">Facebook Post - Scheduled for {post.scheduledDate}</p>
-                                    </div>
+                                <div>
+                                    <h4 className="text-lg font-semibold text-blue-600">{post.day || (index === 0 ? 'Day 1' : index === 1 ? 'Day 3' : 'Day 5')}</h4>
+                                    <p className="text-sm text-gray-500">Facebook Post - Scheduled for {post.scheduledDate}</p>
+                                </div>
                                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                         SCHEDULED
                                     </span>
@@ -484,9 +875,9 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
                                                 <li><span className="font-medium">Platform:</span> {post.suggestedPlatforms.join(', ')}</li>
                                                 <li><span className="font-medium">Best time:</span> {post.postingTime}</li>
                                                 <li><span className="font-medium">Estimated reach:</span> {post.estimatedReach}</li>
-                                                <li><span className="font-medium">Paid promotion:</span> {post.paidPromotion ? 'Recommended' : 'Not necessary'}</li>
+                                                <li><span className="font-medium">Paid promotion:</span> {post.paidPromotion ? 'Recommended (Smart Value-Based)' : 'Not recommended (Organic reach sufficient)'}</li>
                                                 {post.budgetRecommendation && (
-                                                    <li><span className="font-medium">Budget:</span> {post.budgetRecommendation}</li>
+                                                    <li><span className="font-medium">Budget & ROI:</span> {post.budgetRecommendation}</li>
                                                 )}
                                             </ul>
                                         </div>
@@ -660,12 +1051,12 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
             {/* Generated Posts Timeline */}
             {generatedPosts.length > 0 && (
                 <div className="space-y-6">
-                    <h3 className="text-lg font-semibold">2-Day Marketing Plan</h3>
+                    <h3 className="text-lg font-semibold">3-Day Marketing Plan</h3>
                     {generatedPosts.map((post, index) => (
                         <div key={post.id} className="bg-white rounded-lg shadow p-6">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <h4 className="text-lg font-semibold text-blue-600">{post.day || `Day ${index + 1}`}</h4>
+                                    <h4 className="text-lg font-semibold text-blue-600">{post.day || (index === 0 ? 'Day 1' : index === 1 ? 'Day 3' : 'Day 5')}</h4>
                                     <p className="text-sm text-gray-500">Facebook Post</p>
                                 </div>
                                 <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -696,9 +1087,9 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
                                             <li><span className="font-medium">Platform:</span> {post.suggestedPlatforms.join(', ')}</li>
                                             <li><span className="font-medium">Best time:</span> {post.postingTime}</li>
                                             <li><span className="font-medium">Estimated reach:</span> {post.estimatedReach}</li>
-                                            <li><span className="font-medium">Paid promotion:</span> {post.paidPromotion ? 'Recommended' : 'Not necessary'}</li>
+                                            <li><span className="font-medium">Paid promotion:</span> {post.paidPromotion ? 'Recommended (Smart Value-Based)' : 'Not recommended (Organic reach sufficient)'}</li>
                                             {post.budgetRecommendation && (
-                                                <li><span className="font-medium">Budget:</span> {post.budgetRecommendation}</li>
+                                                <li><span className="font-medium">Budget & ROI:</span> {post.budgetRecommendation}</li>
                                             )}
                                         </ul>
                                     </div>

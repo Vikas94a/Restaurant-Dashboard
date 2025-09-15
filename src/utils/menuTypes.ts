@@ -71,6 +71,7 @@ export interface ReusableExtraGroup {
   id: string;
   groupName: string;
   selectionType: 'single' | 'multiple';
+  required?: boolean; // Whether this group is required for items that use it
   choices: ReusableExtraChoice[];
   isArchived?: boolean;
 }

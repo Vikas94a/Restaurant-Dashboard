@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { FeedbackProcessor } from '@/services/feedbackProcessor';
 
 export async function POST(request: NextRequest) {
     try {
@@ -85,6 +86,20 @@ export async function POST(request: NextRequest) {
             context += "\nWhen creating new posts, AVOID repeating topics that were NOT_HELPFUL and PREFER styles, themes, or items from posts marked HELPFUL.\n\n";
         }
 
+        // Add AI-processed feedback insights for smarter generation
+        try {
+            const restaurantId = restaurantDetails?.restaurantId;
+            if (restaurantId) {
+                const feedbackHistory = await FeedbackProcessor.getFeedbackHistoryForAI(restaurantId);
+                if (feedbackHistory && feedbackHistory !== 'No previous feedback available.') {
+                    context += feedbackHistory + "\n\n";
+                    context += "Use this feedback analysis to create better posts that align with what has worked well and avoid what hasn't worked.\n\n";
+                }
+            }
+        } catch (error) {
+            console.error('Failed to get feedback history for AI:', error);
+        }
+
         // Server-side structured logs of inputs for debugging
         try {
             console.groupCollapsed('[AI-POST][API] Build Prompt Context');
@@ -120,14 +135,14 @@ export async function POST(request: NextRequest) {
                 : { helpful: 0, notHelpful: 0 },
         } as any;
 
-        const prompt = `Based on the restaurant data provided, automatically generate 2 Facebook marketing posts in NORWEGIAN language.
+        const prompt = `Based on the restaurant data provided, automatically generate 3 Facebook marketing posts in NORWEGIAN language.
 
 IMPORTANT REQUIREMENTS:
 - Write all content in Norwegian (Bokmål)
 - Use Norwegian Krone (NOK) for all prices and budget recommendations
 - Make posts feel natural and authentic for Norwegian audience
 - Use appropriate Norwegian hashtags and cultural references
-- Generate posts for DAY 1 and DAY 3 only (skip day 2)
+- Generate posts for DAY 1, DAY 3, and DAY 5 (spread throughout the week)
 - Include specific image recommendations and ChatGPT prompts for image enhancement
 
 Each post should be strategically planned based on:
@@ -147,15 +162,31 @@ Create posts that are:
 - Use NOK currency for any price mentions
 - Reference specific restaurant details (address, phone, opening hours)
 
-Generate exactly 2 posts: one for Day 1 and one for Day 3. Format each post as JSON with these exact keys:
-- day: "Day 1" or "Day 3"
+PAID PROMOTION STRATEGY:
+- Only recommend paid promotion when it creates REAL VALUE for the restaurant
+- Consider these factors for paid promotion:
+  * Special events or occasions (holidays, festivals, city events)
+  * New menu items or seasonal specials
+  * Weather-driven opportunities (hot soup on cold days, ice cream on hot days)
+  * Competitive advantages (unique dishes, limited-time offers)
+  * High-margin items that justify advertising spend
+  * When organic reach would be too limited for the opportunity
+- AVOID recommending paid promotion for:
+  * Regular daily posts without special value proposition
+  * Low-margin or common items
+  * When organic reach is sufficient for the message
+  * Generic promotional content without unique selling points
+- If recommending paid promotion, specify WHY it creates value and what the expected ROI should be
+
+Generate exactly 3 posts: one for Day 1, one for Day 3, and one for Day 5. Format each post as JSON with these exact keys:
+- day: "Day 1", "Day 3", or "Day 5"
 - title: A catchy, emoji-filled title in Norwegian
 - content: Engaging Facebook content in Norwegian with emojis and line breaks
 - hashtags: Array of 5-8 relevant Norwegian hashtags (MUST be an array)
 - callToAction: A compelling call-to-action phrase in Norwegian
 - estimatedReach: Low, Medium, or High
-- paidPromotion: true or false with reasoning
-- budgetRecommendation: If paid promotion is recommended, suggest a budget range in NOK
+- paidPromotion: true or false (ONLY recommend paid promotion when it creates REAL VALUE - not for regular posts)
+- budgetRecommendation: If paid promotion is recommended, suggest a budget range in NOK with ROI justification
 - imageRecommendations: {
     whatToPhotograph: "Beskrivelse av hva som skal fotograferes",
     photoTips: ["Tips 1", "Tips 2", "Tips 3"],
@@ -166,7 +197,7 @@ Generate exactly 2 posts: one for Day 1 and one for Day 3. Format each post as J
 Example ChatGPT prompt for image enhancement:
 "Kan du forbedre dette restaurantbildet? Gjør det mer appetittvekkende og profesjonelt for Facebook markedsføring. Juster belysning, farger, kontrast og skarphet. Fjern eventuelle distraksjoner og fokuser på maten/restauranten. Gi meg et forbedret bilde som er klar til å bruke på sosiale medier."
 
-Return the response as a JSON array with exactly 2 posts.`;
+Return the response as a JSON array with exactly 3 posts.`;
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',

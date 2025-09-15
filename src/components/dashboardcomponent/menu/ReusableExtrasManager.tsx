@@ -36,6 +36,7 @@ const ReusableExtrasManager: React.FC<ReusableExtrasManagerProps> = ({
       id: '', // Temporary, will be set on save by backend/hook
       groupName: '',
       selectionType: 'single',
+      required: false,
       choices: [],
     });
     setIsCreatingNewGroup(true);
@@ -172,6 +173,21 @@ const ReusableExtrasManager: React.FC<ReusableExtrasManagerProps> = ({
             </select>
           </div>
 
+          <div className="mb-4">
+            <label className={`flex items-center space-x-2 ${isCompact ? 'text-xs' : 'text-sm'}`}>
+              <input
+                type="checkbox"
+                checked={editingGroup.required || false}
+                onChange={(e) => setEditingGroup({...editingGroup, required: e.target.checked})}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+              />
+              <span className="font-medium text-gray-700">Required for customers to choose</span>
+            </label>
+            <p className={`text-gray-500 mt-1 ${isCompact ? 'text-xs' : 'text-sm'}`}>
+              When enabled, customers must make a selection from this group when ordering items that use it
+            </p>
+          </div>
+
           <h4 className={`font-semibold text-gray-700 mb-2 mt-4 ${isCompact ? 'text-base' : 'text-md'}`}>Choices:</h4>
           {editingGroup.choices.map((choice: ReusableExtraChoice, choiceIndex: number) => (
             <div key={choice.id || choiceIndex} className={`flex items-center space-x-2 mb-2 p-2 bg-white rounded border ${isCompact ? 'text-xs' : ''}`}>
@@ -223,7 +239,14 @@ const ReusableExtrasManager: React.FC<ReusableExtrasManagerProps> = ({
             <div key={group.id} className="p-4 border rounded-lg bg-white hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <h3 className={`font-semibold text-gray-800 ${isCompact ? 'text-base' : 'text-lg'}`}>{group.groupName}</h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className={`font-semibold text-gray-800 ${isCompact ? 'text-base' : 'text-lg'}`}>{group.groupName}</h3>
+                    {group.required && (
+                      <span className={`px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium`}>
+                        Required
+                      </span>
+                    )}
+                  </div>
                   <p className={`text-gray-500 ${isCompact ? 'text-xs' : 'text-sm'}`}>
                     {group.selectionType === 'single' ? 'Single Choice' : 'Multiple Choices'} | {group.choices.length} options
                   </p>
