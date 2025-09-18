@@ -28,7 +28,6 @@ export default function AddToCartModal({
   const [selected, setSelected] = useState<{ [groupId: string]: Set<string> }>({});
   const [specialRequest, setSpecialRequest] = useState("");
   const [total, setTotal] = useState(item.price.amount);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -79,29 +78,6 @@ export default function AddToCartModal({
       }
       return { ...prev, [group.id]: groupChoices };
     });
-  };
-
-  // Validation function
-  const validateRequiredExtras = () => {
-    const errors: string[] = [];
-    
-    for (const group of extras) {
-      if (group.required && (!selected[group.id] || selected[group.id].size === 0)) {
-        errors.push(`Please select at least one option from "${group.groupName}"`);
-      }
-    }
-    
-    setValidationErrors(errors);
-    return errors.length === 0;
-  };
-
-  const handleAddToCart = () => {
-    if (validateRequiredExtras()) {
-      const selectedExtras = Object.entries(selected).flatMap(([groupId, choiceSet]) =>
-        Array.from(choiceSet).map(choiceId => ({ groupId, choiceId }))
-      );
-      onAddToCart({ selectedExtras, specialRequest, totalPrice: total });
-    }
   };
 
   // For accessibility: ARIA labels
@@ -156,36 +132,14 @@ export default function AddToCartModal({
             />
           </div>
 
-          {/* Validation errors */}
-          {validationErrors.length > 0 && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <h4 className="font-medium text-red-800 mb-2 text-sm">Please complete required selections:</h4>
-              <ul className="text-red-700 text-sm space-y-1">
-                {validationErrors.map((error, index) => (
-                  <li key={index} className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>{error}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           {/* Extras section with proper scrolling */}
           {extras.length > 0 && (
             <div className="mb-4 sm:mb-6">
               <h3 className="font-semibold text-gray-800 mb-3 text-sm sm:text-base">Extras & Add-ons</h3>
               <div className="space-y-4 max-h-60 sm:max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                 {extras.map(group => (
-                  <div key={group.id} className={`border rounded-lg p-3 ${group.required ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium text-gray-700 text-sm sm:text-base">{group.groupName}</span>
-                      {group.required && (
-                        <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                          Required
-                        </span>
-                      )}
-                    </div>
+                  <div key={group.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                    <div className="font-medium text-gray-700 mb-2 text-sm sm:text-base">{group.groupName}</div>
                     <div className="space-y-2">
                       {group.choices.map(choice => (
                         <label key={choice.id} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-md transition-colors">
@@ -216,7 +170,12 @@ export default function AddToCartModal({
             </div>
             <button
               className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-lg font-bold hover:from-orange-600 hover:to-red-600 focus:outline-none focus:ring-2 focus:ring-orange-500/70 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm sm:text-base"
-              onClick={handleAddToCart}
+              onClick={() => {
+                const selectedExtras = Object.entries(selected).flatMap(([groupId, choiceSet]) =>
+                  Array.from(choiceSet).map(choiceId => ({ groupId, choiceId }))
+                );
+                onAddToCart({ selectedExtras, specialRequest, totalPrice: total });
+              }}
             >
               Add to Cart · {total.toFixed(2)} kr
             </button>

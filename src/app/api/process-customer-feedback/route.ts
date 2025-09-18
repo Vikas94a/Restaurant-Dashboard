@@ -196,3 +196,4 @@ Keep insights concise, actionable, and specific to restaurant operations.`;
     };
   }
 }
+

@@ -1,13 +1,14 @@
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as admin from 'firebase-admin';
+import * as functions from 'firebase-functions';
 import { Resend } from 'resend';
 
 admin.initializeApp();
 
-// Get environment variables
-const resend = new Resend(process.env.RESEND_API_KEY || 're_1234567890');
-const appUrl = process.env.APP_URL || 'https://www.aieateasy.no';
+// Get configuration from Firebase functions config
+const resend = new Resend(functions.config().resend.api_key);
+const appUrl = functions.config().app.url;
 
 interface Order {
   id: string;
@@ -196,8 +197,10 @@ export const processScheduledTasks = onSchedule('every 1 minutes', async (event)
           const feedbackLink = generateFeedbackLink(order.id);
 
           // Send the feedback email
-          await resend.emails.send({
-            from: 'AI Eat Easy <onboarding@resend.dev>',
+          console.log(`Attempting to send feedback email to: ${order.customerDetails.email}`);
+          
+          const emailResult = await resend.emails.send({
+            from: 'AI Eat Easy <noreply@aieateasy.no>',
             to: order.customerDetails.email,
             subject: 'How was your meal? Share your feedback!',
             html: generateFeedbackEmailTemplate({
@@ -208,6 +211,8 @@ export const processScheduledTasks = onSchedule('every 1 minutes', async (event)
               feedbackLink
             })
           });
+
+          console.log(`Resend API response for order ${order.id}:`, JSON.stringify(emailResult, null, 2));
 
           // Mark the task as completed
           await task.ref.update({
