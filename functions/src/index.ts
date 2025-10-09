@@ -13,7 +13,7 @@ admin.initializeApp();
 // Trigger: enqueue feedback email one minute after pickup time on acceptance
 export const onOrderAccepted = onDocumentUpdated(
   {
-    document: 'orders/{orderId}',
+    document: 'restaurants/{restaurantId}/orders/{orderId}',
     region: 'europe-west1',
   },
   async (event) => {
