@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FeedbackProcessor } from '@/services/feedbackProcessor';
 
+// Force dynamic rendering - don't pre-render at build time
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
