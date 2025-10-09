@@ -16,18 +16,23 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, // Fixed casing
 };
 
-// Initialize app once
-const app =
-  getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+// Initialize app only in the browser to avoid build-time initialization
+const app = typeof window !== 'undefined'
+  ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0])
+  : (null as unknown as ReturnType<typeof initializeApp>);
 
 // Exports
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+// Avoid initializing Firebase Auth on the server during build to prevent
+// auth/invalid-api-key errors when env is not available at build time.
+export const db = typeof window !== 'undefined' ? getFirestore(app) : (null as unknown as ReturnType<typeof getFirestore>);
+export const auth = typeof window !== 'undefined' ? getAuth(app) : (null as unknown as ReturnType<typeof getAuth>);
+export const storage = typeof window !== 'undefined' ? getStorage(app) : (null as unknown as ReturnType<typeof getStorage>);
 
 // Optional: export analytics if supported
-isSupported().then((supported) => {
-  if (supported) {
-    getAnalytics(app);
-  }
-});
+if (typeof window !== 'undefined') {
+  isSupported().then((supported) => {
+    if (supported) {
+      getAnalytics(app);
+    }
+  });
+}
