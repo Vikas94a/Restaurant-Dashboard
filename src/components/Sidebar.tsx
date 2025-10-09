@@ -22,7 +22,7 @@ import {
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { logout } from "@/store/features/authSlice";
+import { logout, signOutUser } from "@/store/features/authSlice";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@headlessui/react";
 import { useSoundNotification } from "@/providers/SoundNotificationProvider";
@@ -148,8 +148,11 @@ const Sidebar = ({ isOpen = true, onToggle, isMobile = false, onCollapseChange }
       // First, redirect to home page
       router.replace('/');
       
-      // Then perform logout
-      await dispatch(logout());
+      // Perform async sign out with storage cleanup
+      await dispatch(signOutUser()).unwrap();
+      
+      // Dispatch the synchronous logout to clear Redux state
+      dispatch(logout());
       
       // Force a hard refresh to clear all state
       window.location.href = '/';

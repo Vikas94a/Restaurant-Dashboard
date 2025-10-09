@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { RootState, AppDispatch } from '@/store/store';
-import { showLogoutWarningModal, resetAutoLogoutTimer, logout } from '@/store/features/authSlice';
+import { showLogoutWarningModal, resetAutoLogoutTimer, logout, signOutUser } from '@/store/features/authSlice';
 
 export function SessionWarningModal() {
   const dispatch = useDispatch<AppDispatch>();
@@ -31,8 +31,16 @@ export function SessionWarningModal() {
     dispatch(resetAutoLogoutTimer());
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const handleLogout = async () => {
+    try {
+      // Perform async sign out with storage cleanup
+      await dispatch(signOutUser()).unwrap();
+      
+      // Dispatch the synchronous logout to clear Redux state
+      dispatch(logout());
+    } catch (error) {
+      // Handle error silently
+    }
   };
 
   return (

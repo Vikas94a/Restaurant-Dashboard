@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "region": "europe-west1",
+    "runtime": "nodejs18"
+  },
+  "project": {
+    "id": "ai-eat-easy",
+    "region": "europe-west1"
+  }
+}
+

@@ -6,19 +6,8 @@ import { db, auth } from "@/lib/firebase";
 import { onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence, User as FirebaseUser } from "firebase/auth";
 import { Restaurant } from "@/components/dashboardcomponent/RestaurantDialog";
 import { toast } from "sonner";
+import { AuthOrchestrator, TimerManager, TIMER_CONSTANTS } from "@/lib/authOrchestration";
 // import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-
-// Auto-logout timer variable and duration
-let autoLogoutTimer: ReturnType<typeof setTimeout> | null = null;
-const AUTO_LOGOUT_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
-
-// Warning timer variables and duration
-let warningTimer: ReturnType<typeof setTimeout> | null = null;
-const WARNING_DURATION = 2 * 60 * 1000; // 2 minutes in milliseconds
-let warningTimerInterval: ReturnType<typeof setInterval> | null = null;
-
-// Flag to track if we're in the process of logging out
-let isLoggingOut = false;
 
 // Debug function to log timer status
 // const logTimerStatus = undefined;
@@ -112,21 +101,7 @@ const convertTimestampToString = (timestamp: Timestamp | undefined) => {
   return timestamp.toDate().toISOString();
 };
 
-// Helper function to clear all timers
-const clearAllTimers = () => {
-  if (autoLogoutTimer) {
-    clearTimeout(autoLogoutTimer);
-    autoLogoutTimer = null;
-  }
-  if (warningTimer) {
-    clearTimeout(warningTimer);
-    warningTimer = null;
-  }
-  if (warningTimerInterval) {
-    clearInterval(warningTimerInterval);
-    warningTimerInterval = null;
-  }
-};
+// Timer and persistence management is now handled by AuthOrchestrator
 
 // Error message mapping for auth operations
 const AUTH_ERROR_MESSAGES = {
@@ -279,24 +254,17 @@ export const fetchRestaurantData = createAsyncThunk(
 export const startAutoLogoutWarning = createAsyncThunk(
   'auth/startAutoLogoutWarning',
   async (_, { dispatch }) => {
-    clearAllTimers();
-    
-    warningTimer = setTimeout(() => {
-      dispatch(logout());
-    }, WARNING_DURATION);
-    
-    const startTime = Date.now();
-    warningTimerInterval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, WARNING_DURATION - elapsed);
-      dispatch(updateWarningTimer(remaining));
-      
-      if (remaining <= 0) {
-        clearInterval(warningTimerInterval!);
+    return TimerManager.setWarningTimer(
+      (remaining) => dispatch(updateWarningTimer(remaining)),
+      async () => {
+        try {
+          await dispatch(signOutUser()).unwrap();
+          dispatch(logout());
+        } catch (error) {
+          // Handle error silently
+        }
       }
-    }, 1000);
-    
-    return WARNING_DURATION;
+    );
   }
 );
 
@@ -304,14 +272,10 @@ export const startAutoLogoutWarning = createAsyncThunk(
 export const resetAutoLogoutTimer = createAsyncThunk(
   'auth/resetAutoLogoutTimer',
   async (_, { dispatch }) => {
-    clearAllTimers();
-    
-    autoLogoutTimer = setTimeout(() => {
+    return TimerManager.setAutoLogoutTimer(() => {
       dispatch(showLogoutWarningModal(true));
       dispatch(startAutoLogoutWarning());
-    }, AUTO_LOGOUT_DURATION);
-    
-    return AUTO_LOGOUT_DURATION;
+    });
   }
 );
 
@@ -329,6 +293,19 @@ export const setAuthPersistence = createAsyncThunk(
   }
 );
 
+// Async thunk for sign-out workflow and storage cleanup
+export const signOutUser = createAsyncThunk(
+  'auth/signOutUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await AuthOrchestrator.signOut();
+    } catch (error: any) {
+      console.error('Sign out error:', error);
+      return rejectWithValue(getAuthErrorMessage(error));
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -340,53 +317,15 @@ const authSlice = createSlice({
       state.error = action.payload;
     },
     logout: (state) => {
-      if (isLoggingOut) return;
-      isLoggingOut = true;
-
-      clearAllTimers();
-
-      import('firebase/auth').then(({ signOut }) => {
-        signOut(auth).catch((error) => {
-          toast.error('Error signing out. Please try again.');
-        });
-      });
-
-      const clearAuthData = () => {
-        try {
-          const persistedState = localStorage.getItem('persist:root');
-          if (persistedState) {
-            const parsed = JSON.parse(persistedState);
-            if (parsed.auth) {
-              delete parsed.auth;
-              localStorage.setItem('persist:root', JSON.stringify(parsed));
-            }
-          }
-
-          localStorage.removeItem(`firebase:authUser:${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}:[DEFAULT]`);
-
-          Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('firebase:') || key.startsWith('persist:')) {
-              localStorage.removeItem(key);
-            }
-          });
-
-          sessionStorage.clear();
-
-          state.user = null;
-          state.restaurantDetails = undefined;
-          state.restaurantName = "";
-          state.domain = "";
-          state.isLoading = false;
-          state.error = null;
-
-        } catch (e) {
-          toast.error('Error clearing session data. Please try again.');
-        } finally {
-          isLoggingOut = false;
-        }
-      };
-
-      clearAuthData();
+      // Purely synchronous state mutation
+      state.user = null;
+      state.restaurantDetails = undefined;
+      state.restaurantName = "";
+      state.domain = "";
+      state.isLoading = false;
+      state.error = null;
+      state.isLogoutWarningModalVisible = false;
+      state.warningTimerRemaining = 0;
     },
     showLogoutWarningModal: (state, action: PayloadAction<boolean>) => {
       state.isLogoutWarningModalVisible = action.payload;
@@ -457,6 +396,19 @@ const authSlice = createSlice({
         state.error = action.payload as string;
         state.isLoading = false;
         toast.error(typeof action.payload === 'string' ? action.payload : AUTH_ERROR_MESSAGES.default);
+      })
+      .addCase(signOutUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(signOutUser.fulfilled, (state) => {
+        state.isLoading = false;
+        // State is already cleared by the logout reducer
+      })
+      .addCase(signOutUser.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.isLoading = false;
+        toast.error(typeof action.payload === 'string' ? action.payload : 'Failed to sign out');
       });
   },
 });
@@ -467,9 +419,10 @@ export const initializeAuth = () => {
     let isInitialized = false;
 
     // Return the unsubscribe function from onAuthStateChanged
-    return onAuthStateChanged(auth, (user) => {
+    return onAuthStateChanged(auth, async (user) => {
       // Skip if we're in the middle of logging out
-      if (isLoggingOut) {
+      const { isLoggingOut: loggingOut } = AuthOrchestrator.getStatus();
+      if (loggingOut) {
         return;
       }
 
@@ -484,12 +437,14 @@ export const initializeAuth = () => {
 
       if (user) {
         // Only proceed with login if we're not in the middle of logging out
-        if (!isLoggingOut) {
+        const { isLoggingOut: stillLoggingOut } = AuthOrchestrator.getStatus();
+        if (!stillLoggingOut) {
           dispatch(setLoading(true));
           dispatch(fetchUserData(user))
             .unwrap()
             .then((userData: any) => {
-              if (userData && !isLoggingOut) {
+              const { isLoggingOut: checkLoggingOut } = AuthOrchestrator.getStatus();
+              if (userData && !checkLoggingOut) {
                 return dispatch(fetchRestaurantData(userData.uid)).unwrap();
               }
             })
@@ -502,8 +457,14 @@ export const initializeAuth = () => {
         }
       } else {
         // Only dispatch logout if we're not already logging out and not in initial state
+        const { isLoggingOut } = AuthOrchestrator.getStatus();
         if (!isLoggingOut && isInitialized) {
-          dispatch(logout());
+          try {
+            await dispatch(signOutUser()).unwrap();
+            dispatch(logout());
+          } catch (error) {
+            // Handle error silently
+          }
         }
       }
     });

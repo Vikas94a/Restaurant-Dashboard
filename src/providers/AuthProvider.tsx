@@ -5,7 +5,8 @@ import { onAuthStateChanged, onIdTokenChanged, signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { User } from 'firebase/auth';
 import { useDispatch } from 'react-redux';
-import { logout } from '@/store/features/authSlice';
+import { logout, signOutUser } from '@/store/features/authSlice';
+import { AuthOrchestrator, PersistenceManager } from '@/lib/authOrchestration';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -24,19 +25,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    // Clear any existing persisted data
-    const clearPersistedData = () => {
-      // Clear localStorage items
-      localStorage.removeItem('persist:root');
-      // Clear sessionStorage items
-      sessionStorage.clear();
-    };
+    // Clear any existing persisted data using orchestration layer
 
     // Set up auth state listener
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         // If no user, clear all persisted data
-        clearPersistedData();
+        PersistenceManager.clearBasic();
         dispatch(logout());
       } else {
         // If user exists, verify the session
@@ -45,9 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await user.getIdToken(true);
           setUser(user);
         } catch (error) {
-          // If session is invalid, sign out
-          await signOut(auth);
-          clearPersistedData();
+          // If session is invalid, use orchestration layer
+          await AuthOrchestrator.handleInvalidSession();
           dispatch(logout());
         }
       }
@@ -68,11 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await user.getIdToken(true);
             }
         } catch (error) {
-          // If token refresh fails, sign out
-          await signOut(auth);
-          clearPersistedData();
+          // If token refresh fails, use orchestration layer
+          await AuthOrchestrator.handleSessionExpiration();
           dispatch(logout());
-          toast.error('Your session has expired. Please sign in again.');
         }
       }
     });
