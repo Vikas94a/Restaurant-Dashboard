@@ -2,7 +2,11 @@
 import * as admin from 'firebase-admin';
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { defineSecret } from 'firebase-functions/params';
 import { Resend } from 'resend';
+
+// Define the secret
+const resendApiKey = defineSecret('RESEND_API_KEY');
 
 admin.initializeApp();
 
@@ -57,6 +61,7 @@ export const processScheduledTasks = onSchedule(
     schedule: 'every 1 minutes',
     timeZone: 'Europe/Oslo',
     region: 'europe-west1',
+    secrets: [resendApiKey],  // Declare that this function uses the secret
   },
   async () => {
     const db = admin.firestore();
@@ -70,7 +75,7 @@ export const processScheduledTasks = onSchedule(
 
     if (due.empty) return;
 
-    const apiKey = process.env.RESEND_API_KEY;
+    const apiKey = resendApiKey.value();  // Use the secret
     if (!apiKey) return;
 
     const resend = new Resend(apiKey);
