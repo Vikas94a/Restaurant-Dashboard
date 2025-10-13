@@ -10,7 +10,11 @@ interface OrderListProps {
   orders: Order[];
   estimatedTimes: Record<string, string>;
   onEstimatedTimeChange: (orderId: string, time: string) => void;
-  onStatusChange: (orderId: string, status: BackendOrderStatus) => void;
+  onStatusChange: (orderId: string, status: BackendOrderStatus, cancellationReason?: string) => void;
+  cancellationReasons: Record<string, string>;
+  onCancellationReasonChange: (orderId: string, reason: string) => void;
+  asapTimers: Record<string, { timeLeft: number; interval: NodeJS.Timeout }>;
+  formatTimeLeft: (milliseconds: number) => string;
 }
 
 // Move OrderCard here from the page file
@@ -18,7 +22,11 @@ interface OrderCardProps {
   order: Order;
   estimatedTime: string;
   onEstimatedTimeChange: (orderId: string, time: string) => void;
-  onStatusChange: (orderId: string, status: BackendOrderStatus) => void;
+  onStatusChange: (orderId: string, status: BackendOrderStatus, cancellationReason?: string) => void;
+  cancellationReason: string;
+  onCancellationReasonChange: (orderId: string, reason: string) => void;
+  asapTimer?: { timeLeft: number; interval: NodeJS.Timeout };
+  formatTimeLeft: (milliseconds: number) => string;
 }
 
 function OrderCard({
@@ -26,6 +34,10 @@ function OrderCard({
   estimatedTime,
   onEstimatedTimeChange,
   onStatusChange,
+  cancellationReason,
+  onCancellationReasonChange,
+  asapTimer,
+  formatTimeLeft,
 }: OrderCardProps): React.ReactElement {
   const statusColors: Record<string, { bg: string; border: string; text: string; icon: any }> = {
     pending: {
@@ -234,6 +246,26 @@ function OrderCard({
           </div>
           <span className="text-sm font-semibold text-gray-800">{formatPickupTime()}</span>
         </div>
+        
+        {/* ASAP Timer Display */}
+        {isAsapOrder && uiStatus === "pending" && asapTimer && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-red-500 mr-2" />
+                <span className="text-sm font-medium text-gray-700">Tid igjen:</span>
+              </div>
+              <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                asapTimer.timeLeft < 60000 ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+              }`}>
+                {formatTimeLeft(asapTimer.timeLeft)}
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              ⚠️ Bestillingen vil bli automatisk avvist hvis ikke akseptert innen tiden
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}
@@ -253,6 +285,28 @@ function OrderCard({
               />
             </div>
           )}
+          
+          {/* Cancellation Reason Selection */}
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <label className="block text-sm font-medium text-red-800 mb-2">
+              Årsak for avvisning (hvis relevant):
+            </label>
+            <select
+              value={cancellationReason || ""}
+              onChange={(e) => onCancellationReasonChange(order.id, e.target.value)}
+              className="w-full px-4 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white"
+            >
+              <option value="">Velg årsak...</option>
+              <option value="Restaurant is busy - unable to process your order at this time">Restaurant er opptatt</option>
+              <option value="Item not available - we apologize for the inconvenience">Vare ikke tilgjengelig</option>
+              <option value="Kitchen is closed - please try again later">Kjøkken er stengt</option>
+              <option value="Technical issue - please contact us directly">Teknisk problem</option>
+              <option value="Order too large for current capacity">Bestilling for stor</option>
+              <option value="Special dietary requirements cannot be accommodated">Spesielle krav kan ikke imøtekommes</option>
+              <option value="Custom reason">Annen årsak</option>
+            </select>
+          </div>
+          
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => onStatusChange(order.id, uiToBackendStatus("confirmed"))}
@@ -262,7 +316,7 @@ function OrderCard({
               Aksepter
             </button>
             <button
-              onClick={() => onStatusChange(order.id, uiToBackendStatus("cancelled"))}
+              onClick={() => onStatusChange(order.id, uiToBackendStatus("cancelled"), cancellationReason)}
               className="flex items-center justify-center bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-3 rounded-lg text-sm font-medium hover:from-red-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
             >
               <FontAwesomeIcon icon={faXmark} className="mr-2" />
@@ -297,7 +351,16 @@ function OrderCard({
   );
 }
 
-const OrderList: React.FC<OrderListProps> = ({ orders, estimatedTimes, onEstimatedTimeChange, onStatusChange }) => {
+const OrderList: React.FC<OrderListProps> = ({ 
+  orders, 
+  estimatedTimes, 
+  onEstimatedTimeChange, 
+  onStatusChange,
+  cancellationReasons,
+  onCancellationReasonChange,
+  asapTimers,
+  formatTimeLeft
+}) => {
   if (!orders || orders.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-xl shadow-sm border border-gray-200">
@@ -321,6 +384,10 @@ const OrderList: React.FC<OrderListProps> = ({ orders, estimatedTimes, onEstimat
           estimatedTime={estimatedTimes[order.id]}
           onEstimatedTimeChange={onEstimatedTimeChange}
           onStatusChange={onStatusChange}
+          cancellationReason={cancellationReasons[order.id] || ""}
+          onCancellationReasonChange={onCancellationReasonChange}
+          asapTimer={asapTimers[order.id]}
+          formatTimeLeft={formatTimeLeft}
         />
       ))}
     </div>

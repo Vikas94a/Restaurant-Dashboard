@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   updateOrderStatus,
+  autoCancelExpiredOrder,
 } from "@/store/features/orderSlice";
 import { Order } from '@/types/checkout';
 import { CartItem as OrderItem } from '@/types/cart';
@@ -30,9 +31,86 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [estimatedTimes, setEstimatedTimes] = useState<Record<string, string>>({});
   const [selectedTab, setSelectedTab] = useState<'active' | 'completed' | 'rejected'>('active');
+  const [cancellationReasons, setCancellationReasons] = useState<Record<string, string>>({});
+  const [asapTimers, setAsapTimers] = useState<Record<string, { timeLeft: number; interval: NodeJS.Timeout }>>({});
   
   // Use global sound notification
   const { SoundControls, stopRepeatingSound, debugAudio } = useSoundNotification();
+
+  // Timer management for ASAP orders
+  useEffect(() => {
+    if (!orders || orders.length === 0) return;
+
+    // Start timers for pending ASAP orders
+    orders.forEach(order => {
+      if (order.pickupOption === 'asap' && order.status === 'pending' && order.autoCancelAt) {
+        const autoCancelTime = new Date(order.autoCancelAt).getTime();
+        const now = Date.now();
+        const timeLeft = Math.max(0, autoCancelTime - now);
+
+        if (timeLeft > 0 && !asapTimers[order.id]) {
+          const interval = setInterval(() => {
+            setAsapTimers(prev => {
+              const currentTimer = prev[order.id];
+              if (!currentTimer) return prev;
+
+              const newTimeLeft = Math.max(0, currentTimer.timeLeft - 1000);
+              
+              if (newTimeLeft === 0) {
+                // Auto-cancel the order
+                if (restaurantDetails?.restaurantId) {
+                  dispatch(autoCancelExpiredOrder({
+                    orderId: order.id,
+                    restaurantId: restaurantDetails.restaurantId
+                  }));
+                }
+                clearInterval(currentTimer.interval);
+                const newTimers = { ...prev };
+                delete newTimers[order.id];
+                return newTimers;
+              }
+
+              return {
+                ...prev,
+                [order.id]: {
+                  ...currentTimer,
+                  timeLeft: newTimeLeft
+                }
+              };
+            });
+          }, 1000);
+
+          setAsapTimers(prev => ({
+            ...prev,
+            [order.id]: {
+              timeLeft,
+              interval
+            }
+          }));
+        }
+      }
+    });
+
+    // Cleanup timers for orders that are no longer pending ASAP
+    setAsapTimers(prev => {
+      const newTimers = { ...prev };
+      Object.keys(newTimers).forEach(orderId => {
+        const order = orders.find(o => o.id === orderId);
+        if (!order || order.status !== 'pending' || order.pickupOption !== 'asap') {
+          clearInterval(newTimers[orderId].interval);
+          delete newTimers[orderId];
+        }
+      });
+      return newTimers;
+    });
+
+    // Cleanup function
+    return () => {
+      Object.values(asapTimers).forEach(timer => {
+        clearInterval(timer.interval);
+      });
+    };
+  }, [orders, restaurantDetails?.restaurantId, dispatch, asapTimers]);
 
   useEffect(() => {
     if (!user) {
@@ -50,7 +128,8 @@ export default function OrdersPage() {
 
   const handleOrderStatus = async (
     orderId: string,
-    newStatus: BackendOrderStatus
+    newStatus: BackendOrderStatus,
+    cancellationReason?: string
   ) => {
     try {
       if (!restaurantDetails?.restaurantId) {
@@ -67,18 +146,44 @@ export default function OrdersPage() {
         return;
       }
 
+      // Validate cancellation reason for rejected orders
+      if (newStatus === 'rejected' && (!cancellationReason || cancellationReason.trim() === "")) {
+        toast.error("Vennligst velg en årsak for avvisning.");
+        return;
+      }
+
       await dispatch(
         updateOrderStatus({
           orderId,
           restaurantId: restaurantDetails.restaurantId,
           newStatus,
           estimatedPickupTime: estimatedPickupTime?.trim(),
+          cancellationReason: cancellationReason?.trim(),
         })
       ).unwrap();
+
+      // Clear timer for ASAP orders when processed
+      if (isAsapOrder && asapTimers[orderId]) {
+        clearInterval(asapTimers[orderId].interval);
+        setAsapTimers(prev => {
+          const newTimers = { ...prev };
+          delete newTimers[orderId];
+          return newTimers;
+        });
+      }
 
       // Stop sound when order is processed
       if (newStatus === 'accepted' || newStatus === 'rejected') {
         stopRepeatingSound();
+      }
+
+      // Clear cancellation reason after successful rejection
+      if (newStatus === 'rejected') {
+        setCancellationReasons(prev => {
+          const newReasons = { ...prev };
+          delete newReasons[orderId];
+          return newReasons;
+        });
       }
 
       // Show success message based on the action
@@ -96,6 +201,17 @@ export default function OrdersPage() {
 
   const handleEstimatedTimeChange = (orderId: string, time: string) => {
     setEstimatedTimes((prev) => ({ ...prev, [orderId]: time }));
+  };
+
+  const handleCancellationReasonChange = (orderId: string, reason: string) => {
+    setCancellationReasons((prev) => ({ ...prev, [orderId]: reason }));
+  };
+
+  // Helper function to format time left
+  const formatTimeLeft = (milliseconds: number) => {
+    const minutes = Math.floor(milliseconds / 60000);
+    const seconds = Math.floor((milliseconds % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   if (loading) {
@@ -238,6 +354,10 @@ export default function OrdersPage() {
           estimatedTimes={estimatedTimes}
           onEstimatedTimeChange={handleEstimatedTimeChange}
           onStatusChange={handleOrderStatus}
+          cancellationReasons={cancellationReasons}
+          onCancellationReasonChange={handleCancellationReasonChange}
+          asapTimers={asapTimers}
+          formatTimeLeft={formatTimeLeft}
         />
       </main>
     </div>

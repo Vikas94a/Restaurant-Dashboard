@@ -13,6 +13,8 @@ export interface Order {
   pickupTime: string;
   pickupOption: 'asap' | 'later';
   estimatedPickupTime: string | null;
+  cancellationReason?: string;
+  autoCancelAt?: string; // ISO timestamp for ASAP orders
 }
 
 export interface CustomerFormData {

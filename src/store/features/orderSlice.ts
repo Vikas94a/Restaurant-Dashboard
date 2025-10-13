@@ -55,10 +55,16 @@ function backendToUIStatus(status: BackendOrderStatus): UIOrderStatus {
 export const createOrder = createAsyncThunk(
   'orders/create',
   async (orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => {
+    // Set auto-cancel timer for ASAP orders (3 minutes from now)
+    const autoCancelAt = orderData.pickupOption === 'asap' 
+      ? new Date(Date.now() + 3 * 60 * 1000).toISOString() 
+      : undefined;
+
     const orderRef = await addDoc(collection(db, 'orders'), {
       ...orderData,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      autoCancelAt
     });
 
     // Create a new order with all required fields
@@ -74,7 +80,8 @@ export const createOrder = createAsyncThunk(
       estimatedPickupTime: orderData.estimatedPickupTime,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      completedAt: null
+      completedAt: null,
+      autoCancelAt
     };
 
     return newOrder;
@@ -83,11 +90,12 @@ export const createOrder = createAsyncThunk(
 
 export const updateOrderStatus = createAsyncThunk(
   'orders/updateStatus',
-  async ({ orderId, restaurantId, newStatus, estimatedPickupTime }: {
+  async ({ orderId, restaurantId, newStatus, estimatedPickupTime, cancellationReason }: {
     orderId: string;
     restaurantId: string;
     newStatus: BackendOrderStatus;
     estimatedPickupTime?: string;
+    cancellationReason?: string;
   }) => {
     try {
       const orderRef = doc(db, 'restaurants', restaurantId, 'orders', orderId);
@@ -102,6 +110,7 @@ export const updateOrderStatus = createAsyncThunk(
         status: newStatus,
         updatedAt: serverTimestamp(),
         ...(estimatedPickupTime && { estimatedPickupTime }),
+        ...(cancellationReason && { cancellationReason }),
         ...(newStatus === 'completed' && { completedAt: serverTimestamp() })
       };
 
@@ -116,7 +125,7 @@ export const updateOrderStatus = createAsyncThunk(
 
       // Send rejection email when order is rejected
       if (newStatus === 'rejected') {
-        const order = { id: orderId, ...orderData } as Order;
+        const order = { id: orderId, ...orderData, cancellationReason } as Order;
         try {
           await sendOrderRejectionEmail(order);
           } catch (emailError) {
@@ -125,6 +134,46 @@ export const updateOrderStatus = createAsyncThunk(
 
       await updateDoc(orderRef, updateData);
       return { orderId, newStatus, estimatedPickupTime };
+    } catch (error) {
+      throw error;
+    }
+  }
+);
+
+// Auto-cancel ASAP orders that have exceeded the 3-minute timer
+export const autoCancelExpiredOrder = createAsyncThunk(
+  'orders/autoCancel',
+  async ({ orderId, restaurantId }: {
+    orderId: string;
+    restaurantId: string;
+  }) => {
+    try {
+      const orderRef = doc(db, 'restaurants', restaurantId, 'orders', orderId);
+      const orderDoc = await getDoc(orderRef);
+
+      if (!orderDoc.exists()) {
+        throw new Error('Order not found');
+      }
+
+      const orderData = orderDoc.data();
+      
+      // Send automatic rejection email
+      const order = { id: orderId, ...orderData, cancellationReason: 'Restaurant is busy - unable to process your order at this time' } as Order;
+      try {
+        await sendOrderRejectionEmail(order);
+      } catch (emailError) {
+        console.error('Failed to send auto-cancel email:', emailError);
+      }
+
+      // Update order status to rejected
+      const updateData = {
+        status: 'rejected',
+        updatedAt: serverTimestamp(),
+        cancellationReason: 'Restaurant is busy - unable to process your order at this time'
+      };
+
+      await updateDoc(orderRef, updateData);
+      return { orderId };
     } catch (error) {
       throw error;
     }

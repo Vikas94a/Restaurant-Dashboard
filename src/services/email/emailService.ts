@@ -246,6 +246,13 @@ export const sendOrderRejectionEmail = async (order: Order) => {
         <p style="font-size: 16px; color: #333; margin-bottom: 10px;">Dear <strong>${customerDetails.name}</strong>,</p>
         <p style="font-size: 15px; color: #555; line-height: 1.6;">We regret to inform you that your order could not be processed at this time. We sincerely apologize for any inconvenience this may cause.</p>
         
+        ${order.cancellationReason ? `
+        <div style="background-color: #ffebee; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f44336;">
+          <h4 style="color: #333; margin: 0 0 10px 0; font-size: 16px;">📝 Reason for Cancellation:</h4>
+          <p style="margin: 0; color: #555; font-size: 14px;">${order.cancellationReason}</p>
+        </div>
+        ` : ''}
+        
         <!-- Order Details -->
         <div style="margin: 25px 0;">
           <h3 style="color: #333; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #f44336; padding-bottom: 8px;">🛒 Order Details</h3>
