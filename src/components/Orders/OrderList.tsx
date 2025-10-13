@@ -14,6 +14,7 @@ interface OrderListProps {
   cancellationReasons: Record<string, string>;
   onCancellationReasonChange: (orderId: string, reason: string) => void;
   asapTimers: Record<string, { timeLeft: number; interval: NodeJS.Timeout }>;
+  preparationTimers: Record<string, { timeLeft: number; interval: NodeJS.Timeout }>;
   formatTimeLeft: (milliseconds: number) => string;
 }
 
@@ -26,6 +27,7 @@ interface OrderCardProps {
   cancellationReason: string;
   onCancellationReasonChange: (orderId: string, reason: string) => void;
   asapTimer?: { timeLeft: number; interval: NodeJS.Timeout };
+  preparationTimer?: { timeLeft: number; interval: NodeJS.Timeout };
   formatTimeLeft: (milliseconds: number) => string;
 }
 
@@ -37,6 +39,7 @@ function OrderCard({
   cancellationReason,
   onCancellationReasonChange,
   asapTimer,
+  preparationTimer,
   formatTimeLeft,
 }: OrderCardProps): React.ReactElement {
   const statusColors: Record<string, { bg: string; border: string; text: string; icon: any }> = {
@@ -250,19 +253,40 @@ function OrderCard({
         {/* ASAP Timer Display */}
         {isAsapOrder && uiStatus === "pending" && asapTimer && (
           <div className="mt-3 pt-3 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-red-500 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">Tid igjen:</span>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                  asapTimer.timeLeft < 60000 ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {formatTimeLeft(asapTimer.timeLeft)}
+                </div>
+              </div>
+            <div className="mt-2 text-xs text-gray-500">
+              ⚠️ Bestillingen vil bli automatisk avvist hvis ikke akseptert innen tiden
+            </div>
+          </div>
+        )}
+
+        {/* Preparation Timer Display */}
+        {isAsapOrder && uiStatus === "confirmed" && preparationTimer && (
+          <div className="mt-3 pt-3 border-t border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-red-500 mr-2" />
-                <span className="text-sm font-medium text-gray-700">Tid igjen:</span>
+                <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-blue-500 mr-2" />
+                <span className="text-sm font-medium text-gray-700">Tilberedningstid igjen:</span>
               </div>
               <div className={`px-3 py-1 rounded-full text-sm font-bold ${
-                asapTimer.timeLeft < 60000 ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                preparationTimer.timeLeft < 300000 ? 'bg-red-100 text-red-800' : 
+                preparationTimer.timeLeft < 600000 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
               }`}>
-                {formatTimeLeft(asapTimer.timeLeft)}
+                {formatTimeLeft(preparationTimer.timeLeft)}
               </div>
             </div>
             <div className="mt-2 text-xs text-gray-500">
-              ⚠️ Bestillingen vil bli automatisk avvist hvis ikke akseptert innen tiden
+              ⏰ Tid igjen til bestillingen skal være klar
             </div>
           </div>
         )}
@@ -330,11 +354,18 @@ function OrderCard({
         <div className="space-y-4">
           {isAsapOrder && order.estimatedPickupTime && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center">
-                <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-green-600 mr-2" />
-                <span className="text-sm font-medium text-green-800">
-                  Klar om: {order.estimatedPickupTime}
-                </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-green-600 mr-2" />
+                  <span className="text-sm font-medium text-green-800">
+                    Estimert klar om: {order.estimatedPickupTime}
+                  </span>
+                </div>
+                {preparationTimer && preparationTimer.timeLeft === 0 && (
+                  <span className="text-sm font-bold text-green-800 bg-green-200 px-2 py-1 rounded">
+                    KLAR!
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -359,6 +390,7 @@ const OrderList: React.FC<OrderListProps> = ({
   cancellationReasons,
   onCancellationReasonChange,
   asapTimers,
+  preparationTimers,
   formatTimeLeft
 }) => {
   if (!orders || orders.length === 0) {
@@ -387,6 +419,7 @@ const OrderList: React.FC<OrderListProps> = ({
           cancellationReason={cancellationReasons[order.id] || ""}
           onCancellationReasonChange={onCancellationReasonChange}
           asapTimer={asapTimers[order.id]}
+          preparationTimer={preparationTimers[order.id]}
           formatTimeLeft={formatTimeLeft}
         />
       ))}

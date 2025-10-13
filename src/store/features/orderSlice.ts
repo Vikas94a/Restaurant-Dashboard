@@ -60,7 +60,7 @@ export const createOrder = createAsyncThunk(
       ? new Date(Date.now() + 3 * 60 * 1000).toISOString() 
       : undefined;
 
-    const orderRef = await addDoc(collection(db, 'orders'), {
+    const orderRef = await addDoc(collection(db, 'restaurants', orderData.restaurantId, 'orders'), {
       ...orderData,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -114,25 +114,36 @@ export const updateOrderStatus = createAsyncThunk(
         ...(newStatus === 'completed' && { completedAt: serverTimestamp() })
       };
 
-      // Send confirmation email when order is accepted
+      // Update the order first
+      await updateDoc(orderRef, updateData);
+
+      // Send confirmation email when order is accepted (AFTER updating)
       if (newStatus === 'accepted') {
-        const order = { id: orderId, ...orderData } as Order;
+        const order = {
+          ...orderData,
+          id: orderId,
+          estimatedPickupTime, // Include the new estimated pickup time
+          status: newStatus
+        } as unknown as Order;
         try {
           await sendOrderConfirmationEmail(order);
           } catch (emailError) {
           }
       }
 
-      // Send rejection email when order is rejected
+      // Send rejection email when order is rejected (AFTER updating)
       if (newStatus === 'rejected') {
-        const order = { id: orderId, ...orderData, cancellationReason } as Order;
+        const order = {
+          ...orderData,
+          id: orderId,
+          cancellationReason,
+          status: newStatus
+        } as unknown as Order;
         try {
           await sendOrderRejectionEmail(order);
           } catch (emailError) {
           }
       }
-
-      await updateDoc(orderRef, updateData);
       return { orderId, newStatus, estimatedPickupTime };
     } catch (error) {
       throw error;

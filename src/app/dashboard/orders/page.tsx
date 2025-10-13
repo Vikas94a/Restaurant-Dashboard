@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   updateOrderStatus,
@@ -33,6 +33,9 @@ export default function OrdersPage() {
   const [selectedTab, setSelectedTab] = useState<'active' | 'completed' | 'rejected'>('active');
   const [cancellationReasons, setCancellationReasons] = useState<Record<string, string>>({});
   const [asapTimers, setAsapTimers] = useState<Record<string, { timeLeft: number; interval: NodeJS.Timeout }>>({});
+  const [preparationTimers, setPreparationTimers] = useState<Record<string, { timeLeft: number; interval: NodeJS.Timeout }>>({});
+  const timerRefs = useRef<Record<string, NodeJS.Timeout>>({});
+  const prepTimerRefs = useRef<Record<string, NodeJS.Timeout>>({});
   
   // Use global sound notification
   const { SoundControls, stopRepeatingSound, debugAudio } = useSoundNotification();
@@ -43,12 +46,20 @@ export default function OrdersPage() {
 
     // Start timers for pending ASAP orders
     orders.forEach(order => {
-      if (order.pickupOption === 'asap' && order.status === 'pending' && order.autoCancelAt) {
-        const autoCancelTime = new Date(order.autoCancelAt).getTime();
+      if (order.pickupOption === 'asap' && order.status === 'pending') {
+        // Calculate time left from autoCancelAt or create one if missing
+        let autoCancelTime: number;
+        if (order.autoCancelAt) {
+          autoCancelTime = new Date(order.autoCancelAt).getTime();
+        } else {
+          // If no autoCancelAt, set it to 3 minutes from order creation
+          autoCancelTime = new Date(order.createdAt).getTime() + (3 * 60 * 1000);
+        }
+        
         const now = Date.now();
         const timeLeft = Math.max(0, autoCancelTime - now);
 
-        if (timeLeft > 0 && !asapTimers[order.id]) {
+        if (timeLeft > 0 && !timerRefs.current[order.id]) {
           const interval = setInterval(() => {
             setAsapTimers(prev => {
               const currentTimer = prev[order.id];
@@ -64,7 +75,12 @@ export default function OrdersPage() {
                     restaurantId: restaurantDetails.restaurantId
                   }));
                 }
-                clearInterval(currentTimer.interval);
+                // Clear timer from refs
+                if (timerRefs.current[order.id]) {
+                  clearInterval(timerRefs.current[order.id]);
+                  delete timerRefs.current[order.id];
+                }
+                // Remove from state
                 const newTimers = { ...prev };
                 delete newTimers[order.id];
                 return newTimers;
@@ -80,6 +96,9 @@ export default function OrdersPage() {
             });
           }, 1000);
 
+          // Store interval in refs
+          timerRefs.current[order.id] = interval;
+
           setAsapTimers(prev => ({
             ...prev,
             [order.id]: {
@@ -92,25 +111,113 @@ export default function OrdersPage() {
     });
 
     // Cleanup timers for orders that are no longer pending ASAP
-    setAsapTimers(prev => {
-      const newTimers = { ...prev };
-      Object.keys(newTimers).forEach(orderId => {
-        const order = orders.find(o => o.id === orderId);
-        if (!order || order.status !== 'pending' || order.pickupOption !== 'asap') {
-          clearInterval(newTimers[orderId].interval);
+    Object.keys(timerRefs.current).forEach(orderId => {
+      const order = orders.find(o => o.id === orderId);
+      if (!order || order.status !== 'pending' || order.pickupOption !== 'asap') {
+        clearInterval(timerRefs.current[orderId]);
+        delete timerRefs.current[orderId];
+        setAsapTimers(prev => {
+          const newTimers = { ...prev };
           delete newTimers[orderId];
+          return newTimers;
+        });
+      }
+    });
+  }, [orders, restaurantDetails?.restaurantId, dispatch]);
+
+  // Preparation timer management for accepted ASAP orders
+  useEffect(() => {
+    if (!orders || orders.length === 0) return;
+
+    // Start preparation timers for accepted ASAP orders with estimated pickup time
+    orders.forEach(order => {
+      if (order.pickupOption === 'asap' && order.status === 'confirmed' && order.estimatedPickupTime) {
+        // Parse the estimated pickup time (e.g., "20-30 minutter" or "25 minutter")
+        const timeMatch = order.estimatedPickupTime.match(/(\d+)/);
+        if (timeMatch) {
+          const prepTimeMinutes = parseInt(timeMatch[1]);
+          const prepTimeMs = prepTimeMinutes * 60 * 1000;
+          
+          // Calculate when the order was accepted (use updatedAt if available, otherwise createdAt + some buffer)
+          const acceptedTime = order.updatedAt ? new Date(order.updatedAt).getTime() : new Date(order.createdAt).getTime();
+          const now = Date.now();
+          const timeElapsed = now - acceptedTime;
+          const timeLeft = Math.max(0, prepTimeMs - timeElapsed);
+
+          if (timeLeft > 0 && !prepTimerRefs.current[order.id]) {
+            const interval = setInterval(() => {
+              setPreparationTimers(prev => {
+                const currentTimer = prev[order.id];
+                if (!currentTimer) return prev;
+
+                const newTimeLeft = Math.max(0, currentTimer.timeLeft - 1000);
+                
+                if (newTimeLeft === 0) {
+                  // Order is ready
+                  // Clear timer from refs
+                  if (prepTimerRefs.current[order.id]) {
+                    clearInterval(prepTimerRefs.current[order.id]);
+                    delete prepTimerRefs.current[order.id];
+                  }
+                  // Remove from state
+                  const newTimers = { ...prev };
+                  delete newTimers[order.id];
+                  return newTimers;
+                }
+
+                return {
+                  ...prev,
+                  [order.id]: {
+                    ...currentTimer,
+                    timeLeft: newTimeLeft
+                  }
+                };
+              });
+            }, 1000);
+
+            // Store interval in refs
+            prepTimerRefs.current[order.id] = interval;
+
+            setPreparationTimers(prev => ({
+              ...prev,
+              [order.id]: {
+                timeLeft,
+                interval
+              }
+            }));
+          }
         }
-      });
-      return newTimers;
+      }
     });
 
-    // Cleanup function
+    // Cleanup preparation timers for orders that are no longer relevant
+    Object.keys(prepTimerRefs.current).forEach(orderId => {
+      const order = orders.find(o => o.id === orderId);
+      if (!order || order.status !== 'confirmed' || !order.estimatedPickupTime) {
+        clearInterval(prepTimerRefs.current[orderId]);
+        delete prepTimerRefs.current[orderId];
+        setPreparationTimers(prev => {
+          const newTimers = { ...prev };
+          delete newTimers[orderId];
+          return newTimers;
+        });
+      }
+    });
+  }, [orders]);
+
+  // Cleanup effect for timers
+  useEffect(() => {
     return () => {
-      Object.values(asapTimers).forEach(timer => {
-        clearInterval(timer.interval);
+      Object.values(timerRefs.current).forEach(interval => {
+        clearInterval(interval);
       });
+      Object.values(prepTimerRefs.current).forEach(interval => {
+        clearInterval(interval);
+      });
+      timerRefs.current = {};
+      prepTimerRefs.current = {};
     };
-  }, [orders, restaurantDetails?.restaurantId, dispatch, asapTimers]);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -163,8 +270,9 @@ export default function OrdersPage() {
       ).unwrap();
 
       // Clear timer for ASAP orders when processed
-      if (isAsapOrder && asapTimers[orderId]) {
-        clearInterval(asapTimers[orderId].interval);
+      if (isAsapOrder && timerRefs.current[orderId]) {
+        clearInterval(timerRefs.current[orderId]);
+        delete timerRefs.current[orderId];
         setAsapTimers(prev => {
           const newTimers = { ...prev };
           delete newTimers[orderId];
@@ -357,6 +465,7 @@ export default function OrdersPage() {
           cancellationReasons={cancellationReasons}
           onCancellationReasonChange={handleCancellationReasonChange}
           asapTimers={asapTimers}
+          preparationTimers={preparationTimers}
           formatTimeLeft={formatTimeLeft}
         />
       </main>

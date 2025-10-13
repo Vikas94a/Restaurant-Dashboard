@@ -41,7 +41,7 @@ export const sendEmail = async ({ to, subject, html }: EmailData) => {
 };
 
 export const sendOrderConfirmationEmail = async (order: Order) => {
-  const { customerDetails, items, total, estimatedPickupTime, pickupTime, restaurantId } = order;
+  const { customerDetails, items, total, estimatedPickupTime, pickupTime, restaurantId, pickupOption } = order;
   
   // Fetch restaurant details
   let restaurantData: RestaurantData | null = null;
@@ -88,7 +88,26 @@ export const sendOrderConfirmationEmail = async (order: Order) => {
   `}).join('');
 
   // Determine pickup time display
-  const displayPickupTime = estimatedPickupTime || pickupTime || 'To be determined';
+  let displayPickupTime;
+  
+  if (pickupOption === 'asap') {
+    // For ASAP orders, show the estimated pickup time the restaurant set
+    if (estimatedPickupTime) {
+      // Check if "minutes" or "minutter" is already in the text
+      const hasTimeUnit = estimatedPickupTime.toLowerCase().includes('minute') || 
+                          estimatedPickupTime.toLowerCase().includes('min');
+      if (hasTimeUnit) {
+        displayPickupTime = `Ready in ${estimatedPickupTime}`;
+      } else {
+        displayPickupTime = `Ready in ${estimatedPickupTime} minutes`;
+      }
+    } else {
+      displayPickupTime = 'To be determined - restaurant will confirm soon';
+    }
+  } else {
+    // For scheduled orders, show the scheduled time
+    displayPickupTime = pickupTime || 'To be determined';
+  }
   
   // Build restaurant info section
   const restaurantInfo = restaurantData ? `
