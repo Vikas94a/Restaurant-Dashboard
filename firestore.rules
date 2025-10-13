@@ -113,6 +113,16 @@ service cloud.firestore {
         isAllowedSignup();
     }
 
+    // Feedbacks collection rules
+    match /feedbacks/{orderId} {
+      // Anyone can create feedback (one-time, using order ID as document ID)
+      allow create: if true;
+      // Anyone can read their own feedback (using order ID)
+      allow read: if true;
+      // No updates or deletes allowed (for data integrity)
+      allow update, delete: if false;
+    }
+
     // Additional security: Block all other collections by default
     match /{document=**} {
       allow read, write: if false;

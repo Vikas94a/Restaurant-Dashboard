@@ -314,4 +314,93 @@ export const sendOrderRejectionEmail = async (order: Order) => {
     subject: `Order Update - ${restaurantName}`,
     html,
   });
-}; 
+};
+
+// Send feedback request email after order completion
+export const sendFeedbackEmail = async (order: Order) => {
+  const { id: orderId, customerDetails, restaurantId } = order;
+  
+  // Fetch restaurant details
+  let restaurantData: RestaurantData | null = null;
+  try {
+    const restaurantRef = doc(db, 'restaurants', restaurantId);
+    const restaurantSnap = await getDoc(restaurantRef);
+    if (restaurantSnap.exists()) {
+      restaurantData = restaurantSnap.data() as RestaurantData;
+    }
+  } catch (error) {
+    console.error('Error fetching restaurant data:', error);
+  }
+
+  const restaurantName = restaurantData?.name || 'AI Eat Easy';
+  const feedbackUrl = `https://aieateasy.no/feedback/${orderId}`;
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+      <!-- Header -->
+      <div style="text-align: center; padding: 30px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">🍽️ Thank You!</h1>
+      </div>
+      
+      <!-- Content -->
+      <div style="padding: 30px; background-color: #ffffff; border: 1px solid #e9ecef; border-top: none; border-radius: 0 0 12px 12px;">
+        <p style="font-size: 16px; color: #333; margin-bottom: 10px;">Dear <strong>${customerDetails.name}</strong>,</p>
+        <p style="font-size: 15px; color: #555; line-height: 1.6;">
+          Thank you for choosing ${restaurantName}! We hope you enjoyed your meal. 
+        </p>
+        
+        <!-- Feedback Request -->
+        <div style="background-color: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #667eea;">
+          <h3 style="color: #333; margin-top: 0; font-size: 18px; margin-bottom: 15px;">⭐ We'd Love Your Feedback!</h3>
+          <p style="margin: 10px 0; color: #555; font-size: 14px;">
+            Your opinion matters to us! Please take a moment to rate your experience and let us know how we did.
+          </p>
+          <p style="margin: 15px 0; color: #555; font-size: 14px;">
+            Your feedback helps us improve and serve you better.
+          </p>
+        </div>
+
+        <!-- CTA Button -->
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${feedbackUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">
+            Share Your Feedback
+          </a>
+        </div>
+
+        <!-- Alternative Link -->
+        <div style="text-align: center; margin: 20px 0;">
+          <p style="font-size: 12px; color: #999; margin-bottom: 5px;">Or copy this link:</p>
+          <p style="font-size: 12px; color: #667eea; word-break: break-all;">${feedbackUrl}</p>
+        </div>
+
+        ${restaurantData ? `
+        <!-- Restaurant Contact -->
+        <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+          <h3 style="color: #333; margin-top: 0; font-size: 16px;">📞 Questions?</h3>
+          <p style="margin: 8px 0; color: #555; font-size: 14px;">Feel free to reach out to us:</p>
+          <p style="margin: 8px 0; color: #333; font-size: 14px;">
+            <strong>Phone:</strong> ${restaurantData.phoneNumber}<br/>
+            <strong>Website:</strong> <a href="https://${restaurantData.domain}" style="color: #007bff; text-decoration: none;">https://${restaurantData.domain}</a>
+          </p>
+        </div>
+        ` : ''}
+
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+          <p style="color: #6c757d; font-size: 14px; margin: 5px 0;">
+            We look forward to serving you again soon!
+          </p>
+          <p style="color: #6c757d; font-size: 14px; margin: 5px 0;">
+            - ${restaurantName} Team 🙏
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: customerDetails.email,
+    subject: `Thank you for choosing ${restaurantName}! We'd love your feedback 🍽️`,
+    html,
+  });
+};
