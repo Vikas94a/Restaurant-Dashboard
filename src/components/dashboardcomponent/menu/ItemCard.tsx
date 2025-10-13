@@ -319,7 +319,7 @@ export default function ItemCard({
               <span className="text-xs">Price</span>
             </div>
             <div className="text-primary font-bold text-sm">
-              ${(item.price?.amount || 0).toFixed(2)}
+              {(item.price?.amount || 0).toFixed(2)} kr
             </div>
           </div>
         </>

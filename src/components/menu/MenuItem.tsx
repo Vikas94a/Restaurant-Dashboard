@@ -52,7 +52,7 @@ export const MenuItem: React.FC<MenuItemProps> = ({
             {/* Item description in smaller gray text */}
             <p className="text-sm text-gray-600">{item.description}</p>
             {/* Item price formatted to 2 decimals */}
-            <p className="text-lg font-bold mt-1">${item.price.amount.toFixed(2)}</p>
+            <p className="text-lg font-bold mt-1">{item.price.amount.toFixed(2)} kr</p>
           </div>
 
           {/* Action buttons: Edit, Delete, Toggle Availability */}

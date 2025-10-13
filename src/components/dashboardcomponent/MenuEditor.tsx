@@ -294,6 +294,7 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
       id: group.id,
       groupName: group.name,
       selectionType: 'single', // Default to single since the editor type doesn't specify
+      required: group.required || false, // Include the required field!
       choices: group.options.map(option => ({
         id: option.id,
         name: option.name,
@@ -306,7 +307,7 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
     return {
       id: group.id,
       name: group.groupName,
-      required: false, // Default value since ReusableExtraGroup doesn't have this field
+      required: group.required || false, // Use the actual required value from the group
       options: group.choices.map(choice => ({
         id: choice.id,
         name: choice.name,
@@ -319,7 +320,7 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
     const menuGroup: Omit<CustomizationGroup, "id"> = {
       groupName: groupData.groupName,
       selectionType: groupData.selectionType,
-      required: false,
+      required: groupData.required || false, // Use the actual required value from groupData
       choices: groupData.choices
     };
     return addReusableExtraGroup(menuGroup);
@@ -329,7 +330,8 @@ export const MenuEditor = ({ restaurantId }: MenuEditorProps) => {
     const menuGroupData: Partial<Omit<CustomizationGroup, "id">> = {
       ...(groupData.groupName && { groupName: groupData.groupName }),
       ...(groupData.selectionType && { selectionType: groupData.selectionType }),
-      ...(groupData.choices && { choices: groupData.choices })
+      ...(groupData.choices && { choices: groupData.choices }),
+      ...(groupData.required !== undefined && { required: groupData.required }) // Include required field!
     };
     return updateReusableExtraGroup(groupId, menuGroupData);
   };

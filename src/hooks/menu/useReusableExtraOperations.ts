@@ -26,7 +26,7 @@ const transformToCustomizationGroup = (reusableExtra: ReusableExtraGroup): Custo
     id: reusableExtra.id,
     groupName: reusableExtra.groupName,
     selectionType: reusableExtra.selectionType,
-    required: false,
+    required: reusableExtra.required || false,
     choices: reusableExtra.choices.map(choice => ({
       ...choice,
       isDefault: false,
@@ -91,8 +91,15 @@ export const useReusableExtraOperations = ({
     setLoadingExtras(true);
     try {
       const extrasRef = collection(db, "restaurants", restaurantId, "reusableExtraGroups");
-      const docRef = await addDoc(extrasRef, groupData);
-      const newGroup = transformToCustomizationGroup({ ...groupData, id: docRef.id });
+      
+      // Ensure required field is explicitly set
+      const addData = {
+        ...groupData,
+        required: groupData.required ?? false
+      };
+      
+      const docRef = await addDoc(extrasRef, addData);
+      const newGroup = transformToCustomizationGroup({ ...addData, id: docRef.id });
       setReusableExtras(prev => [...prev, newGroup]);
       toast.success("Reusable extra group added successfully.");
       return docRef.id;
@@ -112,8 +119,15 @@ export const useReusableExtraOperations = ({
     setLoadingExtras(true);
     try {
       const groupRef = doc(db, "restaurants", restaurantId, "reusableExtraGroups", groupId);
-      await updateDoc(groupRef, groupData);
-      setReusableExtras(prev => prev.map(g => g.id === groupId ? transformToCustomizationGroup({ ...g, ...groupData, id: groupId }) : g));
+      
+      // Ensure required field is explicitly set
+      const updateData = {
+        ...groupData,
+        required: groupData.required ?? false
+      };
+      
+      await updateDoc(groupRef, updateData);
+      setReusableExtras(prev => prev.map(g => g.id === groupId ? transformToCustomizationGroup({ ...g, ...updateData, id: groupId }) : g));
       toast.success("Reusable extra group updated successfully.");
     } catch (error) {
       toast.error("Failed to update reusable extra group.");

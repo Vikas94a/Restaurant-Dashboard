@@ -27,7 +27,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ item, onAddToCart }) => {
         </div>
         <div className="ml-4 text-right">
           <p className="text-lg font-semibold">
-            ${item.price.amount.toFixed(2)}
+            {item.price.amount.toFixed(2)} kr
           </p>
           <button
             onClick={() => onAddToCart(item)}
