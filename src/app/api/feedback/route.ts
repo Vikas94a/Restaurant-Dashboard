@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebaseAdmin';
 
 // Force dynamic rendering - don't pre-render at build time
 export const dynamic = 'force-dynamic';
@@ -18,23 +17,37 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get the order document to find the restaurant ID
-    const ordersRef = doc(db, 'orders', orderId);
-    const orderDoc = await getDoc(ordersRef);
+    // Find the order in restaurants collection
+    const restaurantsSnapshot = await adminDb.collection('restaurants').get();
+    
+    let orderData: any = null;
+    let restaurantId = '';
+    
+    for (const restaurantDoc of restaurantsSnapshot.docs) {
+      const orderSnapshot = await adminDb
+        .collection('restaurants')
+        .doc(restaurantDoc.id)
+        .collection('orders')
+        .doc(orderId)
+        .get();
+      
+      if (orderSnapshot.exists) {
+        orderData = orderSnapshot.data();
+        restaurantId = restaurantDoc.id;
+        break;
+      }
+    }
 
-    if (!orderDoc.exists()) {
+    if (!orderData) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
       );
     }
 
-    const orderData = orderDoc.data();
-    const restaurantId = orderData.restaurantId;
-
     // Update the order with feedback
-    const orderRef = doc(db, 'restaurants', restaurantId, 'orders', orderId);
-    await updateDoc(orderRef, {
+    const orderRef = adminDb.collection('restaurants').doc(restaurantId).collection('orders').doc(orderId);
+    await orderRef.update({
       feedback: {
         ...feedback,
         submittedAt: new Date().toISOString()

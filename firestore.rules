@@ -41,7 +41,7 @@ service cloud.firestore {
       // Orders subcollection rules
       match /orders/{orderId} {
         allow create: if true;  // Anyone can create an order
-        allow read: if isRestaurantOwner(restaurantId);  // Only restaurant owner can read orders
+        allow read: if true;  // Allow reading orders for feedback system
         allow update: if isRestaurantOwner(restaurantId);  // Only restaurant owner can update order status
         allow delete: if false;  // No one can delete orders
       }
@@ -76,8 +76,8 @@ service cloud.firestore {
       match /customerFeedback/{orderId} {
         // Anyone can create customer feedback (for feedback form)
         allow create: if true;
-        // Only restaurant owner can read customer feedback
-        allow read: if isRestaurantOwner(restaurantId);
+        // Anyone can read feedback (for checking if already submitted)
+        allow read: if true;
         // No updates or deletes allowed (for data integrity)
         allow update, delete: if false;
       }
@@ -113,15 +113,16 @@ service cloud.firestore {
         isAllowedSignup();
     }
 
-    // Feedbacks collection rules
+    // Feedbacks collection rules - PERMISSIVE FOR FEEDBACK SYSTEM
     match /feedbacks/{orderId} {
       // Anyone can create feedback (one-time, using order ID as document ID)
       allow create: if true;
-      // Anyone can read their own feedback (using order ID)
+      // Anyone can read feedback (for checking if already submitted)
       allow read: if true;
       // No updates or deletes allowed (for data integrity)
       allow update, delete: if false;
     }
+
 
     // Additional security: Block all other collections by default
     match /{document=**} {

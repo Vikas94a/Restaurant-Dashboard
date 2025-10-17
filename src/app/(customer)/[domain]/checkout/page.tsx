@@ -87,7 +87,7 @@ export default function CheckoutPage() {
         const querySnapshot = await getDocs(restaurantsQuery);
         
         if (querySnapshot.empty) {
-          setError("Restaurant not found");
+          setError("Restaurant ikke funnet");
           return;
         }
 
@@ -101,7 +101,7 @@ export default function CheckoutPage() {
           name: data.name || data.restaurantType || "Restaurant"
         });
       } catch (error) {
-        setError("Error Loading Restaurant");
+        setError("Feil ved lasting av restaurant");
       } finally {
         setIsLoading(false);
       }
@@ -122,7 +122,7 @@ export default function CheckoutPage() {
   const handleFormSubmit = () => {
     // Validate form data
     if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim()) {
-      toast.error('Please fill in all contact details');
+      toast.error('Vennligst fyll ut alle kontaktdetaljer');
       return;
     }
     
@@ -144,13 +144,13 @@ export default function CheckoutPage() {
       }
 
       if (!pickupData) {
-        toast.error('Please select pickup options');
+        toast.error('Vennligst velg hentealternativer');
         setCurrentStep('pickup');
         return;
       }
 
       if (cart.items.length === 0) {
-        toast.error('Your cart is empty');
+        toast.error('Handlekurven din er tom');
         return;
       }
 
@@ -159,7 +159,7 @@ export default function CheckoutPage() {
         setShowOrderDialog(true);
       }
     } catch (error) {
-      toast.error('Failed to place order. Please try again.');
+      toast.error('Kunne ikke legge inn bestilling. Vennligst prøv igjen.');
     }
   };
 
@@ -178,7 +178,7 @@ export default function CheckoutPage() {
       <div className="min-h-screen bg-gradient-to-br from-orange-25 via-red-25 to-yellow-25 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-orange-400 mx-auto"></div>
-          <p className="mt-4 text-gray-600 text-base font-semibold">Loading checkout...</p>
+          <p className="mt-4 text-gray-600 text-base font-semibold">Laster utsjekk...</p>
         </div>
       </div>
     );
@@ -191,8 +191,8 @@ export default function CheckoutPage() {
           <div className="bg-gradient-to-br from-orange-50 to-red-50 p-6 rounded-full mb-4">
             <FontAwesomeIcon icon={faUtensils} className="h-12 w-12 text-orange-400" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-700 mb-3">Restaurant Not Found</h1>
-          <p className="text-gray-500 text-base">The restaurant you're looking for doesn't exist or may have been moved.</p>
+          <h1 className="text-2xl font-bold text-gray-700 mb-3">Restaurant Ikke Funnet</h1>
+          <p className="text-gray-500 text-base">Restauranten du leter etter eksisterer ikke eller kan ha blitt flyttet.</p>
         </div>
       </div>
     );
@@ -209,7 +209,7 @@ export default function CheckoutPage() {
               className="flex items-center text-white hover:text-orange-100 transition-colors"
             >
               <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4 mr-2" />
-              <span className="text-sm font-medium">Back to Menu</span>
+              <span className="text-sm font-medium">Tilbake til Meny</span>
             </button>
             <h1 className="text-xl sm:text-2xl font-bold text-white text-center">
               {restaurantName}
@@ -231,7 +231,7 @@ export default function CheckoutPage() {
               }`}>
                 1
               </div>
-              <span className="ml-2 text-sm font-medium hidden sm:block">Details</span>
+              <span className="ml-2 text-sm font-medium hidden sm:block">Detaljer</span>
             </div>
             <div className={`w-8 h-0.5 ${currentStep === 'pickup' || currentStep === 'summary' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
             <div className={`flex items-center ${currentStep === 'pickup' ? 'text-orange-600' : currentStep === 'summary' ? 'text-green-600' : 'text-gray-400'}`}>
@@ -242,7 +242,7 @@ export default function CheckoutPage() {
               }`}>
                 2
               </div>
-              <span className="ml-2 text-sm font-medium hidden sm:block">Pickup</span>
+              <span className="ml-2 text-sm font-medium hidden sm:block">Henting</span>
             </div>
             <div className={`w-8 h-0.5 ${currentStep === 'summary' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
             <div className={`flex items-center ${currentStep === 'summary' ? 'text-orange-600' : 'text-gray-400'}`}>
@@ -251,7 +251,7 @@ export default function CheckoutPage() {
               }`}>
                 3
               </div>
-              <span className="ml-2 text-sm font-medium hidden sm:block">Review</span>
+              <span className="ml-2 text-sm font-medium hidden sm:block">Gjennomgang</span>
             </div>
           </div>
         </div>
@@ -266,7 +266,7 @@ export default function CheckoutPage() {
                   <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center">
                       <FontAwesomeIcon icon={faUser} className="w-5 h-5 text-orange-500 mr-3" />
-                      Contact Information
+                      Kontaktinformasjon
                     </h2>
                   </div>
                   <div className="p-6">
@@ -276,7 +276,7 @@ export default function CheckoutPage() {
                         onClick={handleFormSubmit}
                         className="w-full py-4 px-6 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-opacity-50 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600"
                       >
-                        Continue to Pickup Options
+                        Fortsett til Hentealternativer
                       </button>
                     </div>
                   </div>
@@ -289,7 +289,7 @@ export default function CheckoutPage() {
                   <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center">
                       <FontAwesomeIcon icon={faCreditCard} className="w-5 h-5 text-orange-500 mr-3" />
-                      Order Summary
+                      Bestillingsoversikt
                     </h2>
                   </div>
                   <div className="p-6">
@@ -308,7 +308,7 @@ export default function CheckoutPage() {
                   <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center">
                       <FontAwesomeIcon icon={faClock} className="w-5 h-5 text-orange-500 mr-3" />
-                      Pickup Options
+                      Hentealternativer
                     </h2>
                   </div>
                   <div className="p-6">
@@ -332,23 +332,23 @@ export default function CheckoutPage() {
                           // Validate pickup options before proceeding
                           if (pickupOption === 'later') {
                             if (!pickupDate) {
-                              toast.error('Please select a pickup date');
+                              toast.error('Vennligst velg en hentedato');
                               return;
                             }
                             if (!pickupTime) {
-                              toast.error('Please select a pickup time');
+                              toast.error('Vennligst velg en hentetid');
                               return;
                             }
                             if (!timing.isDateOpen(pickupDate)) {
-                              toast.error('Restaurant is closed on selected date');
+                              toast.error('Restauranten er stengt på valgt dato');
                               return;
                             }
                             if (timing.availablePickupTimes.length === 0) {
-                              toast.error('No available pickup times for selected date');
+                              toast.error('Ingen tilgjengelige hentetider for valgt dato');
                               return;
                             }
                             if (!isTimeValid(pickupDate, pickupTime)) {
-                              toast.error('Selected time is in the past. Please choose a future time.');
+                              toast.error('Valgt tid er i fortiden. Vennligst velg en fremtidig tid.');
                               return;
                             }
                           }
@@ -367,7 +367,7 @@ export default function CheckoutPage() {
                             : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600'
                         }`}
                       >
-                        Continue to Review
+                        Fortsett til Gjennomgang
                       </button>
                     </div>
                   </div>
@@ -380,7 +380,7 @@ export default function CheckoutPage() {
                   <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center">
                       <FontAwesomeIcon icon={faCreditCard} className="w-5 h-5 text-orange-500 mr-3" />
-                      Order Summary
+                      Bestillingsoversikt
                     </h2>
                   </div>
                   <div className="p-6">
@@ -396,7 +396,7 @@ export default function CheckoutPage() {
               <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center">
                   <FontAwesomeIcon icon={faCreditCard} className="w-5 h-5 text-orange-500 mr-3" />
-                  Review Your Order
+                  Gjennomgå Bestillingen Din
                 </h2>
               </div>
               <div className="p-6">
@@ -404,24 +404,24 @@ export default function CheckoutPage() {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                       <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-orange-500 mr-2" />
-                      Contact Details
+                      Kontaktdetaljer
                     </h3>
                     <div className="space-y-2 text-gray-600">
-                      <p><strong>Name:</strong> {formData?.name}</p>
-                      <p><strong>Phone:</strong> {formData?.phone}</p>
-                      <p><strong>Email:</strong> {formData?.email}</p>
+                      <p><strong>Navn:</strong> {formData?.name}</p>
+                      <p><strong>Telefon:</strong> {formData?.phone}</p>
+                      <p><strong>E-post:</strong> {formData?.email}</p>
                     </div>
                     
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 mt-6 flex items-center">
                       <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-orange-500 mr-2" />
-                      Pickup Details
+                      Hentedetaljer
                     </h3>
                     <div className="space-y-2 text-gray-600">
-                      <p><strong>Option:</strong> {pickupData?.pickupOption === 'asap' ? 'As Soon As Possible' : 'Scheduled'}</p>
+                      <p><strong>Alternativ:</strong> {pickupData?.pickupOption === 'asap' ? 'Så snart som mulig' : 'Planlagt'}</p>
                       {pickupData?.pickupOption === 'later' && (
                         <>
-                          <p><strong>Date:</strong> {pickupData?.pickupDate}</p>
-                          <p><strong>Time:</strong> {pickupData?.pickupTime}</p>
+                          <p><strong>Dato:</strong> {pickupData?.pickupDate}</p>
+                          <p><strong>Tid:</strong> {pickupData?.pickupTime}</p>
                         </>
                       )}
                     </div>
@@ -437,13 +437,13 @@ export default function CheckoutPage() {
                     onClick={() => setCurrentStep('form')}
                     className="flex-1 px-6 py-3 border border-orange-300 text-orange-600 rounded-xl font-semibold hover:bg-orange-50 transition-colors"
                   >
-                    Back to Edit
+                    Tilbake til Redigering
                   </button>
                   <button
                     onClick={handleOrderConfirm}
                     className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                   >
-                    Confirm Order
+                    Bekreft Bestilling
                   </button>
                 </div>
               </div>
@@ -466,22 +466,22 @@ export default function CheckoutPage() {
                 <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
                   <FontAwesomeIcon icon={faCheckCircle} className="w-8 h-8 text-green-500" />
                 </div>
-                <h1 className="text-2xl font-bold text-white mb-2">Order Received!</h1>
-                <p className="text-green-100">Your order has been received by the restaurant</p>
+                <h1 className="text-2xl font-bold text-white mb-2">Bestilling Mottatt!</h1>
+                <p className="text-green-100">Bestillingen din har blitt mottatt av restauranten</p>
               </div>
 
               <div className="p-6">
                 <div className="text-center space-y-4">
                   <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">What's Next?</h3>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Hva skjer nå?</h3>
                     <div className="space-y-2 text-sm text-blue-800">
-                      <p>✓ Restaurant will confirm your order</p>
+                      <p>✓ Restauranten vil bekrefte bestillingen din</p>
                       {pickupData?.pickupOption === 'asap' ? (
-                        <p>✓ Pickup time will be notified by email</p>
+                        <p>✓ Hentetid vil bli varslet via e-post</p>
                       ) : (
-                        <p>✓ Order scheduled for {pickupData?.pickupTime}</p>
+                        <p>✓ Bestilling planlagt for {pickupData?.pickupTime}</p>
                       )}
-                      <p>✓ You'll receive email confirmation</p>
+                      <p>✓ Du vil motta e-postbekreftelse</p>
                     </div>
                   </div>
 
@@ -489,7 +489,7 @@ export default function CheckoutPage() {
                     onClick={handleCloseOrderDialog}
                     className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-6 rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-opacity-50"
                   >
-                    Back to Menu
+                    Tilbake til Meny
                   </button>
                 </div>
               </div>

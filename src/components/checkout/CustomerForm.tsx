@@ -94,8 +94,20 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ formData, setFormData }) =>
           </div>
           <div className="text-sm text-orange-800">
             <p className="font-medium mb-1">Bestillingsbekreftelse</p>
-            <p className="text-xs leading-relaxed">
+            <p className="text-xs leading-relaxed mb-2">
               Vi sender din bestillingsbekreftelse og hentedetaljer til e-postadressen du oppgir ovenfor.
+            </p>
+            <p className="text-xs leading-relaxed">
+              Ved å legge inn bestilling godtar du vår{' '}
+              <a 
+                href="/personvern" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-orange-900 transition-colors font-medium"
+              >
+                personvernerklæring
+              </a>
+              {' '}og samtykker til behandling av dine personlige opplysninger.
             </p>
           </div>
         </div>

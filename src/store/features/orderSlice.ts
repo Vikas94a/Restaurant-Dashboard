@@ -3,7 +3,7 @@ import { collection, addDoc, query, orderBy, doc, updateDoc, onSnapshot, QuerySn
 import { db } from '@/lib/firebase';
 import { Order } from '@/types/checkout';
 import { CartItem } from '@/types/cart';
-import { sendOrderConfirmationEmail, sendOrderRejectionEmail, sendFeedbackEmail } from '@/services/email/emailService';
+import { sendOrderConfirmationEmail, sendOrderRejectionEmail } from '@/services/email/emailService';
 
 // Types
 export interface OrderState {
@@ -145,19 +145,8 @@ export const updateOrderStatus = createAsyncThunk(
           }
       }
 
-      // Send feedback email when order is completed (AFTER updating)
-      if (newStatus === 'completed') {
-        const order = {
-          ...orderData,
-          id: orderId,
-          status: newStatus
-        } as unknown as Order;
-        try {
-          await sendFeedbackEmail(order);
-          } catch (emailError) {
-            console.error('Error sending feedback email:', emailError);
-          }
-      }
+      // Feedback email is now handled by Cloud Function
+      // It sends 1 minute after pickup time when order is accepted
       
       return { orderId, newStatus, estimatedPickupTime };
     } catch (error) {

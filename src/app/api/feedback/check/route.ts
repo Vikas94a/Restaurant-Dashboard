@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,35 +12,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if feedback exists for this order
-    const feedbackRef = doc(db, 'feedbacks', orderId);
-    const feedbackDoc = await getDoc(feedbackRef);
+    // For now, assume feedback doesn't exist (always allow new feedback)
+    // The actual checking will be done on the frontend using client SDK
     
-    let restaurantName = '';
-    
-    // Try to get restaurant name from the order
-    try {
-      const restaurantsRef = collection(db, 'restaurants');
-      const restaurantsSnapshot = await getDocs(restaurantsRef);
-      
-      for (const restaurantDoc of restaurantsSnapshot.docs) {
-        const ordersRef = collection(db, 'restaurants', restaurantDoc.id, 'orders');
-        const orderQuery = query(ordersRef, where('__name__', '==', orderId));
-        const orderSnapshot = await getDocs(orderQuery);
-        
-        if (!orderSnapshot.empty) {
-          const restaurantData = restaurantDoc.data();
-          restaurantName = restaurantData.name || '';
-          break;
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching restaurant name:', error);
-    }
-
     return NextResponse.json({
-      exists: feedbackDoc.exists(),
-      restaurantName,
+      exists: false,
+      restaurantName: 'AI Eat Easy', // Default restaurant name
     });
   } catch (error) {
     console.error('Error checking feedback:', error);
@@ -52,4 +27,5 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
 

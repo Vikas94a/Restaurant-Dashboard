@@ -79,7 +79,7 @@ export default function ReservationPage() {
       setIsLoading(true);
       
       if (!domain) {
-        toast.error('Invalid restaurant URL');
+        toast.error('Ugyldig restaurant URL');
         return;
       }
       
@@ -89,7 +89,7 @@ export default function ReservationPage() {
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        toast.error('Restaurant not found');
+        toast.error('Restaurant ikke funnet');
         return;
       }
 
@@ -98,7 +98,7 @@ export default function ReservationPage() {
       
       // Validate restaurant data
       if (!restaurantData.name) {
-        toast.error('Restaurant information is incomplete');
+        toast.error('Restaurantinformasjon er ufullstendig');
         return;
       }
       
@@ -127,18 +127,18 @@ export default function ReservationPage() {
       setReservationSettings(settings);
       
       if (!settings?.enabled) {
-        toast.error('Reservations are not currently available at this restaurant');
+        toast.error('Reservasjoner er ikke tilgjengelige på denne restauranten for øyeblikket');
         return;
       }
       
       // Check if settings have all required fields
       if (!settings.timeSlotInterval || !settings.maxReservationsPerTimeSlot) {
-        toast.error('Reservation settings are incomplete. Please contact the restaurant.');
+        toast.error('Reservasjonsinnstillinger er ufullstendige. Vennligst kontakt restauranten.');
         return;
       }
     } catch (error) {
       console.error('Error loading restaurant data:', error);
-      toast.error('Failed to load restaurant information');
+      toast.error('Kunne ikke laste restaurantinformasjon');
     } finally {
       setIsLoading(false);
     }
@@ -156,18 +156,18 @@ export default function ReservationPage() {
     e.preventDefault();
     
     if (!restaurantId || !reservationSettings || !selectedDate || !selectedTime) {
-      toast.error('Please select a date and time');
+      toast.error('Vennligst velg dato og tid');
       return;
     }
 
     if (!customerName || !customerEmail || !customerPhone) {
-      toast.error('Please fill in all required fields');
+      toast.error('Vennligst fyll ut alle påkrevde felt');
       return;
     }
 
     // Validate time selection
     if (!isTimeValid(selectedDate, selectedTime)) {
-      toast.error('Selected time is in the past. Please choose a future time.');
+      toast.error('Valgt tid er i fortiden. Vennligst velg en fremtidig tid.');
       return;
     }
 
@@ -192,7 +192,7 @@ export default function ReservationPage() {
 
       const reservation = await ReservationService.createReservation(reservationRequest);
       
-      toast.success('Reservation submitted successfully!');
+      toast.success('Reservasjon sendt inn vellykket!');
       
       // Reset form
       setSelectedDate('');
@@ -205,7 +205,7 @@ export default function ReservationPage() {
       
     } catch (error: any) {
       console.error('Error creating reservation:', error);
-      toast.error(error.message || 'Failed to submit reservation');
+      toast.error(error.message || 'Kunne ikke sende inn reservasjon');
     } finally {
       setIsSubmitting(false);
     }
@@ -217,8 +217,8 @@ export default function ReservationPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <FontAwesomeIcon icon={faTimes} className="w-16 h-16 text-red-500 mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Invalid URL</h1>
-          <p className="text-gray-600">Please check the restaurant URL and try again.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Ugyldig URL</h1>
+          <p className="text-gray-600">Vennligst sjekk restaurant URL-en og prøv igjen.</p>
         </div>
       </div>
     );
@@ -229,7 +229,7 @@ export default function ReservationPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading restaurant information...</p>
+          <p className="mt-4 text-gray-600">Laster restaurantinformasjon...</p>
         </div>
       </div>
     );
@@ -240,9 +240,9 @@ export default function ReservationPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Loading Reservation System</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Laster Reservasjonssystem</h1>
           <p className="text-gray-600">
-            Please wait while we load the reservation settings...
+            Vennligst vent mens vi laster reservasjonsinnstillingene...
           </p>
         </div>
       </div>
@@ -254,9 +254,9 @@ export default function ReservationPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <FontAwesomeIcon icon={faTimes} className="w-16 h-16 text-red-500 mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Reservations Unavailable</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Reservasjoner Ikke Tilgjengelig</h1>
           <p className="text-gray-600">
-            This restaurant is not currently accepting reservations. Please contact them directly for booking inquiries.
+            Denne restauranten tar ikke imot reservasjoner for øyeblikket. Vennligst kontakt dem direkte for bestillingshenvendelser.
           </p>
         </div>
       </div>
@@ -268,9 +268,9 @@ export default function ReservationPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Loading Restaurant Information</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Laster Restaurantinformasjon</h1>
           <p className="text-gray-600">
-            Please wait while we load the restaurant details...
+            Vennligst vent mens vi laster restaurantdetaljene...
           </p>
         </div>
       </div>
@@ -282,9 +282,9 @@ export default function ReservationPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Loading Restaurant ID</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Laster Restaurant ID</h1>
           <p className="text-gray-600">
-            Please wait while we load the restaurant identifier...
+            Vennligst vent mens vi laster restaurantidentifikatoren...
           </p>
         </div>
       </div>
@@ -292,235 +292,310 @@ export default function ReservationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex items-center space-x-4">
-            {restaurantInfo?.logo && (
-              <img 
-                src={restaurantInfo.logo} 
-                alt={restaurantInfo.name}
-                className="w-16 h-16 rounded-lg object-cover"
-              />
-            )}
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{restaurantInfo?.name}</h1>
-              {restaurantInfo?.description && (
-                <p className="text-gray-600 mt-1">{restaurantInfo.description}</p>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50">
+      {/* Modern Header */}
+      <div className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-orange-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-6 sm:py-8">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
+              {restaurantInfo?.logo && (
+                <div className="relative">
+                  <img 
+                    src={restaurantInfo.logo} 
+                    alt={restaurantInfo.name}
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover shadow-lg ring-4 ring-white/50"
+                  />
+                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                    <FontAwesomeIcon icon={faCheck} className="w-3 h-3 text-white" />
+                  </div>
+                </div>
               )}
+              <div className="text-center sm:text-left">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                  {restaurantInfo?.name}
+                </h1>
+                {restaurantInfo?.description && (
+                  <p className="text-gray-600 mt-2 text-sm sm:text-base max-w-md">{restaurantInfo.description}</p>
+                )}
+                <div className="flex items-center justify-center sm:justify-start mt-3 space-x-4 text-sm text-gray-500">
+                  <div className="flex items-center">
+                    <FontAwesomeIcon icon={faUtensils} className="w-4 h-4 mr-1" />
+                    <span>Finere Spisesteder</span>
+                  </div>
+                  <div className="flex items-center">
+                    <FontAwesomeIcon icon={faClock} className="w-4 h-4 mr-1" />
+                    <span>Reservasjoner Tilgjengelig</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Reservation Form */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6 flex items-center">
-              <FontAwesomeIcon icon={faCalendarAlt} className="w-6 h-6 text-orange-500 mr-3" />
-              Make a Reservation
-            </h2>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Main Reservation Form */}
+          <div className="xl:col-span-2">
+            <div className="bg-white/70 backdrop-blur-sm rounded-3xl shadow-xl border border-white/20 p-6 sm:p-8">
+              <div className="flex items-center mb-8">
+                <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mr-4">
+                  <FontAwesomeIcon icon={faCalendarAlt} className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Bestill Bord</h2>
+                  <p className="text-gray-600 mt-1">Bestill ditt perfekte bord hos oss</p>
+                </div>
+              </div>
             
 
             {!restaurantId || !reservationSettings || !restaurantInfo ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading reservation system...</p>
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+                <p className="text-gray-600 font-medium">Laster reservasjonssystem...</p>
               </div>
             ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Date Selection */}
-              <ReservationCalendar
-                availableDates={getAvailableDates()}
-                selectedDate={selectedDate}
-                onDateSelect={handleDateChange}
-                isDateOpen={isDateOpen}
-                restaurantDetails={restaurantDetails}
-              />
-
-              {/* Time Selection */}
-              {selectedDate && reservationSettings && (
-                <ReservationTimeSelector
-                  selectedDate={selectedDate}
-                  selectedTime={selectedTime}
-                  onTimeSelect={handleTimeSelect}
-                  availableTimes={getTimeSlots(selectedDate)}
-                  isTimeValid={isTimeValid}
-                  restaurantDetails={restaurantDetails}
-                />
-              )}
-
-              {/* Party Size */}
-              {reservationSettings && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <FontAwesomeIcon icon={faUsers} className="w-4 h-4 mr-2" />
-                    Party Size
-                  </label>
-                  <select
-                    value={partySize}
-                    onChange={(e) => setPartySize(Number(e.target.value))}
-                    disabled={isLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                    required
-                  >
-                    {Array.from({ length: reservationSettings.maxPartySize - reservationSettings.minPartySize + 1 }, (_, i) => 
-                      reservationSettings.minPartySize + i
-                    ).map(size => (
-                      <option key={size} value={size}>
-                        {size} {size === 1 ? 'person' : 'people'}
-                      </option>
-                    ))}
-                  </select>
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Date & Time Selection */}
+              <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6 border border-orange-100">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                  <FontAwesomeIcon icon={faCalendarAlt} className="w-5 h-5 text-orange-600 mr-2" />
+                  Velg Dato og Tid
+                </h3>
+                
+                {/* Date Selection */}
+                <div className="mb-6">
+                  <ReservationCalendar
+                    availableDates={getAvailableDates()}
+                    selectedDate={selectedDate}
+                    onDateSelect={handleDateChange}
+                    isDateOpen={isDateOpen}
+                    restaurantDetails={restaurantDetails}
+                  />
                 </div>
-              )}
+
+                {/* Time Selection */}
+                {selectedDate && reservationSettings && (
+                  <div className="mb-6">
+                    <ReservationTimeSelector
+                      selectedDate={selectedDate}
+                      selectedTime={selectedTime}
+                      onTimeSelect={handleTimeSelect}
+                      availableTimes={getTimeSlots(selectedDate)}
+                      isTimeValid={isTimeValid}
+                      restaurantDetails={restaurantDetails}
+                    />
+                  </div>
+                )}
+
+                {/* Party Size */}
+                {reservationSettings && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center">
+                      <FontAwesomeIcon icon={faUsers} className="w-4 h-4 mr-2 text-orange-600" />
+                      Antall Personer
+                    </label>
+                    <select
+                      value={partySize}
+                      onChange={(e) => setPartySize(Number(e.target.value))}
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white shadow-sm"
+                      required
+                    >
+                      {Array.from({ length: reservationSettings.maxPartySize - reservationSettings.minPartySize + 1 }, (_, i) => 
+                        reservationSettings.minPartySize + i
+                      ).map(size => (
+                        <option key={size} value={size}>
+                          {size} {size === 1 ? 'person' : 'personer'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
 
               {/* Customer Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Your Information</h3>
+              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                  <FontAwesomeIcon icon={faUser} className="w-5 h-5 text-orange-600 mr-2" />
+                  Din Informasjon
+                </h3>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <FontAwesomeIcon icon={faUser} className="w-4 h-4 mr-2" />
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    disabled={isLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                    required
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Fullt Navn *
+                    </label>
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white shadow-sm"
+                      placeholder="Skriv inn ditt fulle navn"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      E-postadresse *
+                    </label>
+                    <input
+                      type="email"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white shadow-sm"
+                      placeholder="your@email.com"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Telefonnummer *
+                    </label>
+                    <input
+                      type="tel"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white shadow-sm"
+                      placeholder="+47 47 00 00 00"
+                      required
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Spesielle Ønsker
+                    </label>
+                    <textarea
+                      value={specialRequests}
+                      onChange={(e) => setSpecialRequests(e.target.value)}
+                      rows={4}
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white shadow-sm resize-none"
+                      placeholder="Eventuelle spesielle ønsker, diettkrav eller feiringsdetaljer..."
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 mr-2" />
-                    Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    disabled={isLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <FontAwesomeIcon icon={faPhone} className="w-4 h-4 mr-2" />
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    disabled={isLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <FontAwesomeIcon icon={faUtensils} className="w-4 h-4 mr-2" />
-                    Special Requests
-                  </label>
-                  <textarea
-                    value={specialRequests}
-                    onChange={(e) => setSpecialRequests(e.target.value)}
-                    rows={3}
-                    disabled={isLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                    placeholder="Any special requests or dietary requirements..."
-                  />
+                {/* Privacy Policy Notice */}
+                <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <div className="flex items-start">
+                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">
+                      <FontAwesomeIcon icon={faEnvelope} className="w-2.5 h-2.5 text-white" />
+                    </div>
+                    <div className="text-sm text-blue-800">
+                      <p className="font-medium mb-1">Personvern og samtykke</p>
+                      <p className="text-xs leading-relaxed">
+                        Ved å legge inn reservasjon godtar du vår{' '}
+                        <a 
+                          href="/personvern" 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-blue-900 transition-colors font-medium"
+                        >
+                          personvernerklæring
+                        </a>
+                        {' '}og samtykker til behandling av dine personlige opplysninger for å fullføre reservasjonen.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting || !selectedDate || !selectedTime || !restaurantId || !reservationSettings || isLoading || !isTimeValid(selectedDate, selectedTime)}
-                className="w-full py-3 px-6 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              >
-                {isSubmitting ? (
-                  <>
-                    <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin mr-2" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <FontAwesomeIcon icon={faCheck} className="w-4 h-4 mr-2" />
-                    Confirm Reservation
-                  </>
-                )}
-                              </button>
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !selectedDate || !selectedTime || !restaurantId || !reservationSettings || isLoading || !isTimeValid(selectedDate, selectedTime)}
+                  className="w-full py-4 px-8 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl hover:from-orange-600 hover:to-red-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} className="w-5 h-5 animate-spin mr-3" />
+                      Sender inn Reservasjon...
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faCheck} className="w-5 h-5 mr-3" />
+                      Bekreft Reservasjon
+                    </>
+                  )}
+                </button>
+                <p className="text-center text-sm text-gray-500 mt-3">
+                  Du vil motta en bekreftelses-e-post kort tid etter bestilling
+                </p>
+              </div>
               </form>
             )}
             </div>
+          </div>
 
-          {/* Restaurant Information */}
-          <div className="space-y-6">
+          {/* Restaurant Information Sidebar */}
+          <div className="xl:col-span-1 space-y-6">
             {!restaurantInfo || !reservationSettings ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading restaurant information...</p>
+                <p className="text-gray-600">Laster restaurantinformasjon...</p>
               </div>
             ) : (
               <>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">Restaurant Details</h3>
-                  <div className="space-y-3">
+                {/* Restaurant Details Card */}
+                <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-6">
+                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                    <FontAwesomeIcon icon={faUtensils} className="w-5 h-5 text-orange-600 mr-2" />
+                    Restaurantdetaljer
+                  </h3>
+                  <div className="space-y-4">
                     {restaurantInfo?.address && (
-                      <div className="flex items-start space-x-3">
-                        <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center mt-0.5">
-                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-xl">
+                        <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mt-0.5">
+                          <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">Address</p>
-                          <p className="text-sm text-gray-600">{restaurantInfo.address}</p>
+                          <p className="text-sm font-semibold text-gray-900">Adresse</p>
+                          <p className="text-sm text-gray-600 mt-1">{restaurantInfo.address}</p>
                         </div>
                       </div>
                     )}
                     
                     {restaurantInfo?.phone && (
-                      <div className="flex items-start space-x-3">
-                        <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center mt-0.5">
-                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-xl">
+                        <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mt-0.5">
+                          <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900">Phone</p>
-                          <p className="text-sm text-gray-600">{restaurantInfo.phone}</p>
+                          <p className="text-sm font-semibold text-gray-900">Telefon</p>
+                          <p className="text-sm text-gray-600 mt-1">{restaurantInfo.phone}</p>
                         </div>
                       </div>
                     )}
 
                     {reservationSettings && (
                       <>
-                        <div className="flex items-start space-x-3">
-                          <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center mt-0.5">
-                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-xl">
+                          <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mt-0.5">
+                            <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-white" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-900">Hours</p>
-                            <p className="text-sm text-gray-600">
-                              Based on restaurant operating hours
+                            <p className="text-sm font-semibold text-gray-900">Operating Hours</p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Based on restaurant schedule
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-start space-x-3">
-                          <div className="w-5 h-5 bg-orange-100 rounded-full flex items-center justify-center mt-0.5">
-                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-xl">
+                          <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center mt-0.5">
+                            <FontAwesomeIcon icon={faUsers} className="w-4 h-4 text-white" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-900">Party Size</p>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm font-semibold text-gray-900">Party Size</p>
+                            <p className="text-sm text-gray-600 mt-1">
                               {reservationSettings.minPartySize} - {reservationSettings.maxPartySize} people
                             </p>
                           </div>
@@ -531,15 +606,47 @@ export default function ReservationPage() {
                 </div>
 
                 {/* Reservation Policy */}
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <h4 className="font-medium text-blue-900 mb-2">Reservation Policy</h4>
-                  <ul className="text-sm text-blue-800 space-y-1">
-                    <li>• Please arrive 5-10 minutes before your reservation time</li>
-                    <li>• Reservations are held for 15 minutes past the scheduled time</li>
-                    <li>• Cancellations must be made at least 2 hours in advance</li>
-                    <li>• Large parties may require a credit card hold</li>
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
+                  <h4 className="font-bold text-blue-900 mb-4 flex items-center">
+                    <FontAwesomeIcon icon={faCheck} className="w-4 h-4 mr-2" />
+                    Reservasjonsregler
+                  </h4>
+                  <ul className="text-sm text-blue-800 space-y-3">
+                    <li className="flex items-start">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                      <span>Vennligst kom 5-10 minutter før reservasjonstiden</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                      <span>Reservasjoner holdes i 15 minutter etter planlagt tid</span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                      <span>Avbestillinger må gjøres minst 2 timer i forveien</span>
+                    </li>
+                  
                   </ul>
                 </div>
+
+                {/* Quick Contact */}
+                {restaurantInfo?.phone && (
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200">
+                    <h4 className="font-bold text-green-900 mb-3 flex items-center">
+                      <FontAwesomeIcon icon={faPhone} className="w-4 h-4 mr-2" />
+                      Trenger Hjelp?
+                    </h4>
+                    <p className="text-sm text-green-800 mb-4">
+                      Har du spørsmål om reservasjonen din? Ring oss!
+                    </p>
+                    <a 
+                      href={`tel:${restaurantInfo.phone}`}
+                      className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors text-sm font-medium"
+                    >
+                      <FontAwesomeIcon icon={faPhone} className="w-4 h-4 mr-2" />
+                      Ring Restaurant
+                    </a>
+                  </div>
+                )}
               </>
             )}
           </div>

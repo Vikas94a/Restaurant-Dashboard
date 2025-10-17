@@ -15,7 +15,9 @@ import {
   faTimes,
   faEye,
   faEdit,
-  faSpinner
+  faSpinner,
+  faPaperPlane,
+  faBell
 } from '@fortawesome/free-solid-svg-icons';
 import { toast } from 'sonner';
 
@@ -34,7 +36,14 @@ export default function ReservationList({ status }: ReservationListProps) {
       setIsUpdating(true);
       const success = await updateReservationStatus(reservationId, newStatus, notes);
       if (success) {
-        toast.success(`Reservation ${newStatus} successfully`);
+        if (newStatus === 'confirmed') {
+          toast.success('Reservation confirmed! 🎉 Confirmation email sent to customer.', {
+            duration: 5000,
+            description: 'The customer has been notified with all reservation details.',
+          });
+        } else {
+          toast.success(`Reservation ${newStatus} successfully`);
+        }
         setShowDetails(false);
         setSelectedReservation(null);
       }
@@ -173,10 +182,18 @@ export default function ReservationList({ status }: ReservationListProps) {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(reservation.status)}`}>
-                      <FontAwesomeIcon icon={getStatusIcon(reservation.status)} className="w-3 h-3 mr-1" />
-                      {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(reservation.status)}`}>
+                        <FontAwesomeIcon icon={getStatusIcon(reservation.status)} className="w-3 h-3 mr-1" />
+                        {reservation.status.charAt(0).toUpperCase() + reservation.status.slice(1)}
+                      </span>
+                      {reservation.status === 'confirmed' && reservation.confirmedAt && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Confirmation email sent">
+                          <FontAwesomeIcon icon={faPaperPlane} className="w-3 h-3 mr-1" />
+                          Email Sent
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
@@ -200,97 +217,143 @@ export default function ReservationList({ status }: ReservationListProps) {
 
       {/* Reservation Details Modal */}
       {showDetails && selectedReservation && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Reservation Details</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold flex items-center">
+                    <FontAwesomeIcon icon={faCalendarAlt} className="w-6 h-6 mr-3" />
+                    Reservation Details
+                  </h3>
+                  <p className="text-orange-100 text-sm mt-1">Manage customer reservation</p>
+                </div>
                 <button
                   onClick={() => {
                     setShowDetails(false);
                     setSelectedReservation(null);
                   }}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-white hover:text-orange-200 transition-colors p-2 rounded-full hover:bg-white hover:bg-opacity-20"
                 >
                   <FontAwesomeIcon icon={faTimes} className="w-5 h-5" />
                 </button>
               </div>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6 space-y-6">
 
-              <div className="space-y-4">
-                {/* Customer Information */}
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Customer Information</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center">
-                      <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-400 mr-2" />
-                      <span>{selectedReservation.customerDetails.name}</span>
+              {/* Customer Information */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
+                <h4 className="font-semibold text-gray-900 mb-4 flex items-center text-lg">
+                  <FontAwesomeIcon icon={faUser} className="w-5 h-5 text-blue-600 mr-2" />
+                  Customer Information
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center p-3 bg-white rounded-lg shadow-sm">
+                    <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-blue-500 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-900">{selectedReservation.customerDetails.name}</p>
+                      <p className="text-sm text-gray-500">Customer Name</p>
                     </div>
-                    <div className="flex items-center">
-                      <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-gray-400 mr-2" />
-                      <span>{selectedReservation.customerDetails.email}</span>
+                  </div>
+                  <div className="flex items-center p-3 bg-white rounded-lg shadow-sm">
+                    <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-green-500 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-900">{selectedReservation.customerDetails.email}</p>
+                      <p className="text-sm text-gray-500">Email Address</p>
                     </div>
-                    <div className="flex items-center">
-                      <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-gray-400 mr-2" />
-                      <span>{selectedReservation.customerDetails.phone}</span>
+                  </div>
+                  <div className="flex items-center p-3 bg-white rounded-lg shadow-sm">
+                    <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-purple-500 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-900">{selectedReservation.customerDetails.phone}</p>
+                      <p className="text-sm text-gray-500">Phone Number</p>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Reservation Details */}
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Reservation Details</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center">
-                      <FontAwesomeIcon icon={faCalendarAlt} className="w-4 h-4 text-gray-400 mr-2" />
-                      <span>{formatDate(selectedReservation.reservationDetails.date)}</span>
+              {/* Reservation Details */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border border-green-100">
+                <h4 className="font-semibold text-gray-900 mb-4 flex items-center text-lg">
+                  <FontAwesomeIcon icon={faCalendarAlt} className="w-5 h-5 text-green-600 mr-2" />
+                  Reservation Details
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center p-3 bg-white rounded-lg shadow-sm">
+                    <FontAwesomeIcon icon={faCalendarAlt} className="w-4 h-4 text-green-500 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-900">{formatDate(selectedReservation.reservationDetails.date)}</p>
+                      <p className="text-sm text-gray-500">Reservation Date</p>
                     </div>
-                    <div className="flex items-center">
-                      <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-gray-400 mr-2" />
-                      <span>{formatTime(selectedReservation.reservationDetails.time)}</span>
+                  </div>
+                  <div className="flex items-center p-3 bg-white rounded-lg shadow-sm">
+                    <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-orange-500 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-900">{formatTime(selectedReservation.reservationDetails.time)}</p>
+                      <p className="text-sm text-gray-500">Reservation Time</p>
                     </div>
-                    <div className="flex items-center">
-                      <FontAwesomeIcon icon={faUsers} className="w-4 h-4 text-gray-400 mr-2" />
-                      <span>{selectedReservation.reservationDetails.partySize} people</span>
+                  </div>
+                  <div className="flex items-center p-3 bg-white rounded-lg shadow-sm">
+                    <FontAwesomeIcon icon={faUsers} className="w-4 h-4 text-indigo-500 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-900">{selectedReservation.reservationDetails.partySize} {selectedReservation.reservationDetails.partySize === 1 ? 'person' : 'people'}</p>
+                      <p className="text-sm text-gray-500">Party Size</p>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Special Requests */}
-                {selectedReservation.customerDetails.specialRequests && (
-                  <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Special Requests</h4>
-                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                      {selectedReservation.customerDetails.specialRequests}
-                    </p>
+              {/* Special Requests */}
+              {selectedReservation.customerDetails.specialRequests && (
+                <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl p-5 border border-yellow-100">
+                  <h4 className="font-semibold text-gray-900 mb-4 flex items-center text-lg">
+                    <FontAwesomeIcon icon={faEdit} className="w-5 h-5 text-yellow-600 mr-2" />
+                    Special Requests
+                  </h4>
+                  <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-yellow-400">
+                    <p className="text-gray-700 italic">"{selectedReservation.customerDetails.specialRequests}"</p>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Status Actions */}
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Update Status</h4>
-                  <div className="flex space-x-2">
+              {/* Status Actions */}
+              <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-5 border border-gray-100">
+                <h4 className="font-semibold text-gray-900 mb-4 flex items-center text-lg">
+                  <FontAwesomeIcon icon={faEdit} className="w-5 h-5 text-gray-600 mr-2" />
+                  Manage Reservation
+                </h4>
+                <div className="flex flex-wrap gap-3">
                     {selectedReservation.status === 'pending' && (
                       <>
                         <button
                           onClick={() => handleStatusUpdate(selectedReservation.id, 'confirmed')}
                           disabled={isUpdating}
-                          className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 disabled:opacity-50"
+                          className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white text-sm font-medium rounded-xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 transition-all duration-200 flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                         >
                           {isUpdating ? (
-                            <FontAwesomeIcon icon={faSpinner} className="w-3 h-3 animate-spin" />
+                            <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin mr-2" />
                           ) : (
-                            'Confirm'
+                            <>
+                              <FontAwesomeIcon icon={faCheck} className="w-4 h-4 mr-2" />
+                              Confirm & Send Email
+                            </>
                           )}
                         </button>
                         <button
                           onClick={() => handleStatusUpdate(selectedReservation.id, 'cancelled')}
                           disabled={isUpdating}
-                          className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 disabled:opacity-50"
+                          className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-medium rounded-xl hover:from-red-600 hover:to-red-700 disabled:opacity-50 transition-all duration-200 flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                         >
                           {isUpdating ? (
-                            <FontAwesomeIcon icon={faSpinner} className="w-3 h-3 animate-spin" />
+                            <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin mr-2" />
                           ) : (
-                            'Cancel'
+                            <>
+                              <FontAwesomeIcon icon={faTimes} className="w-4 h-4 mr-2" />
+                              Cancel
+                            </>
                           )}
                         </button>
                       </>
@@ -299,17 +362,53 @@ export default function ReservationList({ status }: ReservationListProps) {
                       <button
                         onClick={() => handleStatusUpdate(selectedReservation.id, 'completed')}
                         disabled={isUpdating}
-                        className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50"
+                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-medium rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 transition-all duration-200 flex items-center shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                       >
                         {isUpdating ? (
-                          <FontAwesomeIcon icon={faSpinner} className="w-3 h-3 animate-spin" />
+                          <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin mr-2" />
                         ) : (
-                          'Mark Complete'
+                          <>
+                            <FontAwesomeIcon icon={faCheck} className="w-4 h-4 mr-2" />
+                            Mark Complete
+                          </>
                         )}
                       </button>
                     )}
-                  </div>
                 </div>
+                
+                {/* Email Confirmation Info */}
+                {selectedReservation.status === 'pending' && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <FontAwesomeIcon icon={faBell} className="w-4 h-4 text-blue-600" />
+                        </div>
+                      </div>
+                      <div className="ml-3">
+                        <h5 className="text-sm font-semibold text-blue-900 mb-1">Email Notification Ready</h5>
+                        <p className="text-sm text-blue-700">When you confirm this reservation, a beautiful confirmation email will be automatically sent to:</p>
+                        <p className="text-sm font-medium text-blue-900 mt-1">{selectedReservation.customerDetails.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {selectedReservation.status === 'confirmed' && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                          <FontAwesomeIcon icon={faPaperPlane} className="w-4 h-4 text-green-600" />
+                        </div>
+                      </div>
+                      <div className="ml-3">
+                        <h5 className="text-sm font-semibold text-green-900 mb-1">Confirmation Email Sent</h5>
+                        <p className="text-sm text-green-700">A beautiful confirmation email has been automatically sent to the customer with all reservation details.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

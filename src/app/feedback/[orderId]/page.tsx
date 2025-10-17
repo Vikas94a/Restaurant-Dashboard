@@ -23,16 +23,40 @@ export default function FeedbackPage() {
   useEffect(() => {
     const checkExistingFeedback = async () => {
       try {
-        const response = await fetch(`/api/feedback/check?orderId=${orderId}`);
-        const data = await response.json();
+        const { db } = await import('@/lib/firebase');
+        const { collection, getDocs, doc, getDoc } = await import('firebase/firestore');
         
-        if (data.exists) {
+        let feedbackExists = false;
+        let restaurantName = 'AI Eat Easy';
+        
+        // Find the restaurant and check for existing feedback
+        const restaurantsSnapshot = await getDocs(collection(db, 'restaurants'));
+        
+        for (const restaurantDoc of restaurantsSnapshot.docs) {
+          const orderRef = doc(db, 'restaurants', restaurantDoc.id, 'orders', orderId);
+          const orderSnap = await getDoc(orderRef);
+          
+          if (orderSnap.exists()) {
+            // Found the order, get restaurant name
+            const restaurantData = restaurantDoc.data();
+            restaurantName = restaurantData.name || 'AI Eat Easy';
+            
+            // Check if feedback already exists
+            const feedbackRef = doc(db, 'restaurants', restaurantDoc.id, 'customerFeedback', orderId);
+            const feedbackSnap = await getDoc(feedbackRef);
+            
+            if (feedbackSnap.exists()) {
+              feedbackExists = true;
+            }
+            break;
+          }
+        }
+        
+        if (feedbackExists) {
           setAlreadySubmitted(true);
         }
         
-        if (data.restaurantName) {
-          setRestaurantName(data.restaurantName);
-        }
+        setRestaurantName(restaurantName);
       } catch (error) {
         console.error('Error checking feedback:', error);
       } finally {
@@ -56,26 +80,65 @@ export default function FeedbackPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/feedback/submit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderId,
-          rating,
-          comment,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSubmitted(true);
-        toast.success("Thank you for your feedback!");
-      } else {
-        toast.error(data.error || "Failed to submit feedback");
+      // First, find the restaurant ID for this order
+      const { db } = await import('@/lib/firebase');
+      const { collection, getDocs, doc, getDoc, setDoc, query, where } = await import('firebase/firestore');
+      
+      let restaurantId = '';
+      let customerName = 'Anonymous';
+      let customerEmail = '';
+      
+      try {
+        // Find the order in restaurants collection
+        const restaurantsSnapshot = await getDocs(collection(db, 'restaurants'));
+        
+        for (const restaurantDoc of restaurantsSnapshot.docs) {
+          const orderRef = doc(db, 'restaurants', restaurantDoc.id, 'orders', orderId);
+          const orderSnap = await getDoc(orderRef);
+          
+          if (orderSnap.exists()) {
+            const orderData = orderSnap.data();
+            restaurantId = restaurantDoc.id;
+            customerName = orderData.customerDetails?.name || 'Anonymous';
+            customerEmail = orderData.customerDetails?.email || '';
+            break;
+          }
+        }
+      } catch (error) {
+        console.error('Error finding order:', error);
       }
+
+      if (!restaurantId) {
+        toast.error("Order not found");
+        setLoading(false);
+        return;
+      }
+
+      // Check if feedback already exists
+      const feedbackRef = doc(db, 'restaurants', restaurantId, 'customerFeedback', orderId);
+      const existingFeedback = await getDoc(feedbackRef);
+
+      if (existingFeedback.exists()) {
+        toast.error("Feedback already submitted for this order");
+        setLoading(false);
+        return;
+      }
+
+      // Create feedback document in restaurant subcollection
+      const feedback = {
+        orderId,
+        restaurantId,
+        customerName,
+        customerEmail,
+        rating,
+        comment: comment || '',
+        createdAt: new Date().toISOString(),
+      };
+
+      await setDoc(feedbackRef, feedback);
+
+      setSubmitted(true);
+      toast.success("Thank you for your feedback!");
     } catch (error) {
       console.error('Error submitting feedback:', error);
       toast.error("Failed to submit feedback");
@@ -234,4 +297,5 @@ export default function FeedbackPage() {
     </div>
   );
 }
+
 

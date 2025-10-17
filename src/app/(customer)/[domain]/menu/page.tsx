@@ -76,8 +76,8 @@ export default function MenuPage() {
         const querySnapshot = await getDocs(restaurantsQuery);
         
         if (querySnapshot.empty) {
-          setError("Restaurant not found");
-          setRestaurantName("Restaurant Not Found");
+          setError("Restaurant ikke funnet");
+          setRestaurantName("Restaurant Ikke Funnet");
           return;
         }
 
@@ -86,8 +86,8 @@ export default function MenuPage() {
         setRestaurantId(restaurantDoc.id);
         setRestaurantName(data.name || data.restaurantType || "Restaurant");
       } catch (error) {
-        setError("Error Loading Restaurant");
-        setRestaurantName("Error Loading Restaurant");
+        setError("Feil ved lasting av restaurant");
+        setRestaurantName("Feil ved lasting av restaurant");
       } finally {
         setIsLoading(false);
       }
@@ -102,8 +102,8 @@ export default function MenuPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Restaurant Not Found</h1>
-          <p className="text-gray-600">The restaurant you're looking for doesn't exist or may have been moved.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Restaurant Ikke Funnet</h1>
+          <p className="text-gray-600">Restauranten du leter etter eksisterer ikke eller kan ha blitt flyttet.</p>
         </div>
       </div>
     );
@@ -165,7 +165,7 @@ export default function MenuPage() {
             )}
           </h1>
           <p className="text-orange-50 text-center mt-1 text-xs sm:text-sm">
-            Delicious food, delivered fresh to you
+            Deilig mat, levert fersk til deg
           </p>
         </div>
       </div>

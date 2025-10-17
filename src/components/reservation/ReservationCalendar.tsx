@@ -47,21 +47,21 @@ export default function ReservationCalendar({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center">
-        <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center mr-3">
-          <FontAwesomeIcon icon={faCalendar} className="w-4 h-4 text-white" />
+        <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mr-4">
+          <FontAwesomeIcon icon={faCalendar} className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-800">Select Date</h3>
+          <h3 className="text-lg font-bold text-gray-900">Select Date</h3>
           <p className="text-sm text-gray-600">Choose your preferred date</p>
         </div>
       </div>
 
       {/* Calendar Grid */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6">
         {availableDates.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="grid grid-cols-7 gap-2">
+              <div key={weekIndex} className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3">
                 {week.map((dateOption) => {
                   const isSelected = selectedDate === dateOption.date;
                   const isOpen = isDateOpen(dateOption.date);
@@ -72,34 +72,34 @@ export default function ReservationCalendar({
                       type="button"
                       onClick={() => onDateSelect(dateOption.date)}
                       disabled={!isOpen}
-                      className={`relative p-3 text-sm rounded-lg border-2 transition-all duration-200 ${
+                      className={`relative p-3 sm:p-4 text-sm rounded-xl border-2 transition-all duration-300 transform hover:scale-105 ${
                         isSelected
-                          ? 'bg-orange-500 text-white border-orange-500 shadow-md'
+                          ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white border-orange-500 shadow-lg scale-105'
                           : isOpen
-                          ? 'border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-25'
+                          ? 'border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50 hover:shadow-md'
                           : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
                       }`}
                     >
                       <div className="text-center">
-                        <div className="font-medium text-xs mb-1">
+                        <div className="font-semibold text-xs mb-1">
                           {dateOption.dayOfWeek.substring(0, 3)}
                         </div>
-                        <div className="text-lg font-bold">
+                        <div className="text-lg sm:text-xl font-bold">
                           {new Date(dateOption.date).getDate()}
                         </div>
-                        <div className="text-xs">
+                        <div className="text-xs opacity-75">
                           {new Date(dateOption.date).toLocaleDateString('en-US', { month: 'short' })}
                         </div>
                       </div>
                       
                       {isSelected && (
-                        <div className="absolute top-1 right-1">
-                          <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3" />
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg">
+                          <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3 text-orange-500" />
                         </div>
                       )}
                       
                       {!isOpen && (
-                        <div className="absolute top-1 right-1">
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-lg">
                           <FontAwesomeIcon icon={faExclamationTriangle} className="w-3 h-3 text-red-400" />
                         </div>
                       )}
@@ -110,10 +110,12 @@ export default function ReservationCalendar({
             ))}
           </div>
         ) : (
-          <div className="text-center py-8">
-            <FontAwesomeIcon icon={faExclamationTriangle} className="w-8 h-8 text-yellow-500 mb-3" />
-            <p className="text-gray-600">No available dates found</p>
-            <p className="text-sm text-gray-500 mt-1">
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FontAwesomeIcon icon={faExclamationTriangle} className="w-8 h-8 text-yellow-600" />
+            </div>
+            <p className="text-gray-700 font-medium">No available dates found</p>
+            <p className="text-sm text-gray-500 mt-2">
               Please contact the restaurant for availability
             </p>
           </div>

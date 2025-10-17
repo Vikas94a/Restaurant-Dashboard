@@ -21,6 +21,7 @@ import {
   ReservationConflict,
   ReservationStatus
 } from '@/types/reservation';
+import { sendReservationConfirmationEmail } from './email/emailService';
 
 export class ReservationService {
     // Get restaurant reservation settings
@@ -278,6 +279,20 @@ export class ReservationService {
       }
 
       await updateDoc(reservationRef, updateData);
+
+      // Send confirmation email when reservation is confirmed
+      if (status === 'confirmed') {
+        try {
+          const reservation = await this.getReservationById(restaurantId, reservationId);
+          if (reservation) {
+            await sendReservationConfirmationEmail(reservation);
+            console.log('Reservation confirmation email sent successfully');
+          }
+        } catch (emailError) {
+          console.error('Error sending confirmation email:', emailError);
+          // Don't throw the error - reservation status update should still succeed
+        }
+      }
     } catch (error) {
       console.error('Error updating reservation status:', error);
       throw new Error('Failed to update reservation status');
