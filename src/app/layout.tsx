@@ -12,6 +12,15 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "AI Eat Easy - Restaurant Management",
   description: "Modern restaurant management platform with AI-powered insights",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png" }
+    ],
+    apple: [
+      { url: "/favicon.png", type: "image/png" }
+    ],
+  },
 };
 
 export default function RootLayout({
