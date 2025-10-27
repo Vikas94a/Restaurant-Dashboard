@@ -149,6 +149,7 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
     selectedExtras: { groupId: string; choiceId: string }[];
     specialRequest: string;
     totalPrice: number;
+    quantity: number;
   }) => {
     if (!selectedItemForModal) return;
     const item = selectedItemForModal;
@@ -187,7 +188,11 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
       specialInstructions: options.specialRequest ? { text: options.specialRequest, timestamp: Date.now() } : undefined,
     };
 
-    handleAddToCart(cartItem);
+    // Add the item with the specified quantity
+    for (let i = 0; i < options.quantity; i++) {
+      handleAddToCart(cartItem);
+    }
+    
     setIsModalOpen(false);
     setSelectedItemForModal(null);
   }, [restaurantId, menuData, modalExtras, handleAddToCart, selectedItemForModal]);
@@ -241,7 +246,7 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
                 <FontAwesomeIcon icon={faUtensils} className="h-3 w-3" />
               </span>
               <span className="font-semibold text-gray-700 text-sm sm:text-base">
-                {selectedCategory || "Select Category"}
+                Vår meny
               </span>
             </div>
             <FontAwesomeIcon 
@@ -308,7 +313,7 @@ export default function RestaurantMenu({ restaurantId }: RestaurantMenuProps) {
             {/* Category Header */}
             <div className="mb-4 lg:mb-6 text-center">
               <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent mb-2">
-                {selectedCategoryData.name}
+                Vår meny
               </h1>
               {selectedCategoryData.description && (
                 <p className="text-gray-600 text-sm lg:text-base max-w-2xl mx-auto px-2">{selectedCategoryData.description}</p>

@@ -146,7 +146,7 @@ export const updateOrderStatus = createAsyncThunk(
       }
 
       // Feedback email is now handled by Cloud Function
-      // It sends 1 minute after pickup time when order is accepted
+      // It sends 1.5 hours after pickup time when order is accepted
       
       return { orderId, newStatus, estimatedPickupTime };
     } catch (error) {

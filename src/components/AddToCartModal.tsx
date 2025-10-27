@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faPlus, faMinus } from "@fortawesome/free-solid-svg-icons";
 import { NestedMenuItem, ReusableExtraGroup } from "@/utils/menuTypes";
 import Image from 'next/image';
 
@@ -15,6 +15,7 @@ interface AddToCartModalProps {
     selectedExtras: { groupId: string; choiceId: string }[];
     specialRequest: string;
     totalPrice: number;
+    quantity: number;
   }) => void;
 }
 
@@ -27,6 +28,7 @@ export default function AddToCartModal({
 }: AddToCartModalProps) {
   const [selected, setSelected] = useState<{ [groupId: string]: Set<string> }>({});
   const [specialRequest, setSpecialRequest] = useState("");
+  const [quantity, setQuantity] = useState(1);
   const [total, setTotal] = useState(item.price.amount);
   const [validationError, setValidationError] = useState<string | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -38,6 +40,7 @@ export default function AddToCartModal({
       // Reset state when modal opens
       setSelected({});
       setSpecialRequest("");
+      setQuantity(1);
       setValidationError(null);
       
       if (closeBtnRef.current) {
@@ -66,8 +69,8 @@ export default function AddToCartModal({
         if (choice) extrasTotal += choice.price;
       }
     }
-    setTotal(item.price.amount + extrasTotal);
-  }, [selected, extras, item.price.amount]);
+    setTotal((item.price.amount + extrasTotal) * quantity);
+  }, [selected, extras, item.price.amount, quantity]);
 
   if (!isOpen) return null;
 
@@ -170,6 +173,7 @@ export default function AddToCartModal({
             />
           </div>
 
+
           {/* Extras section with proper scrolling */}
           {extras.length > 0 && (
             <div className="mb-4 sm:mb-6">
@@ -232,10 +236,38 @@ export default function AddToCartModal({
             </div>
           )}
           
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="text-lg sm:text-xl font-bold text-gray-900">
+          <div className="flex items-center justify-between gap-3">
+            {/* Total Price */}
+            {/* <div className="text-lg sm:text-xl font-bold text-gray-900">
               Total: <span className="text-orange-600">{total.toFixed(2)} Kr</span>
+            </div> */}
+            
+            {/* Quantity Controls */}
+            <div className="flex items-center space-x-2 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-2 border border-orange-200">
+              
+              <button
+                type="button"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
+                className="w-5 h-5 flex items-center justify-center rounded-full bg-white border-2 border-orange-400 hover:bg-orange-100 hover:border-orange-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:border-gray-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm"
+                aria-label="Decrease quantity"
+              >
+                <FontAwesomeIcon icon={faMinus} className="w-3 h-3 text-orange-600" />
+              </button>
+              <span className="w-8 text-center font-bold text-gray-800 text-lg bg-white rounded-lg py-1 px-2 border border-orange-300">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuantity(quantity + 1)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white border-2 border-orange-400 hover:bg-orange-100 hover:border-orange-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm"
+                aria-label="Increase quantity"
+              >
+                <FontAwesomeIcon icon={faPlus} className="w-3 h-3 text-orange-600" />
+              </button>
             </div>
+            
+            {/* Add to Cart Button */}
             <button
               disabled={!canAddToCart()}
               className={`w-full sm:w-auto px-6 py-3 rounded-lg font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/70 focus:ring-offset-2 transition-all duration-200 text-sm sm:text-base ${
@@ -248,11 +280,11 @@ export default function AddToCartModal({
                   const selectedExtras = Object.entries(selected).flatMap(([groupId, choiceSet]) =>
                     Array.from(choiceSet).map(choiceId => ({ groupId, choiceId }))
                   );
-                  onAddToCart({ selectedExtras, specialRequest, totalPrice: total });
+                  onAddToCart({ selectedExtras, specialRequest, totalPrice: total, quantity });
                 }
               }}
             >
-              Add to Cart · {total.toFixed(2)} kr
+              Add  to Cart
             </button>
           </div>
         </div>

@@ -32,7 +32,7 @@ export const onOrderAccepted = onDocumentUpdated(
     if (!customerEmail) return;
 
     const now = Date.now();
-    let runAtMs = now + 60_000; // default: 1 minute from now
+    let runAtMs = now + 5_400_000; // default: 1.5 hours from now
     const pickupTime: string | undefined = after?.pickupTime;
     if (pickupTime && pickupTime.toLowerCase() !== 'asap') {
       try {
@@ -42,7 +42,7 @@ export const onOrderAccepted = onDocumentUpdated(
         d.setHours(hh, mm, 0, 0);
         let pickupMs = d.getTime();
         if (pickupMs < now) pickupMs += 24 * 60 * 60 * 1000; // tomorrow
-        runAtMs = pickupMs + 60_000;
+        runAtMs = pickupMs + 5_400_000;
       } catch {}
     }
 
