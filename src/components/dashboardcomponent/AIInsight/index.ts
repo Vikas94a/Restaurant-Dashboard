@@ -10,7 +10,6 @@ export type {
 // AI Post Generator
 export { default as AIPostGenerator } from './AIPostGenerator';
 export type { 
-    MarketingPost, 
     AIPostGeneratorProps,
     SimplifiedCategoryData,
     SimplifiedMenuItem

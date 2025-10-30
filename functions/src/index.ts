@@ -22,6 +22,7 @@ export const onOrderAccepted = onDocumentUpdated(
     const before = change.before.data() as any;
     const after = change.after.data() as any;
     const orderId = event.params.orderId as string;
+    const restaurantId = event.params.restaurantId as string;
 
     if (!before || !after) return;
 
@@ -46,12 +47,69 @@ export const onOrderAccepted = onDocumentUpdated(
       } catch {}
     }
 
+    // Pre-generate feedback email HTML and link, and store with queue entry for visibility/debugging
+    const feedbackUrl = `https://aieateasy.no/feedback/${orderId}`;
+    const emailHtml = `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
+            <!-- Header -->
+            <div style="text-align: center; padding: 30px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">🍽️ Thank You!</h1>
+            </div>
+            
+            <!-- Content -->
+            <div style="padding: 30px; background-color: #ffffff; border: 1px solid #e9ecef; border-top: none; border-radius: 0 0 12px 12px;">
+              <p style="font-size: 16px; color: #333; margin-bottom: 10px;">Dear Customer,</p>
+              <p style="font-size: 15px; color: #555; line-height: 1.6;">
+                Thank you for your order! We hope you enjoyed your meal. 
+              </p>
+              
+              <!-- Feedback Request -->
+              <div style="background-color: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #667eea;">
+                <h3 style="color: #333; margin-top: 0; font-size: 18px; margin-bottom: 15px;">⭐ We'd Love Your Feedback!</h3>
+                <p style="margin: 10px 0; color: #555; font-size: 14px;">
+                  Your opinion matters to us! Please take a moment to rate your experience and let us know how we did.
+                </p>
+                <p style="margin: 15px 0; color: #555; font-size: 14px;">
+                  Your feedback helps us improve and serve you better.
+                </p>
+              </div>
+
+              <!-- CTA Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${feedbackUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">
+                  Share Your Feedback
+                </a>
+              </div>
+
+              <!-- Alternative Link -->
+              <div style="text-align: center; margin: 20px 0;">
+                <p style="font-size: 12px; color: #999; margin-bottom: 5px;">Or copy this link:</p>
+                <p style="font-size: 12px; color: #667eea; word-break: break-all;">${feedbackUrl}</p>
+              </div>
+
+              <!-- Footer -->
+              <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                <p style="color: #6c757d; font-size: 14px; margin: 5px 0;">
+                  We look forward to serving you again soon!
+                </p>
+                <p style="color: #6c757d; font-size: 14px; margin: 5px 0;">
+                  - AI Eat Easy Team 🙏
+                </p>
+              </div>
+            </div>
+          </div>
+        `;
+
     await admin.firestore().collection('feedbackQueue').add({
       orderId,
+      restaurantId,
       to: customerEmail,
       runAt: admin.firestore.Timestamp.fromMillis(runAtMs),
       status: 'queued',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      acceptedAt: admin.firestore.FieldValue.serverTimestamp(),
+      feedbackUrl,
+      html: emailHtml,
     });
   });
 
@@ -90,8 +148,20 @@ export const processScheduledTasks = onSchedule(
         continue;
       }
       try {
-        const feedbackUrl = `https://aieateasy.no/feedback/${orderId}`;
-        const emailHtml = `
+        // Enforce minimum 90 minutes since acceptance (fallback to creation)
+        const acceptedAtTs = (data as any)?.acceptedAt as admin.firestore.Timestamp | undefined;
+        const createdAtTs = (data as any)?.createdAt as admin.firestore.Timestamp | undefined;
+        const baseTs = acceptedAtTs || createdAtTs;
+        if (baseTs) {
+          const minSendMs = baseTs.toMillis() + 90 * 60 * 1000;
+          if (Date.now() < minSendMs) {
+            batch.update(doc.ref, { runAt: admin.firestore.Timestamp.fromMillis(minSendMs), status: 'queued', updatedAt: admin.firestore.FieldValue.serverTimestamp(), reason: 'min_delay_enforced' });
+            continue;
+          }
+        }
+
+        const feedbackUrl = data?.feedbackUrl || `https://aieateasy.no/feedback/${orderId}`;
+        const emailHtml = data?.html || `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #ffffff;">
             <!-- Header -->
             <div style="text-align: center; padding: 30px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0;">
@@ -147,8 +217,9 @@ export const processScheduledTasks = onSchedule(
           to,
           subject: 'Thank you for choosing AI Eat Easy! We\'d love your feedback 🍽️',
           html: emailHtml,
+          text: `Thank you for your order! Please share your feedback here: ${feedbackUrl}`,
         });
-        batch.update(doc.ref, { status: 'sent', sentAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        batch.update(doc.ref, { status: 'sent', sentAt: admin.firestore.FieldValue.serverTimestamp(), feedbackUrl, updatedAt: admin.firestore.FieldValue.serverTimestamp(), htmlSent: emailHtml });
       } catch (e) {
         batch.update(doc.ref, { status: 'error', error: String(e), updatedAt: admin.firestore.FieldValue.serverTimestamp() });
       }

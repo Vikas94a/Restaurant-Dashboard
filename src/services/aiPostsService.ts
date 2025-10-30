@@ -1,6 +1,21 @@
 import { collection, doc, setDoc, getDoc, deleteDoc, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { MarketingPost } from '@/components/dashboardcomponent/AIInsight/AIPostGenerator';
+// Minimal type used for persistence
+export interface MarketingPost {
+    id: string;
+    title: string;
+    content: string;
+    type?: string;
+    feedback?: 'helpful' | 'not_helpful';
+    scheduledDate?: string;
+    suggestedPlatforms?: string[];
+    postingTime?: string;
+    estimatedReach?: string;
+    paidPromotion?: boolean;
+    budgetRecommendation?: string | null;
+    hashtags?: string[];
+    detailedFeedback?: Record<string, any>;
+}
 
 export interface StoredAIPost {
     id: string;

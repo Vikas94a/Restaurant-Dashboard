@@ -10,7 +10,6 @@ import {
     CityEvents,
     type WeatherDay,
     type CityEvent,
-    type MarketingPost,
     type SimplifiedCategoryData
 } from "@/components/dashboardcomponent/AIInsight";
 
@@ -23,7 +22,7 @@ export default function AIInsightPage() {
     const [loading, setLoading] = useState(false);
     
     // Generated post state
-    const [generatedPost, setGeneratedPost] = useState<MarketingPost | null>(null);
+    const [generatedPost, setGeneratedPost] = useState<any | null>(null);
     
     // Use the weather hook
     const { weatherData, loading: weatherLoading, error: weatherError } = useWeatherData(restaurantDetails?.city || '');
@@ -119,7 +118,7 @@ export default function AIInsightPage() {
     }, [restaurantId]);
 
     // Handle post generation
-    const handlePostGenerated = (post: MarketingPost) => {
+    const handlePostGenerated = (post: any) => {
         setGeneratedPost(post);
     };
 
