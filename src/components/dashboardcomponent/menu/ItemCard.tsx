@@ -271,13 +271,7 @@ export default function ItemCard({
                   if (!categoryId || !itemId) {
                     return;
                   }
-                  if (
-                    window.confirm(
-                      "Are you sure you want to remove this item? This action cannot be undone."
-                    )
-                  ) {
-                    await handleDeleteItem(categoryId, itemId);
-                  }
+                  await handleDeleteItem(categoryId, itemId);
                 } catch (error) {
                   toast.error(
                     "Failed to delete item. Please check your permissions and try again."

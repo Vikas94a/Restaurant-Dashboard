@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { doc, updateDoc, deleteDoc, arrayRemove, addDoc, collection } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc, addDoc, collection, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
 import { Category, NestedMenuItem } from '@/utils/menuTypes';
@@ -176,10 +176,62 @@ export const useMenuOperations = ({
         try {
           if (category.docId) {
             const categoryRef = doc(db, "restaurants", restaurantId, "menu", category.docId);
-            const { id: _, ...itemWithoutFrontendId } = item;
-            await updateDoc(categoryRef, {
-              items: arrayRemove(itemWithoutFrontendId)
+            
+            // Fetch the current category document to get the exact item structure from Firestore
+            const categoryDoc = await getDoc(categoryRef);
+            if (!categoryDoc.exists()) {
+              throw new Error('Category not found');
+            }
+
+            const categoryData = categoryDoc.data();
+            const currentItems = categoryData.items || [];
+            
+            // Helper function to compare two items for equality
+            const itemsMatch = (item1: any, item2: any): boolean => {
+              // First, try matching by id if both have it
+              if (item1.id && item2.id && item1.id === item2.id) {
+                return true;
+              }
+              
+              // Otherwise, compare key fields that should be unique
+              return item1.name === item2.name &&
+                     (item1.description || '') === (item2.description || '') &&
+                     (item1.price?.amount ?? 0) === (item2.price?.amount ?? 0) &&
+                     (item1.price?.currency || 'USD') === (item2.price?.currency || 'USD');
+            };
+            
+            // Find the item index in the Firestore array
+            const itemIndexToRemove = currentItems.findIndex((firestoreItem: any) => {
+              return itemsMatch(firestoreItem, item);
             });
+            
+            if (itemIndexToRemove === -1) {
+              // If we can't find an exact match, try with cleaned item
+              const cleanedItem = cleanItemForFirestore(item);
+              const cleanedItemIndex = currentItems.findIndex((firestoreItem: any) => {
+                return itemsMatch(firestoreItem, cleanedItem);
+              });
+              
+              if (cleanedItemIndex === -1) {
+                throw new Error('Item not found in Firestore. It may have already been deleted.');
+              }
+              
+              // Remove the item at the found index
+              const updatedItems = [...currentItems];
+              updatedItems.splice(cleanedItemIndex, 1);
+              
+              await updateDoc(categoryRef, {
+                items: updatedItems
+              });
+            } else {
+              // Remove the item at the found index
+              const updatedItems = [...currentItems];
+              updatedItems.splice(itemIndexToRemove, 1);
+              
+              await updateDoc(categoryRef, {
+                items: updatedItems
+              });
+            }
           }
 
           const updatedCategories = [...categories];
@@ -197,7 +249,7 @@ export const useMenuOperations = ({
         }
       }
     });
-  }, [restaurantId, setError, setLoading, setConfirmDialog]);
+  }, [restaurantId, cleanItemForFirestore, setError, setLoading, setConfirmDialog]);
 
   const saveCategoryOrder = useCallback(async (
     categories: Category[]

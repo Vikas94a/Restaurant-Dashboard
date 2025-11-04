@@ -120,25 +120,25 @@ function OrderCard({
   };
 
   return (
-    <div className={`rounded-xl border-2 p-6 transition-all duration-200 hover:shadow-lg ${statusInfo.bg} ${statusInfo.border}`}>
+    <div className={`rounded-xl border-2 p-3 md:p-6 transition-all duration-200 hover:shadow-lg ${statusInfo.bg} ${statusInfo.border}`}>
       {/* Order Header */}
-      <div className="flex justify-between items-start mb-6">
-        <div className="flex items-center">
-          <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center mr-4">
-            <FontAwesomeIcon icon={faReceipt} className="w-6 h-6 text-white" />
+      <div className="flex justify-between items-start mb-3 md:mb-6">
+        <div className="flex items-center flex-1 min-w-0">
+          <div className="w-8 h-8 md:w-12 md:h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg md:rounded-xl flex items-center justify-center mr-2 md:mr-4 flex-shrink-0">
+            <FontAwesomeIcon icon={faReceipt} className="w-4 h-4 md:w-6 md:h-6 text-white" />
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base md:text-xl font-bold text-gray-900 truncate">
               Bestilling #{order.id.slice(-6)}
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-xs md:text-sm text-gray-600">
               {formatOrderTime(order.createdAt)}
             </p>
           </div>
         </div>
-        <div className={`flex items-center px-3 py-1 rounded-full ${statusInfo.bg} border ${statusInfo.border}`}>
-          <FontAwesomeIcon icon={statusInfo.icon} className={`w-4 h-4 mr-2 ${statusInfo.text}`} />
-          <span className={`text-sm font-medium ${statusInfo.text}`}>
+        <div className={`flex items-center px-2 py-1 md:px-3 md:py-1 rounded-full ${statusInfo.bg} border ${statusInfo.border} flex-shrink-0 ml-2`}>
+          <FontAwesomeIcon icon={statusInfo.icon} className={`w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 ${statusInfo.text}`} />
+          <span className={`text-xs md:text-sm font-medium ${statusInfo.text}`}>
             {uiStatus === "pending" && "Venter"}
             {uiStatus === "confirmed" && "Bekreftet"}
             {uiStatus === "cancelled" && "Avvist"}
@@ -149,59 +149,59 @@ function OrderCard({
       </div>
 
       {/* Customer Details */}
-      <div className="bg-white/70 rounded-lg p-4 mb-6 border border-gray-200">
-        <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
-          <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-orange-500 mr-2" />
+      <div className="bg-white/70 rounded-lg p-2 md:p-4 mb-3 md:mb-6 border border-gray-200">
+        <h4 className="font-semibold text-gray-800 mb-2 md:mb-3 flex items-center text-sm md:text-base">
+          <FontAwesomeIcon icon={faUser} className="w-3 h-3 md:w-4 md:h-4 text-orange-500 mr-1 md:mr-2" />
           Kundedetaljer
         </h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
           <div className="flex items-center">
-            <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-400 mr-2" />
-            <span className="text-sm text-gray-700">{order.customerDetails?.name}</span>
+            <FontAwesomeIcon icon={faUser} className="w-3 h-3 md:w-4 md:h-4 text-gray-400 mr-1 md:mr-2 flex-shrink-0" />
+            <span className="text-xs md:text-sm text-gray-700 truncate">{order.customerDetails?.name}</span>
           </div>
           <div className="flex items-center">
-            <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-gray-400 mr-2" />
-            <span className="text-sm text-gray-700">{order.customerDetails?.phone}</span>
+            <FontAwesomeIcon icon={faPhone} className="w-3 h-3 md:w-4 md:h-4 text-gray-400 mr-1 md:mr-2 flex-shrink-0" />
+            <span className="text-xs md:text-sm text-gray-700 truncate">{order.customerDetails?.phone}</span>
           </div>
           <div className="flex items-center md:col-span-2">
-            <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-gray-400 mr-2" />
-            <span className="text-sm text-gray-700">{order.customerDetails?.email}</span>
+            <FontAwesomeIcon icon={faEnvelope} className="w-3 h-3 md:w-4 md:h-4 text-gray-400 mr-1 md:mr-2 flex-shrink-0" />
+            <span className="text-xs md:text-sm text-gray-700 truncate">{order.customerDetails?.email}</span>
           </div>
         </div>
       </div>
 
       {/* Order Items */}
-      <div className="mb-6">
-        <h4 className="font-semibold text-gray-800 mb-3 flex items-center">
-          <FontAwesomeIcon icon={faReceipt} className="w-4 h-4 text-orange-500 mr-2" />
+      <div className="mb-3 md:mb-6">
+        <h4 className="font-semibold text-gray-800 mb-2 md:mb-3 flex items-center text-sm md:text-base">
+          <FontAwesomeIcon icon={faReceipt} className="w-3 h-3 md:w-4 md:h-4 text-orange-500 mr-1 md:mr-2" />
           Bestilte varer
         </h4>
-        <div className="bg-white/70 rounded-lg p-4 border border-gray-200 space-y-3">
+        <div className="bg-white/70 rounded-lg p-2 md:p-4 border border-gray-200 space-y-2 md:space-y-3">
           {order.items.map((item: OrderItem, i: number) => (
-            <div key={i} className="py-3 border-b border-gray-100 last:border-none">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
+            <div key={i} className="py-2 md:py-3 border-b border-gray-100 last:border-none">
+              <div className="flex justify-between items-start gap-2">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center">
-                    <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-medium mr-3">
+                    <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 md:px-2 md:py-1 rounded-full text-xs font-medium mr-2 md:mr-3 flex-shrink-0">
                       {item.quantity}x
                     </span>
-                    <span className="font-medium text-gray-800">{item.itemName}</span>
+                    <span className="font-medium text-gray-800 text-xs md:text-sm truncate">{item.itemName}</span>
                   </div>
                   
                   {/* Customizations/Extras */}
                   {item.customizations && item.customizations.length > 0 && (
-                    <div className="mt-2 ml-5 space-y-1">
+                    <div className="mt-1 md:mt-2 ml-4 md:ml-5 space-y-1">
                       {item.customizations.map((customization) => (
-                        <div key={customization.category} className="text-sm">
+                        <div key={customization.category} className="text-xs md:text-sm">
                           <span className="font-medium text-gray-700">{customization.category}:</span>
                           {customization.options.length === 0 ? (
                             <span className="text-gray-400 italic ml-1">Ingen</span>
                           ) : (
-                            <div className="flex flex-wrap gap-1 mt-1">
+                            <div className="flex flex-wrap gap-1 mt-0.5 md:mt-1">
                               {customization.options.map((option) => (
                                 <span
                                   key={option.id}
-                                  className="inline-flex items-center px-2 py-1 rounded-full bg-orange-100 text-orange-700 text-xs border border-orange-200"
+                                  className="inline-flex items-center px-1.5 py-0.5 md:px-2 md:py-1 rounded-full bg-orange-100 text-orange-700 text-xs border border-orange-200"
                                 >
                                   {option.name}
                                   {option.price > 0 && (
@@ -218,22 +218,22 @@ function OrderCard({
                   
                   {/* Special Request */}
                   {item.specialInstructions && item.specialInstructions.text && (
-                    <div className="mt-2 ml-5 text-sm">
+                    <div className="mt-1 md:mt-2 ml-4 md:ml-5 text-xs md:text-sm">
                       <span className="font-medium text-blue-700">Spesiell forespørsel:</span>
                       <span className="ml-1 italic text-gray-600">{item.specialInstructions.text}</span>
                     </div>
                   )}
                 </div>
-                <span className="text-gray-900 font-semibold ml-4">
+                <span className="text-gray-900 font-semibold text-xs md:text-sm ml-2 md:ml-4 flex-shrink-0">
                   {(item.itemPrice * item.quantity).toFixed(2)} kr
                 </span>
               </div>
             </div>
           ))}
           
-          <div className="pt-3 mt-3 border-t border-gray-200 flex justify-between items-center">
-            <span className="text-lg font-semibold text-gray-800">Totalt</span>
-            <span className="text-xl font-bold text-gray-900">
+          <div className="pt-2 md:pt-3 mt-2 md:mt-3 border-t border-gray-200 flex justify-between items-center">
+            <span className="text-base md:text-lg font-semibold text-gray-800">Totalt</span>
+            <span className="text-lg md:text-xl font-bold text-gray-900">
               {order.total.toFixed(2)} kr
             </span>
           </div>
@@ -241,30 +241,30 @@ function OrderCard({
       </div>
 
       {/* Pickup Time */}
-      <div className="bg-white/70 rounded-lg p-4 mb-6 border border-gray-200">
+      <div className="bg-white/70 rounded-lg p-2 md:p-4 mb-3 md:mb-6 border border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <FontAwesomeIcon icon={faCalendar} className="w-4 h-4 text-orange-500 mr-2" />
-            <span className="text-sm font-medium text-gray-700">Hentetid:</span>
+            <FontAwesomeIcon icon={faCalendar} className="w-3 h-3 md:w-4 md:h-4 text-orange-500 mr-1 md:mr-2 flex-shrink-0" />
+            <span className="text-xs md:text-sm font-medium text-gray-700">Hentetid:</span>
           </div>
-          <span className="text-sm font-semibold text-gray-800">{formatPickupTime()}</span>
+          <span className="text-xs md:text-sm font-semibold text-gray-800 truncate ml-2">{formatPickupTime()}</span>
         </div>
         
         {/* ASAP Timer Display */}
         {isAsapOrder && uiStatus === "pending" && asapTimer && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-red-500 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">Tid igjen:</span>
+          <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-gray-200">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center min-w-0">
+                  <FontAwesomeIcon icon={faClock} className="w-3 h-3 md:w-4 md:h-4 text-red-500 mr-1 md:mr-2 flex-shrink-0" />
+                  <span className="text-xs md:text-sm font-medium text-gray-700">Tid igjen:</span>
                 </div>
-                <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                <div className={`px-2 py-0.5 md:px-3 md:py-1 rounded-full text-xs md:text-sm font-bold flex-shrink-0 ${
                   asapTimer.timeLeft < 60000 ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
                 }`}>
                   {formatTimeLeft(asapTimer.timeLeft)}
                 </div>
               </div>
-            <div className="mt-2 text-xs text-gray-500">
+            <div className="mt-1 md:mt-2 text-xs text-gray-500">
               ⚠️ Bestillingen vil bli automatisk avvist hvis ikke akseptert innen tiden
             </div>
           </div>
@@ -272,13 +272,13 @@ function OrderCard({
 
         {/* Preparation Timer Display */}
         {isAsapOrder && uiStatus === "confirmed" && preparationTimer && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-blue-500 mr-2" />
-                <span className="text-sm font-medium text-gray-700">Tilberedningstid igjen:</span>
+          <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-gray-200">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center min-w-0">
+                <FontAwesomeIcon icon={faClock} className="w-3 h-3 md:w-4 md:h-4 text-blue-500 mr-1 md:mr-2 flex-shrink-0" />
+                <span className="text-xs md:text-sm font-medium text-gray-700">Tilberedningstid igjen:</span>
               </div>
-              <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+              <div className={`px-2 py-0.5 md:px-3 md:py-1 rounded-full text-xs md:text-sm font-bold flex-shrink-0 ${
                 preparationTimer.timeLeft < 300000 ? 'bg-red-100 text-red-800' : 
                 preparationTimer.timeLeft < 600000 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
               }`}>
@@ -294,10 +294,10 @@ function OrderCard({
 
       {/* Action Buttons */}
       {uiStatus === "pending" && (
-        <div className="space-y-4">
+        <div className="space-y-2 md:space-y-4">
           {isAsapOrder && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <label className="block text-sm font-medium text-yellow-800 mb-2">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 md:p-4">
+              <label className="block text-xs md:text-sm font-medium text-yellow-800 mb-1 md:mb-2">
                 Estimert tilberedningstid
               </label>
               <input
@@ -305,20 +305,20 @@ function OrderCard({
                 placeholder="f.eks. 20-30 minutter"
                 value={estimatedTime || ""}
                 onChange={(e) => onEstimatedTimeChange(order.id, e.target.value)}
-                className="w-full px-4 py-2 border border-yellow-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors bg-white"
+                className="w-full px-2 md:px-4 py-1.5 md:py-2 border border-yellow-300 rounded-lg text-xs md:text-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors bg-white"
               />
             </div>
           )}
           
           {/* Cancellation Reason Selection */}
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <label className="block text-sm font-medium text-red-800 mb-2">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-2 md:p-4">
+            <label className="block text-xs md:text-sm font-medium text-red-800 mb-1 md:mb-2">
               Årsak for avvisning (hvis relevant):
             </label>
             <select
               value={cancellationReason || ""}
               onChange={(e) => onCancellationReasonChange(order.id, e.target.value)}
-              className="w-full px-4 py-2 border border-red-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white"
+              className="w-full px-2 md:px-4 py-1.5 md:py-2 border border-red-300 rounded-lg text-xs md:text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors bg-white"
             >
               <option value="">Velg årsak...</option>
               <option value="Restaurant is busy - unable to process your order at this time">Restaurant er opptatt</option>
@@ -331,19 +331,19 @@ function OrderCard({
             </select>
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
             <button
               onClick={() => onStatusChange(order.id, uiToBackendStatus("confirmed"))}
-              className="flex items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-3 rounded-lg text-sm font-medium hover:from-green-600 hover:to-emerald-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              className="flex items-center justify-center bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium hover:from-green-600 hover:to-emerald-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl transform hover:-translate-y-0.5"
             >
-              <FontAwesomeIcon icon={faCheck} className="mr-2" />
+              <FontAwesomeIcon icon={faCheck} className="mr-1 md:mr-2 w-3 h-3 md:w-4 md:h-4" />
               Aksepter
             </button>
             <button
               onClick={() => onStatusChange(order.id, uiToBackendStatus("cancelled"), cancellationReason)}
-              className="flex items-center justify-center bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-3 rounded-lg text-sm font-medium hover:from-red-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              className="flex items-center justify-center bg-gradient-to-r from-red-500 to-pink-500 text-white px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium hover:from-red-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl transform hover:-translate-y-0.5"
             >
-              <FontAwesomeIcon icon={faXmark} className="mr-2" />
+              <FontAwesomeIcon icon={faXmark} className="mr-1 md:mr-2 w-3 h-3 md:w-4 md:h-4" />
               Avvis
             </button>
           </div>
@@ -351,18 +351,18 @@ function OrderCard({
       )}
 
       {uiStatus === "confirmed" && (
-        <div className="space-y-4">
+        <div className="space-y-2 md:space-y-4">
           {isAsapOrder && order.estimatedPickupTime && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-green-600 mr-2" />
-                  <span className="text-sm font-medium text-green-800">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2 md:p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center min-w-0">
+                  <FontAwesomeIcon icon={faClock} className="w-3 h-3 md:w-4 md:h-4 text-green-600 mr-1 md:mr-2 flex-shrink-0" />
+                  <span className="text-xs md:text-sm font-medium text-green-800 truncate">
                     Estimert klar om: {order.estimatedPickupTime}
                   </span>
                 </div>
                 {preparationTimer && preparationTimer.timeLeft === 0 && (
-                  <span className="text-sm font-bold text-green-800 bg-green-200 px-2 py-1 rounded">
+                  <span className="text-xs md:text-sm font-bold text-green-800 bg-green-200 px-2 py-1 rounded flex-shrink-0">
                     KLAR!
                   </span>
                 )}
@@ -371,9 +371,9 @@ function OrderCard({
           )}
           <button
             onClick={() => onStatusChange(order.id, uiToBackendStatus("completed"))}
-            className="w-full flex items-center justify-center bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-3 rounded-lg text-sm font-medium hover:from-blue-600 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            className="w-full flex items-center justify-center bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 md:px-4 py-2 md:py-3 rounded-lg text-xs md:text-sm font-medium hover:from-blue-600 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-md md:shadow-lg hover:shadow-lg md:hover:shadow-xl transform hover:-translate-y-0.5"
           >
-            <FontAwesomeIcon icon={faCheckCircle} className="mr-2" />
+            <FontAwesomeIcon icon={faCheckCircle} className="mr-1 md:mr-2 w-3 h-3 md:w-4 md:h-4" />
             Marker som fullført
           </button>
         </div>

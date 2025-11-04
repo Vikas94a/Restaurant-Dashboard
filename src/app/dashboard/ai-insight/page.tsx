@@ -234,7 +234,7 @@ export default function AIInsightPage() {
                 </div>
 
                 {/* Advanced Features Preview (Future Phase 3) */}
-                <div className="bg-white rounded-lg shadow p-6">
+                {/* <div className="bg-white rounded-lg shadow p-6">
                     <h2 className="text-xl font-semibold mb-4">Advanced AI Features</h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="text-center p-4 border rounded-lg">
@@ -259,7 +259,7 @@ export default function AIInsightPage() {
                             </p>
                         </div>
                     </div>
-                </div>
+                </div> */}
             </div>
         </div>
     );

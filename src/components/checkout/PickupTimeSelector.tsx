@@ -67,7 +67,9 @@ const PickupTimeSelector: React.FC<PickupTimeSelectorProps> = ({
                   Så snart som mulig
                 </label>
                 <p className="text-xs text-gray-600 mt-1">
-                  Bestillingen din vil være klar om 15-20 minutter
+                  Bestillingen din vil være klar om 20-25
+                  
+               minutter
                 </p>
               </div>
               <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">

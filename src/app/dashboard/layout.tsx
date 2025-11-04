@@ -6,6 +6,7 @@ import DashboardHeader from "@/components/DashboardHeader";
 import { AuthGuard } from "@/providers/guards/AuthGuard";
 import { ProfileCompletionGuard } from "@/providers/guards/ProfileCompletionGuard";
 import { useGlobalOrderListener } from "@/hooks/useGlobalOrderListener";
+import { useGlobalReservationListener } from "@/hooks/useGlobalReservationListener";
 import { useAppSelector } from "@/store/hooks";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -26,6 +27,9 @@ export default function DashboardLayout({
 
   // Initialize global order listener for sound notifications
   useGlobalOrderListener();
+  
+  // Initialize global reservation listener for sound notifications
+  useGlobalReservationListener();
 
   // Check if restaurant details are missing
   const hasRestaurantDetails = restaurantDetails?.streetName && 

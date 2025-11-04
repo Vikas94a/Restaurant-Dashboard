@@ -8,10 +8,13 @@ import { faVolumeUp, faVolumeMute, faPlay } from "@fortawesome/free-solid-svg-ic
 interface SoundNotificationContextType {
   soundEnabled: boolean;
   isPlaying: boolean;
+  isReservationSoundPlaying: boolean;
   toggleSound: () => void;
   testSound: () => void;
   startRepeatingSound: () => void;
   stopRepeatingSound: () => void;
+  startRepeatingReservationSound: () => void;
+  stopRepeatingReservationSound: () => void;
   SoundControls: React.ComponentType;
   debugAudio: () => void;
 }
@@ -33,24 +36,39 @@ interface SoundNotificationProviderProps {
 export const SoundNotificationProvider: React.FC<SoundNotificationProviderProps> = ({ children }) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isReservationSoundPlaying, setIsReservationSoundPlaying] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const reservationAudioRef = useRef<HTMLAudioElement | null>(null);
   const soundIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reservationSoundIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize audio
+  // Initialize audio for orders
   useEffect(() => {
     audioRef.current = new Audio('/sound/bell-notification.mp3');
     audioRef.current.volume = 0.7;
     audioRef.current.loop = false;
+    
+    // Initialize audio for reservations
+    reservationAudioRef.current = new Audio('/sound/reservation-notification.mp3');
+    reservationAudioRef.current.volume = 0.7;
+    reservationAudioRef.current.loop = false;
     
     // Cleanup on unmount
     return () => {
       if (soundIntervalRef.current) {
         clearInterval(soundIntervalRef.current);
       }
+      if (reservationSoundIntervalRef.current) {
+        clearInterval(reservationSoundIntervalRef.current);
+      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
+      }
+      if (reservationAudioRef.current) {
+        reservationAudioRef.current.pause();
+        reservationAudioRef.current.currentTime = 0;
       }
     };
   }, []);
@@ -85,14 +103,53 @@ export const SoundNotificationProvider: React.FC<SoundNotificationProviderProps>
       audioRef.current.currentTime = 0;
     }
     setIsPlaying(false);
-    };
+  };
+
+  const startRepeatingReservationSound = () => {
+    if (!reservationAudioRef.current || !soundEnabled) {
+      return;
+    }
+    
+    setIsReservationSoundPlaying(true);
+    // Play the sound immediately
+    reservationAudioRef.current.play().catch(error => {
+      console.error('Failed to play reservation sound:', error);
+    });
+    
+    // Set up interval to play sound every 3 seconds
+    reservationSoundIntervalRef.current = setInterval(() => {
+      if (reservationAudioRef.current && soundEnabled) {
+        reservationAudioRef.current.currentTime = 0;
+        reservationAudioRef.current.play().catch(error => {
+          console.error('Failed to play reservation sound:', error);
+        });
+      }
+    }, 3000);
+  };
+
+  const stopRepeatingReservationSound = () => {
+    if (reservationSoundIntervalRef.current) {
+      clearInterval(reservationSoundIntervalRef.current);
+      reservationSoundIntervalRef.current = null;
+    }
+    if (reservationAudioRef.current) {
+      reservationAudioRef.current.pause();
+      reservationAudioRef.current.currentTime = 0;
+    }
+    setIsReservationSoundPlaying(false);
+  };
 
   const toggleSound = () => {
     const newSoundEnabled = !soundEnabled;
     setSoundEnabled(newSoundEnabled);
     
-    if (!newSoundEnabled && isPlaying) {
-      stopRepeatingSound();
+    if (!newSoundEnabled) {
+      if (isPlaying) {
+        stopRepeatingSound();
+      }
+      if (isReservationSoundPlaying) {
+        stopRepeatingReservationSound();
+      }
     }
     
     toast.info(newSoundEnabled ? '🔊 Lyd påslått' : '🔇 Lyd avslått');
@@ -148,11 +205,17 @@ export const SoundNotificationProvider: React.FC<SoundNotificationProviderProps>
         <FontAwesomeIcon icon={faPlay} className="w-4 h-4" />
       </button>
 
-      {/* Playing Indicator */}
+      {/* Playing Indicators */}
       {isPlaying && (
         <div className="flex items-center bg-red-100 text-red-800 px-3 py-1 rounded-lg animate-pulse">
           <div className="w-2 h-2 bg-red-600 rounded-full mr-2 animate-ping"></div>
-          <span className="text-xs font-medium">Lyd spiller...</span>
+          <span className="text-xs font-medium">Bestilling lyd...</span>
+        </div>
+      )}
+      {isReservationSoundPlaying && (
+        <div className="flex items-center bg-purple-100 text-purple-800 px-3 py-1 rounded-lg animate-pulse">
+          <div className="w-2 h-2 bg-purple-600 rounded-full mr-2 animate-ping"></div>
+          <span className="text-xs font-medium">Reservasjon lyd...</span>
         </div>
       )}
     </div>
@@ -161,10 +224,13 @@ export const SoundNotificationProvider: React.FC<SoundNotificationProviderProps>
   const value: SoundNotificationContextType = {
     soundEnabled,
     isPlaying,
+    isReservationSoundPlaying,
     toggleSound,
     testSound,
     startRepeatingSound,
     stopRepeatingSound,
+    startRepeatingReservationSound,
+    stopRepeatingReservationSound,
     SoundControls,
     debugAudio,
   };
