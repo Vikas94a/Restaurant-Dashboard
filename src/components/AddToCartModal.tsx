@@ -174,11 +174,12 @@ export default function AddToCartModal({
           </div>
 
 
-          {/* Extras section with proper scrolling */}
+          {/* Extras section - removed nested scroll, using single scrollable container */}
           {extras.length > 0 && (
             <div className="mb-4 sm:mb-6">
               <h3 className="font-semibold text-gray-800 mb-3 text-sm sm:text-base">Extras & Add-ons</h3>
-              <div className="space-y-4 max-h-60 sm:max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+              {/* FIX: Removed nested scroll container - parent handles all scrolling */}
+              <div className="space-y-4">
                 {extras.map(group => {
                   const hasSelection = selected[group.id] && selected[group.id].size > 0;
                   const isRequired = group.required;

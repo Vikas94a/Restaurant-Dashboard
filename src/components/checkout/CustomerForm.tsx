@@ -86,6 +86,21 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ formData, setFormData }) =>
         </div>
       </div>
 
+      {/* Special Instructions Field */}
+      <div className="group">
+        <label htmlFor="specialInstructions" className="block text-sm font-medium text-gray-700 mb-2">
+          Spesielle instruksjoner (valgfritt)
+        </label>
+        <textarea
+          id="specialInstructions"
+          value={formData.specialInstructions || ''}
+          onChange={(e) => setFormData({ ...formData, specialInstructions: e.target.value })}
+          className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-white transition-all duration-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 focus:outline-none placeholder-gray-400 hover:border-gray-300 resize-none"
+          placeholder="Eventuelle spesielle ønsker eller allergier..."
+          rows={3}
+        />
+      </div>
+
       {/* Form Footer */}
       <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-4 border border-orange-100">
         <div className="flex items-start">

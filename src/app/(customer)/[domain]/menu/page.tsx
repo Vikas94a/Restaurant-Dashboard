@@ -10,7 +10,7 @@ import { useCart } from "@/hooks/useCart";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 
-// Separate client component for the cart button
+// Floating cart button - hidden on mobile, shown on desktop
 function CartButton({ onOpen }: { isOpen: boolean; onOpen: () => void }) {
   const { cart } = useCart();
   const [mounted, setMounted] = useState(false);
@@ -22,33 +22,58 @@ function CartButton({ onOpen }: { isOpen: boolean; onOpen: () => void }) {
   }, [cart.items.length]);
 
   if (!mounted) {
-    return (
-      <button
-        onClick={onOpen}
-        className="fixed bottom-6 right-6 z-50 p-4 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-      >
-        <FontAwesomeIcon
-          icon={faShoppingCart}
-          className="w-6 h-6"
-        />
-      </button>
-    );
+    return null;
+  }
+
+  // Hide on mobile (lg breakpoint and above)
+  return (
+    <button
+      onClick={onOpen}
+      className="hidden lg:flex fixed bottom-4 right-4 z-50 p-2.5 sm:p-3 bg-gradient-to-r from-orange-400 to-red-400 hover:from-orange-500 hover:to-red-500 text-white rounded-full shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:ring-opacity-50 transform hover:scale-105 items-center justify-center"
+    >
+      <FontAwesomeIcon
+        icon={faShoppingCart}
+        className="w-5 h-5"
+      />
+      {itemCount > 0 && (
+        <span className="absolute -top-1 -right-1 bg-yellow-300 text-orange-800 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ring-1 ring-white shadow-md animate-pulse">
+          {itemCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Mobile sticky cart button - shown only on mobile when items are in cart
+function MobileCartButton({ onOpen }: { onOpen: () => void }) {
+  const { cart } = useCart();
+  const [mounted, setMounted] = useState(false);
+  const [itemCount, setItemCount] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+    setItemCount(cart.items.length);
+  }, [cart.items.length]);
+
+  // Only show on mobile (lg:hidden) and when there are items in cart
+  if (!mounted || itemCount === 0) {
+    return null;
   }
 
   return (
     <button
       onClick={onOpen}
-      className="fixed bottom-4 right-4 z-50 p-2.5 sm:p-3 bg-gradient-to-r from-orange-400 to-red-400 hover:from-orange-500 hover:to-red-500 text-white rounded-full shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:ring-opacity-50 transform hover:scale-105"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-orange-400 to-red-400 hover:from-orange-500 hover:to-red-500 text-white py-4 px-6 shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:ring-opacity-50 touch-manipulation"
     >
-      <FontAwesomeIcon
-        icon={faShoppingCart}
-        className="w-4 h-4 sm:w-5 sm:h-5"
-      />
-      {itemCount > 0 && (
-        <span className="absolute -top-1 -right-1 bg-yellow-300 text-orange-800 text-xs font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center ring-1 ring-white shadow-md animate-pulse">
-          {itemCount}
+      <div className="max-w-7xl mx-auto flex items-center justify-center space-x-2">
+        <FontAwesomeIcon
+          icon={faShoppingCart}
+          className="w-5 h-5"
+        />
+        <span className="text-lg font-semibold">
+          View Cart ({itemCount} {itemCount === 1 ? 'item' : 'items'})
         </span>
-      )}
+      </div>
     </button>
   );
 }
@@ -151,8 +176,11 @@ export default function MenuPage() {
         }
       `}</style>
 
-      {/* Floating Cart Button */}
+      {/* Floating Cart Button - Desktop Only */}
       <CartButton isOpen={isCartOpen} onOpen={() => setIsCartOpen(true)} />
+
+      {/* Mobile Sticky Cart Button - Bottom of Screen */}
+      <MobileCartButton onOpen={() => setIsCartOpen(true)} />
 
       {/* Header with Restaurant Name */}
       <div className="bg-gradient-to-r from-orange-400 to-red-400 shadow-md sticky top-0 z-30">
@@ -170,8 +198,9 @@ export default function MenuPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-3 sm:py-4 md:py-6">
+      {/* Main Content - RestaurantMenu handles its own layout */}
+      {/* Add bottom padding on mobile to account for sticky cart button */}
+      <div className="pb-20 lg:pb-0">
         {restaurantId && <RestaurantMenu restaurantId={restaurantId} />}
       </div>
 

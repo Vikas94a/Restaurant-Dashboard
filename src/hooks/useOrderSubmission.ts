@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { CustomerFormData, Order } from '@/types/checkout';
 import { useCart } from '@/hooks/useCart';
+import { sendOrderConfirmationEmail } from '@/services/email/emailService';
 
 interface UseOrderSubmissionProps {
   restaurantId: string;
@@ -124,6 +125,15 @@ export function useOrderSubmission({
         updatedAt: serverTimestamp(),
       } as any;
       await setDoc(orderRef, firestorePayload);
+      
+      // Send confirmation email immediately after order is placed
+      try {
+        await sendOrderConfirmationEmail(orderData);
+      } catch (emailError) {
+        // Log error but don't fail the order submission
+        console.error('Failed to send confirmation email:', emailError);
+        // Don't show error to user - order was still successfully placed
+      }
       
       dispatch(clearCart());
       setLocalPlacedOrder(orderData);

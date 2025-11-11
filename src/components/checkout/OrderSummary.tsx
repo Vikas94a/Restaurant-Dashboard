@@ -11,10 +11,13 @@ interface OrderSummaryProps {
 }
 
 const OrderSummary: React.FC<OrderSummaryProps> = ({ cart }) => {
-  // Calculate MVA (VAT) - 15% of subtotal
-  const subtotal = cart.items.reduce((sum, item) => sum + (item.itemPrice * item.quantity), 0);
+  // Calculate subtotal using item.totalPrice which includes base price + extras/add-ons
+  // item.totalPrice is already calculated as: (basePrice + customizationPrice) * quantity
+  const subtotal = cart.items.reduce((sum, item) => sum + item.totalPrice, 0);
   const mva = subtotal * 0.15; // 15% MVA
-  const total = subtotal ;
+  // Use cart.total (which is the sum of all item.totalPrice) as the source of truth
+  // This ensures consistency with the cart state
+  const total = cart.total || subtotal;
 
   return (
     <div className="space-y-4">
@@ -38,22 +41,26 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ cart }) => {
                 
                 {/* Customizations/Extras */}
                 {item.customizations && item.customizations.length > 0 && (
-                  <div className="space-y-1 mb-2">
+                  <div className="space-y-1.5 mb-2 mt-2">
                     {item.customizations.map((customization) => (
                       <div key={customization.category} className="text-xs">
-                        <span className="font-medium text-orange-600">{customization.category}:</span>
+                        <span className="font-medium text-gray-700">{customization.category}:</span>
                         {customization.options.length === 0 ? (
-                          <span className="text-gray-400 italic ml-1">None</span>
+                          <span className="text-gray-400 italic ml-1">Ingen</span>
                         ) : (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {customization.options.map((option) => (
                               <span
                                 key={option.id}
-                                className="inline-flex items-center px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs border border-orange-200"
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${
+                                  option.price > 0
+                                    ? 'bg-orange-100 text-orange-800 border-orange-300 font-medium'
+                                    : 'bg-gray-100 text-gray-600 border-gray-200'
+                                }`}
                               >
                                 {option.name}
                                 {option.price > 0 && (
-                                  <span className="ml-1 font-medium">+{option.price.toFixed(2)} kr</span>
+                                  <span className="ml-1.5 font-semibold">+{option.price.toFixed(2)} kr</span>
                                 )}
                               </span>
                             ))}
@@ -73,10 +80,26 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ cart }) => {
                 )}
               </div>
               
-              <div className="text-right ml-3">
-                <span className="font-semibold text-gray-800">
-                  {(item.itemPrice * item.quantity).toFixed(2)} kr
-                </span>
+              <div className="text-right ml-3 flex-shrink-0">
+                <div className="flex flex-col items-end">
+                  <span className="font-semibold text-gray-800">
+                    {item.totalPrice.toFixed(2)} kr
+                  </span>
+                  {/* Show breakdown if there are extras with prices */}
+                  {item.customizations && item.customizations.length > 0 && 
+                   item.customizations.some(c => c.options.some(o => o.price > 0)) && (
+                    <div className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">
+                      <span className="text-gray-400">
+                        {item.itemPrice * item.quantity} kr
+                      </span>
+                      <span className="mx-1 text-gray-400">+</span>
+                      <span className="text-orange-600 font-medium">
+                        {(item.totalPrice - (item.itemPrice * item.quantity)).toFixed(2)} kr
+                      </span>
+                      <span className="text-gray-400 ml-1">ekstra</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}

@@ -1,13 +1,13 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import type { MouseEvent } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useCart } from "@/hooks/useCart";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUtensils, faArrowLeft, faCreditCard, faClock, faUser, faCheckCircle } from "@fortawesome/free-solid-svg-icons";
-import { useRouter } from "next/navigation";
+import { faArrowLeft, faCheckCircle, faEnvelope, faClock } from "@fortawesome/free-solid-svg-icons";
 import CustomerForm from "@/components/checkout/CustomerForm";
 import OrderSummary from "@/components/checkout/OrderSummary";
 import PickupOptions from "@/components/checkout/PickupOptions";
@@ -17,7 +17,13 @@ import { useOrderSubmission } from '@/hooks/useOrderSubmission';
 import { toast } from "sonner";
 import { useDispatch } from "react-redux";
 import { clearCart } from "@/store/features/cartSlice";
+import OrderConfirmationModal from "@/components/checkout/OrderConfirmationModal";
 
+/**
+ * CheckoutPage - One-page checkout flow
+ * All customer inputs (contact info, pickup options, order summary) are visible
+ * and editable within a single scrollable page for better UX
+ */
 export default function CheckoutPage() {
   const params = useParams();
   const domain = params.domain as string;
@@ -29,17 +35,13 @@ export default function CheckoutPage() {
   const [restaurantDetails, setRestaurantDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState<'form' | 'pickup' | 'summary'>('form');
-  const [pickupData, setPickupData] = useState<any>(null);
-  const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState<any>(null);
+  const [isOrderSubmitting, setIsOrderSubmitting] = useState(false); // Track order submission to prevent redirect
+  const isSubmittingRef = useRef(false); // Ref for synchronous check to prevent redirect race condition
+
   // Timing helpers (opening hours, slots, ASAP availability)
   const timing = useRestaurantTiming({ restaurantDetails });
-  
-  // Debug logging
-  useEffect(() => {
-    console.log('Restaurant Details:', restaurantDetails);
-    console.log('Timing Hook Values:', timing);
-  }, [restaurantDetails, timing]);
   
   // Destructure timing values for easier access
   const { 
@@ -52,8 +54,8 @@ export default function CheckoutPage() {
     isTimeValid
   } = timing;
 
-  // Order submission hook to persist order in Firestore
-  const { isSubmitting, localPlacedOrder, submitOrder, resetOrder } = useOrderSubmission({
+  // Order submission hook
+  const { isSubmitting, submitOrder, resetOrder } = useOrderSubmission({
     restaurantId: restaurantId || '',
     pickupOption: pickupOption,
     pickupDate: pickupOption === 'asap' ? timing.pickupDate : (pickupDate || timing.pickupDate),
@@ -73,13 +75,13 @@ export default function CheckoutPage() {
     pickupTime: ''
   });
 
+  // Fetch restaurant data
   useEffect(() => {
     const fetchRestaurantByDomain = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Query restaurants collection by domain
         const restaurantsQuery = query(
           collection(db, "restaurants"), 
           where("domain", "==", domain)
@@ -112,65 +114,130 @@ export default function CheckoutPage() {
     }
   }, [domain]);
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty (but NOT if we're showing confirmation modal or submitting order)
+  // This prevents immediate redirect after order submission
+  // Uses both state and ref to prevent race conditions
   useEffect(() => {
-    if (!isLoading && cart.items.length === 0) {
+    if (
+      !isLoading && 
+      cart.items.length === 0 && 
+      !showConfirmation && 
+      !placedOrder && 
+      !isOrderSubmitting &&
+      !isSubmittingRef.current
+    ) {
       router.push(`/${domain}/menu`);
     }
-  }, [cart.items.length, domain, isLoading, router]);
+  }, [cart.items.length, domain, isLoading, router, showConfirmation, placedOrder, isOrderSubmitting]);
 
-  const handleFormSubmit = () => {
-    // Validate form data
-    if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim()) {
-      toast.error('Vennligst fyll ut alle kontaktdetaljer');
-      return;
+  // Handle order submission
+  const handleOrderSubmit = async (e?: MouseEvent<HTMLButtonElement>) => {
+    // Prevent any default form submission behavior
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-    
-    setCurrentStep('pickup');
-  };
 
-  const handlePickupSubmit = (pickupFormData: any) => {
-    setPickupData(pickupFormData);
-    setCurrentStep('summary');
-  };
+    // Set submission flag immediately (both state and ref) to prevent redirect during processing
+    // Using ref ensures synchronous check in redirect useEffect
+    isSubmittingRef.current = true;
+    setIsOrderSubmitting(true);
 
-  const handleOrderConfirm = async () => {
     try {
-      // Validate that we have all required data
+      // Validate form data
       if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim()) {
-        toast.error('Please fill in all contact details');
-        setCurrentStep('form');
+        toast.error('Vennligst fyll ut alle kontaktdetaljer');
+        isSubmittingRef.current = false;
+        setIsOrderSubmitting(false);
+        // Scroll to form section
+        document.getElementById('contact-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
 
-      if (!pickupData) {
-        toast.error('Vennligst velg hentealternativer');
-        setCurrentStep('pickup');
-        return;
+      // Validate pickup options
+      if (pickupOption === 'later') {
+        if (!pickupDate) {
+          toast.error('Vennligst velg en hentedato');
+          isSubmittingRef.current = false;
+          setIsOrderSubmitting(false);
+          document.getElementById('pickup-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        if (!pickupTime) {
+          toast.error('Vennligst velg en hentetid');
+          isSubmittingRef.current = false;
+          setIsOrderSubmitting(false);
+          document.getElementById('pickup-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        if (!timing.isDateOpen(pickupDate)) {
+          toast.error('Restauranten er stengt på valgt dato');
+          isSubmittingRef.current = false;
+          setIsOrderSubmitting(false);
+          return;
+        }
+        if (!isTimeValid(pickupDate, pickupTime)) {
+          toast.error('Valgt tid er i fortiden. Vennligst velg en fremtidig tid.');
+          isSubmittingRef.current = false;
+          setIsOrderSubmitting(false);
+          return;
+        }
       }
 
       if (cart.items.length === 0) {
         toast.error('Handlekurven din er tom');
+        isSubmittingRef.current = false;
+        setIsOrderSubmitting(false);
         return;
       }
 
+      // Submit order - this will clear the cart internally
       const result = await submitOrder(formData);
-      if (result?.success) {
-        setShowOrderDialog(true);
+      
+      if (result?.success && result.orderData) {
+        // CRITICAL: Set modal state IMMEDIATELY and SYNCHRONOUSLY
+        // This must happen before any React re-renders or redirects
+        // Using functional updates to ensure state is set correctly
+        setPlacedOrder(result.orderData);
+        setShowConfirmation(true);
+        
+        // Keep submission flag true to prevent redirect until modal is closed
+        // The flag will be cleared when modal closes via handleCloseConfirmation
+        
+        // Force a small delay to ensure React has processed the state updates
+        // This prevents any race conditions with the redirect useEffect
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Scroll to top to ensure modal is visible
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        // If order submission failed, reset submission flag
+        isSubmittingRef.current = false;
+        setIsOrderSubmitting(false);
+        // Error toast already shown in submitOrder
+        console.error('Order submission failed:', result);
       }
     } catch (error) {
+      isSubmittingRef.current = false;
+      setIsOrderSubmitting(false);
       toast.error('Kunne ikke legge inn bestilling. Vennligst prøv igjen.');
+      console.error('Order submission error:', error);
     }
   };
 
-  const handleBackToMenu = () => {
-    router.push(`/${domain}/menu`);
-  };
-
-  const handleCloseOrderDialog = () => {
-    setShowOrderDialog(false);
+  // Handle modal close - redirect to menu only after user closes the dialog
+  const handleCloseConfirmation = () => {
+    setShowConfirmation(false);
     resetOrder();
-    router.push(`/${domain}/menu`);
+    // Clear placed order state and submission flag (both state and ref)
+    setPlacedOrder(null);
+    isSubmittingRef.current = false;
+    setIsOrderSubmitting(false);
+    // Redirect to menu page after modal is closed
+    // Small delay to ensure modal closes smoothly
+    setTimeout(() => {
+      router.push(`/${domain}/menu`);
+    }, 100);
   };
 
   if (isLoading) {
@@ -188,9 +255,6 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-25 via-red-25 to-yellow-25 flex items-center justify-center">
         <div className="text-center">
-          <div className="bg-gradient-to-br from-orange-50 to-red-50 p-6 rounded-full mb-4">
-            <FontAwesomeIcon icon={faUtensils} className="h-12 w-12 text-orange-400" />
-          </div>
           <h1 className="text-2xl font-bold text-gray-700 mb-3">Restaurant Ikke Funnet</h1>
           <p className="text-gray-500 text-base">Restauranten du leter etter eksisterer ikke eller kan ha blitt flyttet.</p>
         </div>
@@ -201,302 +265,124 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-25 via-red-25 to-yellow-25">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-400 to-red-400 shadow-md">
+      <div className="bg-gradient-to-r from-orange-400 to-red-400 shadow-md sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <button
-              onClick={handleBackToMenu}
-              className="flex items-center text-white hover:text-orange-100 transition-colors"
+              onClick={() => router.push(`/${domain}/menu`)}
+              className="flex items-center justify-center w-10 h-10 text-white hover:text-orange-100 hover:bg-white/10 rounded-full transition-colors"
+              aria-label="Tilbake til meny"
             >
-              <FontAwesomeIcon icon={faArrowLeft} className="w-4 h-4 mr-2" />
-              <span className="text-sm font-medium">Tilbake til Meny</span>
+              <FontAwesomeIcon icon={faArrowLeft} className="w-5 h-5" />
             </button>
-            <h1 className="text-xl sm:text-2xl font-bold text-white text-center">
+            <h1 className="text-xl sm:text-2xl font-bold text-white text-center flex-1">
               {restaurantName}
             </h1>
-            <div className="w-20"></div> {/* Spacer for centering */}
+            <div className="w-10"></div> {/* Spacer for centering (matches button width) */}
           </div>
         </div>
       </div>
 
-      {/* Progress Steps */}
+      {/* Main Content - One Page Flow */}
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center space-x-4">
-            <div className={`flex items-center ${currentStep === 'form' ? 'text-orange-600' : currentStep === 'pickup' || currentStep === 'summary' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                currentStep === 'form' ? 'bg-orange-500 text-white' : 
-                currentStep === 'pickup' || currentStep === 'summary' ? 'bg-green-500 text-white' : 
-                'bg-gray-300 text-gray-600'
-              }`}>
-                1
-              </div>
-              <span className="ml-2 text-sm font-medium hidden sm:block">Detaljer</span>
-            </div>
-            <div className={`w-8 h-0.5 ${currentStep === 'pickup' || currentStep === 'summary' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-            <div className={`flex items-center ${currentStep === 'pickup' ? 'text-orange-600' : currentStep === 'summary' ? 'text-green-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                currentStep === 'pickup' ? 'bg-orange-500 text-white' : 
-                currentStep === 'summary' ? 'bg-green-500 text-white' : 
-                'bg-gray-300 text-gray-600'
-              }`}>
-                2
-              </div>
-              <span className="ml-2 text-sm font-medium hidden sm:block">Henting</span>
-            </div>
-            <div className={`w-8 h-0.5 ${currentStep === 'summary' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-            <div className={`flex items-center ${currentStep === 'summary' ? 'text-orange-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                currentStep === 'summary' ? 'bg-orange-500 text-white' : 'bg-gray-300 text-gray-600'
-              }`}>
-                3
-              </div>
-              <span className="ml-2 text-sm font-medium hidden sm:block">Gjennomgang</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="max-w-4xl mx-auto">
-          {currentStep === 'form' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column - Form */}
-              <div className="lg:col-span-2">
-                <div className="bg-white rounded-2xl shadow-lg border border-orange-50 overflow-hidden">
-                  <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                      <FontAwesomeIcon icon={faUser} className="w-5 h-5 text-orange-500 mr-3" />
-                      Kontaktinformasjon
-                    </h2>
-                  </div>
-                  <div className="p-6">
-                    <CustomerForm formData={formData} setFormData={setFormData} />
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                      <button
-                        onClick={handleFormSubmit}
-                        className="w-full py-4 px-6 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-opacity-50 bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600"
-                      >
-                        Fortsett til Hentealternativer
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column - Order Summary */}
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-2xl shadow-lg border border-orange-50 overflow-hidden sticky top-6">
-                  <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                      <FontAwesomeIcon icon={faCreditCard} className="w-5 h-5 text-orange-500 mr-3" />
-                      Bestillingsoversikt
-                    </h2>
-                  </div>
-                  <div className="p-6">
-                    <OrderSummary cart={cart} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 'pickup' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column - Pickup Options */}
-              <div className="lg:col-span-2">
-                <div className="bg-white rounded-2xl shadow-lg border border-orange-50 overflow-hidden">
-                  <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                      <FontAwesomeIcon icon={faClock} className="w-5 h-5 text-orange-500 mr-3" />
-                      Hentealternativer
-                    </h2>
-                  </div>
-                  <div className="p-6">
-                    <PickupOptions 
-                      pickupOption={pickupOption}
-                      setPickupOption={setPickupOption}
-                      isAsapAvailable={timing.isAsapAvailable}
-                      pickupDate={pickupDate}
-                      setPickupDate={setPickupDate}
-                      pickupTime={pickupTime}
-                      setPickupTime={setPickupTime}
-                      availableDates={timing.getAvailableDates()}
-                      availablePickupTimes={timing.availablePickupTimes}
-                      isDateOpen={timing.isDateOpen}
-                      restaurantDetails={restaurantDetails || {}}
-                      isTimeValid={isTimeValid}
-                    />
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                      <button
-                        onClick={() => {
-                          // Validate pickup options before proceeding
-                          if (pickupOption === 'later') {
-                            if (!pickupDate) {
-                              toast.error('Vennligst velg en hentedato');
-                              return;
-                            }
-                            if (!pickupTime) {
-                              toast.error('Vennligst velg en hentetid');
-                              return;
-                            }
-                            if (!timing.isDateOpen(pickupDate)) {
-                              toast.error('Restauranten er stengt på valgt dato');
-                              return;
-                            }
-                            if (timing.availablePickupTimes.length === 0) {
-                              toast.error('Ingen tilgjengelige hentetider for valgt dato');
-                              return;
-                            }
-                            if (!isTimeValid(pickupDate, pickupTime)) {
-                              toast.error('Valgt tid er i fortiden. Vennligst velg en fremtidig tid.');
-                              return;
-                            }
-                          }
-                          
-                          const pickupFormData = {
-                            pickupOption,
-                            pickupDate: pickupOption === 'asap' ? timing.pickupDate : pickupDate,
-                            pickupTime: pickupOption === 'asap' ? 'As Soon As Possible' : pickupTime
-                          };
-                          handlePickupSubmit(pickupFormData);
-                        }}
-                        disabled={pickupOption === 'later' && (!pickupDate || !pickupTime || !timing.isDateOpen(pickupDate) || timing.availablePickupTimes.length === 0 || !isTimeValid(pickupDate, pickupTime))}
-                        className={`w-full py-4 px-6 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-opacity-50 ${
-                          pickupOption === 'later' && (!pickupDate || !pickupTime || !timing.isDateOpen(pickupDate) || timing.availablePickupTimes.length === 0 || !isTimeValid(pickupDate, pickupTime))
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600'
-                        }`}
-                      >
-                        Fortsett til Gjennomgang
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column - Order Summary */}
-              <div className="lg:col-span-1">
-                <div className="bg-white rounded-2xl shadow-lg border border-orange-50 overflow-hidden sticky top-6">
-                  <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                      <FontAwesomeIcon icon={faCreditCard} className="w-5 h-5 text-orange-500 mr-3" />
-                      Bestillingsoversikt
-                    </h2>
-                  </div>
-                  <div className="p-6">
-                    <OrderSummary cart={cart} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentStep === 'summary' && (
-            <div className="bg-white rounded-2xl shadow-lg border border-orange-50 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+          {/* Left Column - Form Sections (Scrollable) */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Contact Information Section */}
+            <section id="contact-section" className="bg-white rounded-2xl shadow-lg border border-orange-50 overflow-hidden">
               <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                  <FontAwesomeIcon icon={faCreditCard} className="w-5 h-5 text-orange-500 mr-3" />
-                  Gjennomgå Bestillingen Din
+                  <FontAwesomeIcon icon={faEnvelope} className="w-5 h-5 text-orange-500 mr-3" />
+                  Kontaktinformasjon
                 </h2>
+                <p className="text-sm text-gray-600 mt-1">Vi trenger dine kontaktinfo for å bekrefte bestillingen din</p>
               </div>
               <div className="p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                      <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-orange-500 mr-2" />
-                      Kontaktdetaljer
-                    </h3>
-                    <div className="space-y-2 text-gray-600">
-                      <p><strong>Navn:</strong> {formData?.name}</p>
-                      <p><strong>Telefon:</strong> {formData?.phone}</p>
-                      <p><strong>E-post:</strong> {formData?.email}</p>
-                    </div>
-                    
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 mt-6 flex items-center">
-                      <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-orange-500 mr-2" />
-                      Hentedetaljer
-                    </h3>
-                    <div className="space-y-2 text-gray-600">
-                      <p><strong>Alternativ:</strong> {pickupData?.pickupOption === 'asap' ? 'Så snart som mulig' : 'Planlagt'}</p>
-                      {pickupData?.pickupOption === 'later' && (
-                        <>
-                          <p><strong>Dato:</strong> {pickupData?.pickupDate}</p>
-                          <p><strong>Tid:</strong> {pickupData?.pickupTime}</p>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                <CustomerForm formData={formData} setFormData={setFormData} />
+              </div>
+            </section>
+
+            {/* Pickup Options Section */}
+            <section id="pickup-section" className="bg-white rounded-2xl shadow-lg border border-orange-50 overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                  <FontAwesomeIcon icon={faClock} className="w-5 h-5 text-orange-500 mr-3" />
+                  Hentealternativer
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">Velg hvordan du vil hente bestillingen din</p>
+              </div>
+              <div className="p-6">
+                <PickupOptions 
+                  pickupOption={pickupOption}
+                  setPickupOption={setPickupOption}
+                  isAsapAvailable={timing.isAsapAvailable}
+                  pickupDate={pickupDate}
+                  setPickupDate={setPickupDate}
+                  pickupTime={pickupTime}
+                  setPickupTime={setPickupTime}
+                  availableDates={timing.getAvailableDates()}
+                  availablePickupTimes={timing.availablePickupTimes}
+                  isDateOpen={timing.isDateOpen}
+                  restaurantDetails={restaurantDetails || {}}
+                  isTimeValid={isTimeValid}
+                />
+              </div>
+            </section>
+          </div>
+
+          {/* Right Column - Order Summary (Sticky on Desktop) */}
+          <div className="lg:col-span-1">
+            <div className="lg:sticky lg:top-24">
+              <div className="bg-white rounded-2xl shadow-lg border border-orange-50 overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-50 to-red-50 px-6 py-4 border-b border-orange-100">
+                  <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                    Bestillingsoversikt
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <OrderSummary cart={cart} />
                   
-                  <div>
-                    <OrderSummary cart={cart} />
-                  </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row gap-4 mt-8 pt-6 border-t border-gray-200">
+                  {/* Submit Button */}
                   <button
-                    onClick={() => setCurrentStep('form')}
-                    className="flex-1 px-6 py-3 border border-orange-300 text-orange-600 rounded-xl font-semibold hover:bg-orange-50 transition-colors"
+                    type="button"
+                    onClick={(e) => handleOrderSubmit(e)}
+                    disabled={isSubmitting || cart.items.length === 0 || isOrderSubmitting}
+                    className={`w-full mt-6 py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-opacity-50 ${
+                      isSubmitting || cart.items.length === 0 || isOrderSubmitting
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600'
+                    }`}
                   >
-                    Tilbake til Redigering
-                  </button>
-                  <button
-                    onClick={handleOrderConfirm}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                  >
-                    Bekreft Bestilling
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Simple Order Confirmation Dialog */}
-      {showOrderDialog && (
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-40 backdrop-blur-sm bg-black/30" onClick={handleCloseOrderDialog} />
-          
-          {/* Dialog */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-gray-100 overflow-hidden">
-              {/* Success Header */}
-              <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-8 text-center">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FontAwesomeIcon icon={faCheckCircle} className="w-8 h-8 text-green-500" />
-                </div>
-                <h1 className="text-2xl font-bold text-white mb-2">Bestilling Mottatt!</h1>
-                <p className="text-green-100">Bestillingen din har blitt mottatt av restauranten</p>
-              </div>
-
-              <div className="p-6">
-                <div className="text-center space-y-4">
-                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Hva skjer nå?</h3>
-                    <div className="space-y-2 text-sm text-blue-800">
-                      <p>✓ Restauranten vil bekrefte bestillingen din</p>
-                      {pickupData?.pickupOption === 'asap' ? (
-                        <p>✓ Hentetid vil bli varslet via e-post</p>
-                      ) : (
-                        <p>✓ Bestilling planlagt for {pickupData?.pickupTime}</p>
-                      )}
-                      <p>✓ Du vil motta e-postbekreftelse</p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleCloseOrderDialog}
-                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 px-6 rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-orange-200 focus:ring-opacity-50"
-                  >
-                    Tilbake til Meny
+                    {isSubmitting || isOrderSubmitting ? (
+                      <span className="flex items-center justify-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Legger inn bestilling...
+                      </span>
+                    ) : (
+                      'Bekreft Bestilling'
+                    )}
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        </>
+        </div>
+      </div>
+
+      {/* Order Confirmation Modal - Renders when order is successfully placed */}
+      {/* This modal appears for both ASAP and scheduled orders */}
+      {/* Conditional rendering ensures modal only shows when all required data is available */}
+      {showConfirmation && placedOrder && restaurantName && (
+        <OrderConfirmationModal
+          isOpen={showConfirmation}
+          onClose={handleCloseConfirmation}
+          order={placedOrder}
+          restaurantName={restaurantName}
+        />
       )}
     </div>
   );
-} 
+}
