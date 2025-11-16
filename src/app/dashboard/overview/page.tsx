@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import RestaurantDialog from "@/components/dashboardcomponent/RestaurantDialog";
+import RestaurantDialog from "@/features/overview/components/RestaurantDialog";
 import { useAppSelector } from "@/store/hooks";
-import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Building2, MapPin, Clock, Utensils } from "lucide-react";
 import { Card } from "@/components/ui/card";
 

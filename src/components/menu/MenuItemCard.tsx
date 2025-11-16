@@ -1,7 +1,7 @@
 "use client";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faUtensils } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faUtensils, faStar } from "@fortawesome/free-solid-svg-icons";
 import { NestedMenuItem } from "@/utils/menuTypes";
 
 interface MenuItemCardProps {
@@ -29,6 +29,12 @@ export default function MenuItemCard({ item, onAddToCart }: MenuItemCardProps) {
               <FontAwesomeIcon icon={faUtensils} className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-orange-300 mb-1 sm:mb-2" />
               <p className="text-xs text-orange-500 font-medium">Image Coming Soon</p>
             </div>
+          </div>
+        )}
+        {item.isPopular && (
+          <div className="absolute top-2 right-2 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg z-10 flex items-center">
+            <FontAwesomeIcon icon={faStar} className="w-3 h-3 mr-1" />
+            Populær
           </div>
         )}
         {!item.isAvailable && (

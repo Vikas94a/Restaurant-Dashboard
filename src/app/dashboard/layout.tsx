@@ -1,8 +1,8 @@
 "use client";
 
-import Sidebar from "@/components/Sidebar";
-import QuickActionsBar from "@/components/QuickActionsBar";
-import DashboardHeader from "@/components/DashboardHeader";
+import Sidebar from "@/components/dashboard/Sidebar";
+import QuickActionsBar from "@/components/dashboard/QuickActionsBar";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { AuthGuard } from "@/providers/guards/AuthGuard";
 import { ProfileCompletionGuard } from "@/providers/guards/ProfileCompletionGuard";
 import { useGlobalOrderListener } from "@/hooks/useGlobalOrderListener";

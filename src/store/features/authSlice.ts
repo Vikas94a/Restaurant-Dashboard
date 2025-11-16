@@ -4,7 +4,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { doc, getDoc, collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
 import { onAuthStateChanged, setPersistence, browserLocalPersistence, browserSessionPersistence, User as FirebaseUser } from "firebase/auth";
-import { Restaurant } from "@/components/dashboardcomponent/RestaurantDialog";
+import { Restaurant } from "@/features/overview/components/RestaurantDialog";
 import { toast } from "sonner";
 import { AuthOrchestrator, TimerManager, TIMER_CONSTANTS } from "@/lib/authOrchestration";
 // import { signInWithEmailAndPassword, signOut } from 'firebase/auth';

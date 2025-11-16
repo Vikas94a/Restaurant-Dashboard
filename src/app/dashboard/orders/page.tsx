@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateOrderStatus } from "@/store/features/orderSlice";
 import { Order } from '@/types/checkout';
-import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faReceipt, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "sonner";
 import { RootState } from "@/store/store";
 import { useRouter } from "next/navigation";
 import { useSoundNotification } from "@/providers/SoundNotificationProvider";
-import OrderNavBar from '@/components/Orders/OrderNavBar';
-import { OrderList, OrderStats } from '@/features/orders/components';
+import { OrderList, OrderStats, OrderNavBar } from '@/features/orders/components';
 import { useOrderTimers } from '@/features/orders/hooks/useOrderTimers';
 import { BackendOrderStatus, OrderTab, OrderStats as OrderStatsType } from '@/features/orders/types';
 

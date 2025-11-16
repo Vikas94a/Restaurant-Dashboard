@@ -7,7 +7,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { ReservationService } from '@/services/reservationService';
 import { ReservationSettings, AvailabilityResponse, CreateReservationRequest } from '@/types/reservation';
 import { RestaurantDetails } from '@/types/checkout';
-import { useReservationTiming } from '@/hooks/useReservationTiming';
+import { useReservationTiming } from '@/features/reservations/hooks/useReservationTiming';
 import ReservationCalendar from '@/components/reservation/ReservationCalendar';
 import ReservationTimeSelector from '@/components/reservation/ReservationTimeSelector';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -160,8 +160,44 @@ export default function ReservationPage() {
       return;
     }
 
+    // Validate required fields
     if (!customerName || !customerEmail || !customerPhone) {
       toast.error('Vennligst fyll ut alle påkrevde felt');
+      // Scroll to first empty field
+      if (!customerName) {
+        document.getElementById('customer-name')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('customer-name')?.focus();
+      } else if (!customerEmail) {
+        document.getElementById('customer-email')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('customer-email')?.focus();
+      } else if (!customerPhone) {
+        document.getElementById('customer-phone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('customer-phone')?.focus();
+      }
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerEmail)) {
+      toast.error('Vennligst oppgi en gyldig e-postadresse');
+      document.getElementById('customer-email')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('customer-email')?.focus();
+      return;
+    }
+
+    // Validate phone number (only numbers, spaces, +, -, parentheses)
+    const cleanedPhone = customerPhone.replace(/[\s\+\-\(\)]/g, '');
+    if (!/^\d+$/.test(cleanedPhone)) {
+      toast.error('Telefonnummer kan bare inneholde tall');
+      document.getElementById('customer-phone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('customer-phone')?.focus();
+      return;
+    }
+    if (cleanedPhone.length < 8) {
+      toast.error('Telefonnummer må være minst 8 siffer');
+      document.getElementById('customer-phone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById('customer-phone')?.focus();
       return;
     }
 
@@ -443,13 +479,27 @@ export default function ReservationPage() {
                     </label>
                     <input
                       type="email"
+                      id="customer-email"
                       value={customerEmail}
-                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setCustomerEmail(value);
+                      }}
                       disabled={isLoading}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white shadow-sm"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white shadow-sm ${
+                        customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300'
+                      }`}
                       placeholder="your@email.com"
                       required
                     />
+                    {customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail) && (
+                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                        <FontAwesomeIcon icon={faTimes} className="w-3 h-3 mr-1" />
+                        Vennligst oppgi en gyldig e-postadresse
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -458,13 +508,49 @@ export default function ReservationPage() {
                     </label>
                     <input
                       type="tel"
+                      id="customer-phone"
                       value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Only allow numbers, spaces, +, -, and parentheses
+                        const phoneRegex = /^[\d\s\+\-\(\)]*$/;
+                        if (phoneRegex.test(value)) {
+                          setCustomerPhone(value);
+                        }
+                      }}
+                      inputMode="numeric"
                       disabled={isLoading}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white shadow-sm"
-                      placeholder="+47 47 00 00 00"
+                      className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed bg-white shadow-sm ${
+                        customerPhone && (() => {
+                          const cleaned = customerPhone.replace(/[\s\+\-\(\)]/g, '');
+                          return !/^\d+$/.test(cleaned) || (cleaned.length > 0 && cleaned.length < 8);
+                        })()
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300'
+                      }`}
+                      placeholder="+47 123 45 678 (kun tall)"
                       required
                     />
+                    {customerPhone && (() => {
+                      const cleaned = customerPhone.replace(/[\s\+\-\(\)]/g, '');
+                      if (!/^\d+$/.test(cleaned)) {
+                        return (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <FontAwesomeIcon icon={faTimes} className="w-3 h-3 mr-1" />
+                            Telefonnummer kan bare inneholde tall
+                          </p>
+                        );
+                      }
+                      if (cleaned.length > 0 && cleaned.length < 8) {
+                        return (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <FontAwesomeIcon icon={faTimes} className="w-3 h-3 mr-1" />
+                            Telefonnummer må være minst 8 siffer
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   <div className="md:col-span-2">

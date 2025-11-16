@@ -1,8 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import  RestaurantMenu  from "@/components/RestaurantMenu";
-import Cart from "@/components/Cart";
+import RestaurantMenu from "@/components/customer/RestaurantMenu";
+import Cart from "@/components/customer/Cart";
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faShoppingCart } from "@fortawesome/free-solid-svg-icons";

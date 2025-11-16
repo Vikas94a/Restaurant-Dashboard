@@ -1,6 +1,6 @@
 "use client";
 
-import ReusableExtrasManager from "./menu/ReusableExtrasManager";
+import ReusableExtrasManager from "@/features/menu/components/ReusableExtrasManager";
 import { ReusableExtraGroup } from "@/utils/menuTypes";
 
 interface ChoicesAndAddonsProps {

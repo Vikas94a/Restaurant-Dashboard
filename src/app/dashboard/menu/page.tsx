@@ -1,18 +1,15 @@
 "use client";
 
-import { useState } from 'react';
-import { MenuEditor } from '@/components/dashboardcomponent/MenuEditor';
 import { useAppSelector } from '@/store/hooks';
+import MenuManager from '@/features/menu/components/MenuManager';
 
 export default function MenuPage() {
-  const [isLoading] = useState(false);
   const { restaurantDetails } = useAppSelector((state) => state.auth);
 
   if (!restaurantDetails?.restaurantId) {
     return (
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Menu Management</h1>
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+      <div className="h-full flex items-center justify-center p-6">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 max-w-md">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
@@ -31,15 +28,8 @@ export default function MenuPage() {
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Menu Management</h1>
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-        </div>
-      ) : (
-        <MenuEditor restaurantId={restaurantDetails.restaurantId} />
-      )}
+    <div className="h-[calc(100vh-10rem)] w-full overflow-hidden">
+      <MenuManager restaurantId={restaurantDetails.restaurantId} />
     </div>
   );
 }

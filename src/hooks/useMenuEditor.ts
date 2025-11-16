@@ -34,6 +34,7 @@ interface ConfirmDialog {
 
 export interface MenuEditorResult {
   categories: Category[];
+  setCategories: React.Dispatch<React.SetStateAction<Category[]>>;
   loading: boolean;
   loadingExtras: boolean;
   error: string | null;
@@ -201,6 +202,7 @@ export function useMenuEditor(restaurantId: string): MenuEditorResult {
 
   return {
     categories,
+    setCategories,
     loading,
     loadingExtras,
     error,

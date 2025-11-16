@@ -11,7 +11,7 @@ import {
     type WeatherDay,
     type CityEvent,
     type SimplifiedCategoryData
-} from "@/components/dashboardcomponent/AIInsight";
+} from "@/features/ai-insight/components";
 
 export default function AIInsightPage() {
     const restaurantDetails = useAppSelector((state) => state.auth.restaurantDetails);

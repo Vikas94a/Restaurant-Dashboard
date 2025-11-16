@@ -12,7 +12,7 @@ import CustomerForm from "@/components/checkout/CustomerForm";
 import OrderSummary from "@/components/checkout/OrderSummary";
 import PickupOptions from "@/components/checkout/PickupOptions";
 import { CustomerFormData } from "@/types/checkout";
-import { useRestaurantTiming } from '@/hooks/useRestaurantTiming';
+import { useRestaurantTiming } from '@/features/settings/hooks/useRestaurantTiming';
 import { useOrderSubmission } from '@/hooks/useOrderSubmission';
 import { toast } from "sonner";
 import { useDispatch } from "react-redux";
@@ -149,8 +149,47 @@ export default function CheckoutPage() {
         toast.error('Vennligst fyll ut alle kontaktdetaljer');
         isSubmittingRef.current = false;
         setIsOrderSubmitting(false);
-        // Scroll to form section
-        document.getElementById('contact-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Scroll to first empty field
+        if (!formData.name.trim()) {
+          document.getElementById('name')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          document.getElementById('name')?.focus();
+        } else if (!formData.email.trim()) {
+          document.getElementById('email')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          document.getElementById('email')?.focus();
+        } else if (!formData.phone.trim()) {
+          document.getElementById('phone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          document.getElementById('phone')?.focus();
+        }
+        return;
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        toast.error('Vennligst oppgi en gyldig e-postadresse');
+        isSubmittingRef.current = false;
+        setIsOrderSubmitting(false);
+        document.getElementById('email')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('email')?.focus();
+        return;
+      }
+
+      // Validate phone number (only numbers, spaces, +, -, parentheses)
+      const cleanedPhone = formData.phone.replace(/[\s\+\-\(\)]/g, '');
+      if (!/^\d+$/.test(cleanedPhone)) {
+        toast.error('Telefonnummer kan bare inneholde tall');
+        isSubmittingRef.current = false;
+        setIsOrderSubmitting(false);
+        document.getElementById('phone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('phone')?.focus();
+        return;
+      }
+      if (cleanedPhone.length < 8) {
+        toast.error('Telefonnummer må være minst 8 siffer');
+        isSubmittingRef.current = false;
+        setIsOrderSubmitting(false);
+        document.getElementById('phone')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('phone')?.focus();
         return;
       }
 
@@ -298,7 +337,9 @@ export default function CheckoutPage() {
                 <p className="text-sm text-gray-600 mt-1">Vi trenger dine kontaktinfo for å bekrefte bestillingen din</p>
               </div>
               <div className="p-6">
-                <CustomerForm formData={formData} setFormData={setFormData} />
+                <div id="contact-section">
+                  <CustomerForm formData={formData} setFormData={setFormData} />
+                </div>
               </div>
             </section>
 

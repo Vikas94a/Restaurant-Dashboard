@@ -1,14 +1,93 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUser, faPhone, faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import { faUser, faPhone, faEnvelope, faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { CustomerFormData } from '@/types/checkout';
 
 interface CustomerFormProps {
   formData: CustomerFormData;
   setFormData: React.Dispatch<React.SetStateAction<CustomerFormData>>;
+  errors?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  };
+  onValidationChange?: (isValid: boolean) => void;
 }
 
-const CustomerForm: React.FC<CustomerFormProps> = ({ formData, setFormData }) => {
+// Email validation regex
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Phone validation - only numbers, spaces, +, -, and parentheses
+const phoneRegex = /^[\d\s\+\-\(\)]+$/;
+
+const CustomerForm: React.FC<CustomerFormProps> = ({ formData, setFormData, errors, onValidationChange }) => {
+  const [localErrors, setLocalErrors] = useState<{ email?: string; phone?: string }>({});
+
+  // Validate email format
+  const validateEmail = (email: string): string | undefined => {
+    if (!email.trim()) {
+      return 'E-postadresse er påkrevd';
+    }
+    if (!emailRegex.test(email)) {
+      return 'Vennligst oppgi en gyldig e-postadresse';
+    }
+    return undefined;
+  };
+
+  // Validate phone number
+  const validatePhone = (phone: string): string | undefined => {
+    if (!phone.trim()) {
+      return 'Telefonnummer er påkrevd';
+    }
+    // Remove spaces, +, -, and parentheses for validation
+    const cleanedPhone = phone.replace(/[\s\+\-\(\)]/g, '');
+    if (!/^\d+$/.test(cleanedPhone)) {
+      return 'Telefonnummer kan bare inneholde tall';
+    }
+    if (cleanedPhone.length < 8) {
+      return 'Telefonnummer må være minst 8 siffer';
+    }
+    return undefined;
+  };
+
+  // Handle email change with validation
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFormData({ ...formData, email: value });
+    
+    const error = validateEmail(value);
+    setLocalErrors(prev => ({ ...prev, email: error }));
+    
+    // Notify parent of validation status
+    if (onValidationChange) {
+      const phoneError = localErrors.phone || validatePhone(formData.phone);
+      onValidationChange(!error && !phoneError);
+    }
+  };
+
+  // Handle phone change with validation
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow numbers, spaces, +, -, and parentheses
+    if (value === '' || phoneRegex.test(value)) {
+      setFormData({ ...formData, phone: value });
+      
+      const error = validatePhone(value);
+      setLocalErrors(prev => ({ ...prev, phone: error }));
+      
+      // Notify parent of validation status
+      if (onValidationChange) {
+        const emailError = localErrors.email || validateEmail(formData.email);
+        onValidationChange(!error && !emailError);
+      }
+    }
+  };
+
+  // Combine external errors with local errors
+  const displayErrors = {
+    email: errors?.email || localErrors.email,
+    phone: errors?.phone || localErrors.phone,
+  };
   return (
     <div className="space-y-6">
       {/* Form Header */}
@@ -53,15 +132,28 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ formData, setFormData }) =>
             type="tel"
             id="phone"
             value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white transition-all duration-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 focus:outline-none placeholder-gray-400 hover:border-gray-300"
-            placeholder="Skriv ditt telefonnummer"
+            onChange={handlePhoneChange}
+            inputMode="numeric"
+            className={`w-full px-4 py-3 pl-12 rounded-xl border-2 bg-white transition-all duration-200 focus:ring-4 focus:ring-orange-100 focus:outline-none placeholder-gray-400 hover:border-gray-300 ${
+              displayErrors.phone 
+                ? 'border-red-500 focus:border-red-500' 
+                : 'border-gray-200 focus:border-orange-500'
+            }`}
+            placeholder="Skriv ditt telefonnummer (kun tall)"
             required
           />
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-gray-400 group-focus-within:text-orange-500 transition-colors duration-200" />
+            <FontAwesomeIcon icon={faPhone} className={`w-4 h-4 transition-colors duration-200 ${
+              displayErrors.phone ? 'text-red-500' : 'text-gray-400 group-focus-within:text-orange-500'
+            }`} />
           </div>
         </div>
+        {displayErrors.phone && (
+          <div className="mt-1 flex items-center text-red-600 text-sm">
+            <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3 mr-1" />
+            <span>{displayErrors.phone}</span>
+          </div>
+        )}
       </div>
 
       {/* Email Field */}
@@ -75,15 +167,27 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ formData, setFormData }) =>
             type="email"
             id="email"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="w-full px-4 py-3 pl-12 rounded-xl border-2 border-gray-200 bg-white transition-all duration-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 focus:outline-none placeholder-gray-400 hover:border-gray-300"
+            onChange={handleEmailChange}
+            className={`w-full px-4 py-3 pl-12 rounded-xl border-2 bg-white transition-all duration-200 focus:ring-4 focus:ring-orange-100 focus:outline-none placeholder-gray-400 hover:border-gray-300 ${
+              displayErrors.email 
+                ? 'border-red-500 focus:border-red-500' 
+                : 'border-gray-200 focus:border-orange-500'
+            }`}
             placeholder="Skriv din e-postadresse"
             required
           />
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-gray-400 group-focus-within:text-orange-500 transition-colors duration-200" />
+            <FontAwesomeIcon icon={faEnvelope} className={`w-4 h-4 transition-colors duration-200 ${
+              displayErrors.email ? 'text-red-500' : 'text-gray-400 group-focus-within:text-orange-500'
+            }`} />
           </div>
         </div>
+        {displayErrors.email && (
+          <div className="mt-1 flex items-center text-red-600 text-sm">
+            <FontAwesomeIcon icon={faExclamationCircle} className="w-3 h-3 mr-1" />
+            <span>{displayErrors.email}</span>
+          </div>
+        )}
       </div>
 
       {/* Special Instructions Field */}
@@ -132,3 +236,5 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ formData, setFormData }) =>
 };
 
 export default CustomerForm;
+
+

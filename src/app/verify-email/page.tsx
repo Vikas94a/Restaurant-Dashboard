@@ -8,7 +8,7 @@ import { auth } from "@/lib/firebase";
 import { sendEmailVerification } from "firebase/auth";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import LogIn from "@/components/LogIn";
+import LogIn from "@/components/layout/LogIn";
 
 export default function VerifyEmail() {
   const router = useRouter();

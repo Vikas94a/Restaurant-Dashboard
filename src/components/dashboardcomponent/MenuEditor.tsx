@@ -36,7 +36,7 @@ import {
 } from "@/utils/menuTypes";
 import DraggableCategoryItem from "./menu/DraggableCategoryItem";
 import ConfirmationDialog from "./menu/ConfirmationDialog";
-import ReusableExtrasManager from "./menu/ReusableExtrasManager";
+import ReusableExtrasManager from "@/features/menu/components/ReusableExtrasManager";
 import { toast } from "sonner";
 import ErrorBanner from "./menu/ErrorBanner";
 import { findCategoryIndex, findItemIndex, getCategoryId, validateIds } from "@/utils/menuHelpers";

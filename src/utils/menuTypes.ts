@@ -46,6 +46,10 @@ export interface NestedMenuItem extends BaseMenuItem {
   subItems?: NestedMenuItem[];
   itemType?: 'item' | 'modifier';
   isEditing?: boolean;
+  availability?: {
+    status: 'available' | 'unavailable_today' | 'unavailable_indefinite' | 'unavailable_until';
+    until: string | null;
+  };
 }
 
 // Menu category containing multiple items

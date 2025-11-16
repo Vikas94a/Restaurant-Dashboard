@@ -1,13 +1,13 @@
 "use client"; // Enables client-side rendering in Next.js
 
 import { useAppSelector } from "@/store/hooks";
-import RestaurantDetails from "@/components/dashboardcomponent/RestaurantDetails";
-import RestaurantTiming from "@/components/dashboardcomponent/RestaurantTiming";
+import RestaurantDetails from "@/features/settings/components/RestaurantDetails";
+import RestaurantTiming from "@/features/settings/components/RestaurantTiming";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faInfoCircle, faClock } from "@fortawesome/free-solid-svg-icons";
-import { LoadingSpinner } from "@/components/dashboardcomponent/LoadingSpinner";
-import { SetupHeader } from "@/components/dashboardcomponent/SetupHeader";
-import { useRestaurantSetup } from "@/hooks/useRestaurantSetup";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { SetupHeader } from "@/features/overview/components/SetupHeader";
+import { useRestaurantSetup } from "@/features/settings/hooks/useRestaurantSetup";
 import { useEffect } from "react";
 import { useAppDispatch } from "@/store/hooks";
 import { fetchRestaurantData } from "@/store/features/authSlice";

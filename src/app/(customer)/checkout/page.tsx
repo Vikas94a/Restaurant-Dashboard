@@ -10,7 +10,7 @@ import { CustomerFormData, RestaurantDetails } from '@/types/checkout';
 import CustomerForm from '@/components/checkout/CustomerForm';
 import OrderSummary from '@/components/checkout/OrderSummary';
 import PickupOptions from '@/components/checkout/PickupOptions';
-import { useRestaurantTiming } from '@/hooks/useRestaurantTiming';
+import { useRestaurantTiming } from '@/features/settings/hooks/useRestaurantTiming';
 import { useOrderSubmission } from '@/hooks/useOrderSubmission';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheckCircle } from '@fortawesome/free-solid-svg-icons';

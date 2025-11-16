@@ -4,7 +4,7 @@ import { ReduxProvider } from "@/providers/ReduxProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { SoundNotificationProvider } from "@/providers/SoundNotificationProvider";
 import { Toaster } from "@/components/ui/sonner";
-import NavBar from "@/components/NavBar";
+import NavBar from "@/components/layout/NavBar";
 import { useState, useEffect } from 'react';
 import { SessionWarningModal } from '@/components/auth/SessionWarningModal';
 import { usePathname } from 'next/navigation';

@@ -9,7 +9,7 @@ import { faCalendarAlt, faLink, faCopy, faCheck, faUsers, faClock, faUtensils, f
 import { toast } from 'sonner';
 
 import { ReservationSettings } from '@/types/reservation';
-import ReservationList from '@/components/dashboardcomponent/reservations/ReservationList';
+import ReservationList from '@/features/reservations/components/ReservationList';
 
 export default function ReservationsPage() {
   const { user, restaurantDetails } = useAppSelector((state) => state.auth);
