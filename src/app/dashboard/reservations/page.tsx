@@ -9,7 +9,7 @@ import { faCalendarAlt, faLink, faCopy, faCheck, faUsers, faClock, faUtensils, f
 import { toast } from 'sonner';
 
 import { ReservationSettings } from '@/types/reservation';
-import ReservationList from '@/features/reservations/components/ReservationList';
+import { ReservationCalendar } from '@/features/reservations/components';
 
 export default function ReservationsPage() {
   const { user, restaurantDetails } = useAppSelector((state) => state.auth);
@@ -17,7 +17,7 @@ export default function ReservationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'settings' | 'reservations'>('settings');
+  const [activeTab, setActiveTab] = useState<'settings' | 'reservations'>('reservations');
 
   useEffect(() => {
     loadReservationSettings();
@@ -121,17 +121,6 @@ export default function ReservationsPage() {
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
             <button
-              onClick={() => setActiveTab('settings')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'settings'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <FontAwesomeIcon icon={faCalendarAlt} className="w-4 h-4 mr-2" />
-              Settings
-            </button>
-            <button
               onClick={() => setActiveTab('reservations')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'reservations'
@@ -142,11 +131,26 @@ export default function ReservationsPage() {
               <FontAwesomeIcon icon={faList} className="w-4 h-4 mr-2" />
               Reservations
             </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'settings'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <FontAwesomeIcon icon={faCalendarAlt} className="w-4 h-4 mr-2" />
+              Settings
+            </button>
           </nav>
         </div>
       </div>
 
-              {activeTab === 'settings' ? (
+              {activeTab === 'reservations' ? (
+      <div className="space-y-6">
+        <ReservationCalendar />
+      </div>
+    ) : activeTab === 'settings' ? (
           !settings ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
@@ -348,17 +352,7 @@ export default function ReservationsPage() {
           </div>
         </div>
       )
-    ) : (
-      <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <FontAwesomeIcon icon={faList} className="w-5 h-5 text-orange-500 mr-2" />
-            Manage Reservations
-          </h2>
-          <ReservationList />
-        </div>
-      </div>
-    )}
+    ) : null}
     </div>
   );
 } 
