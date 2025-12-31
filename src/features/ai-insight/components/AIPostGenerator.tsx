@@ -1,8 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useAIPostGenerator, MarketingPost, RestaurantDetails } from './AIPostGenerator/useAIPostGenerator';
 import type { WeatherDay } from "./weatherData";
 import type { CityEvent } from "./events";
+import { FacebookPostService } from "@/services/facebookPostService";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFacebook } from "@fortawesome/free-brands-svg-icons";
+import type { IconProp } from "@fortawesome/fontawesome-svg-core";
 
 // Types moved to hook
 
@@ -63,12 +68,55 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
         onPostGenerated
     });
 
+    // State for tracking Facebook posting
+    const [postingStates, setPostingStates] = useState<{ [postId: string]: { loading: boolean; success: boolean; error: string | null } }>({});
+
     // Manual generation only - no auto-generation
 
     // Generate 2 days of posts automatically (first and third day)
     const regeneratePosts = () => {
         // In this simplified refactor, just call generate again
         generatePosts();
+    };
+
+    // Handle posting to Facebook
+    const handlePostToFacebook = async (post: MarketingPost) => {
+        // Set posting state to loading
+        setPostingStates(prev => ({
+            ...prev,
+            [post.id]: { loading: true, success: false, error: null }
+        }));
+
+        try {
+            // Post to Facebook using the service
+            await FacebookPostService.postMarketingPost({
+                content: post.content,
+                hashtags: post.hashtags,
+                callToAction: post.callToAction,
+                imageUrl: undefined // TODO: Add image support if needed
+            });
+
+            // Set success state
+            setPostingStates(prev => ({
+                ...prev,
+                [post.id]: { loading: false, success: true, error: null }
+            }));
+
+            // Clear success state after 3 seconds
+            setTimeout(() => {
+                setPostingStates(prev => {
+                    const newState = { ...prev };
+                    delete newState[post.id];
+                    return newState;
+                });
+            }, 3000);
+        } catch (error: any) {
+            // Set error state
+            setPostingStates(prev => ({
+                ...prev,
+                [post.id]: { loading: false, success: false, error: error.message || 'Failed to post to Facebook' }
+            }));
+        }
     };
 
     return (
@@ -481,6 +529,56 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
                                         <p className="text-green-600 font-medium">{post.callToAction}</p>
                                     </div>
 
+                                    {/* Post to Facebook Button */}
+                                    <div className="mt-6 pt-4 border-t border-gray-200">
+                                        {postingStates[post.id]?.success ? (
+                                            <div className="flex items-center gap-2 text-green-600 font-medium">
+                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                </svg>
+                                                <span>Posted to Facebook successfully!</span>
+                                            </div>
+                                        ) : postingStates[post.id]?.error ? (
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex items-center gap-2 text-red-600 font-medium">
+                                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                    </svg>
+                                                    <span>Error posting to Facebook</span>
+                                                </div>
+                                                <p className="text-sm text-red-500">{postingStates[post.id].error}</p>
+                                                <button
+                                                    onClick={() => handlePostToFacebook(post)}
+                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 inline-flex items-center gap-2"
+                                                >
+                                                    <FontAwesomeIcon icon={faFacebook as IconProp} />
+                                                    <span>Try Again</span>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => handlePostToFacebook(post)}
+                                                disabled={postingStates[post.id]?.loading}
+                                                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 inline-flex items-center gap-2 font-medium"
+                                            >
+                                                {postingStates[post.id]?.loading ? (
+                                                    <>
+                                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                        </svg>
+                                                        <span>Posting to Facebook...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <FontAwesomeIcon icon={faFacebook as IconProp} />
+                                                        <span>Post to Facebook</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
+
                                     {/* Image Recommendations */}
                                     {post.imageRecommendations && (
                                         <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -691,6 +789,56 @@ export const AIPostGenerator: React.FC<AIPostGeneratorProps> = ({
                                 <div>
                                     <h5 className="font-semibold text-gray-800 mb-2">Call to Action:</h5>
                                     <p className="text-green-600 font-medium">{post.callToAction}</p>
+                                </div>
+
+                                {/* Post to Facebook Button */}
+                                <div className="mt-6 pt-4 border-t border-gray-200">
+                                    {postingStates[post.id]?.success ? (
+                                        <div className="flex items-center gap-2 text-green-600 font-medium">
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                            </svg>
+                                            <span>Posted to Facebook successfully!</span>
+                                        </div>
+                                    ) : postingStates[post.id]?.error ? (
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex items-center gap-2 text-red-600 font-medium">
+                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                </svg>
+                                                <span>Error posting to Facebook</span>
+                                            </div>
+                                            <p className="text-sm text-red-500">{postingStates[post.id].error}</p>
+                                            <button
+                                                onClick={() => handlePostToFacebook(post)}
+                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 inline-flex items-center gap-2"
+                                            >
+                                                <FontAwesomeIcon icon={faFacebook as IconProp} />
+                                                <span>Try Again</span>
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => handlePostToFacebook(post)}
+                                            disabled={postingStates[post.id]?.loading}
+                                            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 inline-flex items-center gap-2 font-medium"
+                                        >
+                                            {postingStates[post.id]?.loading ? (
+                                                <>
+                                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    <span>Posting to Facebook...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FontAwesomeIcon icon={faFacebook as IconProp} />
+                                                    <span>Post to Facebook</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Image Recommendations */}

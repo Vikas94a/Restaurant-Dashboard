@@ -21,11 +21,13 @@ import {
   faBrain,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
+import { faFacebook } from "@fortawesome/free-brands-svg-icons";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { logout, signOutUser } from "@/store/features/authSlice";
 import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@headlessui/react";
 import { useSoundNotification } from "@/providers/SoundNotificationProvider";
+import type { IconProp } from "@fortawesome/fontawesome-svg-core";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -113,6 +115,12 @@ const Sidebar = ({ isOpen = true, onToggle, isMobile = false, onCollapseChange }
           label: "AI Insight",
           icon: faBrain,
           color: "purple"
+        },
+        {
+          href: "/dashboard/facebook",
+          label: "Facebook",
+          icon: faFacebook,
+          color: "blue"
         }
       ]
     },
@@ -324,7 +332,7 @@ const Sidebar = ({ isOpen = true, onToggle, isMobile = false, onCollapseChange }
                         >
                           <div className="relative flex-shrink-0">
                             <FontAwesomeIcon
-                              icon={item.icon}
+                              icon={item.icon as IconProp}
                               className={`w-5 h-5 transition-colors duration-150 ease-in-out ${getIconColor(item.color, isActiveItem)}`}
                               aria-hidden="true"
                             />

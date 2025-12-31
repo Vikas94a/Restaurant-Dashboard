@@ -4,6 +4,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getStorage } from "firebase/storage";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 // Firebase config from environment variables
 const firebaseConfig = {
@@ -27,6 +28,8 @@ const app = typeof window !== 'undefined'
 export const db = typeof window !== 'undefined' ? getFirestore(app) : (null as unknown as ReturnType<typeof getFirestore>);
 export const auth = typeof window !== 'undefined' ? getAuth(app) : (null as unknown as ReturnType<typeof getAuth>);
 export const storage = typeof window !== 'undefined' ? getStorage(app) : (null as unknown as ReturnType<typeof getStorage>);
+export const functions = typeof window !== 'undefined' ? getFunctions(app, 'europe-west1') : (null as unknown as ReturnType<typeof getFunctions>);
+export { httpsCallable };
 
 // Optional: export analytics if supported
 if (typeof window !== 'undefined') {

@@ -8,7 +8,11 @@ import { Resend } from 'resend';
 // Define the secret
 const resendApiKey = defineSecret('RESEND_API_KEY');
 
+// Initialize Admin SDK - uses default service account automatically
 admin.initializeApp();
+
+// Export Facebook functions
+export * from './facebook';
 
 // Trigger: enqueue feedback email one minute after pickup time on acceptance
 export const onOrderAccepted = onDocumentUpdated(
