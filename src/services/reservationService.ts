@@ -21,7 +21,7 @@ import {
   ReservationConflict,
   ReservationStatus
 } from '@/types/reservation';
-import { sendReservationConfirmationEmail } from './email/emailService';
+import { sendReservationConfirmationEmail, sendReservationRejectionEmail } from './email/emailService';
 
 export class ReservationService {
     // Get restaurant reservation settings
@@ -262,6 +262,13 @@ export class ReservationService {
     notes?: string
   ): Promise<void> {
     try {
+      // Fetch reservation data BEFORE updating to ensure we have complete data for emails
+      const reservationBeforeUpdate = await this.getReservationById(restaurantId, reservationId);
+      
+      if (!reservationBeforeUpdate) {
+        throw new Error('Reservation not found');
+      }
+
       const reservationRef = doc(db, 'restaurants', restaurantId, 'reservations', reservationId);
       const updateData: Partial<Reservation> = {
         status,
@@ -280,16 +287,51 @@ export class ReservationService {
 
       await updateDoc(reservationRef, updateData);
 
+      // Prepare reservation data with updated status for email
+      const reservationForEmail = {
+        ...reservationBeforeUpdate,
+        status,
+        notes: notes || reservationBeforeUpdate.notes,
+        ...(status === 'confirmed' && { confirmedAt: updateData.confirmedAt }),
+        ...(status === 'cancelled' && { cancelledAt: updateData.cancelledAt })
+      };
+
       // Send confirmation email when reservation is confirmed
       if (status === 'confirmed') {
         try {
-          const reservation = await this.getReservationById(restaurantId, reservationId);
-          if (reservation) {
-            await sendReservationConfirmationEmail(reservation);
-            console.log('Reservation confirmation email sent successfully');
+          if (reservationForEmail.customerDetails?.email) {
+            console.log('Sending confirmation email to:', reservationForEmail.customerDetails.email);
+            const emailResult = await sendReservationConfirmationEmail(reservationForEmail);
+            if (emailResult) {
+              console.log('Reservation confirmation email sent successfully');
+            } else {
+              console.error('Reservation confirmation email returned null - email may have failed');
+            }
+          } else {
+            console.warn('Cannot send confirmation email: customer email not found in reservation');
           }
         } catch (emailError) {
           console.error('Error sending confirmation email:', emailError);
+          // Don't throw the error - reservation status update should still succeed
+        }
+      }
+      
+      // Send rejection email when reservation is cancelled
+      if (status === 'cancelled') {
+        try {
+          if (reservationForEmail.customerDetails?.email) {
+            console.log('Sending rejection email to:', reservationForEmail.customerDetails.email);
+            const emailResult = await sendReservationRejectionEmail(reservationForEmail);
+            if (emailResult) {
+              console.log('Reservation rejection email sent successfully');
+            } else {
+              console.error('Reservation rejection email returned null - email may have failed');
+            }
+          } else {
+            console.warn('Cannot send rejection email: customer email not found in reservation');
+          }
+        } catch (emailError) {
+          console.error('Error sending rejection email:', emailError);
           // Don't throw the error - reservation status update should still succeed
         }
       }

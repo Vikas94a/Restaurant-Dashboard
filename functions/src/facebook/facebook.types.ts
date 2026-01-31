@@ -7,3 +7,4 @@ export interface PostImageRequest {
   caption?: string;
 }
 
+

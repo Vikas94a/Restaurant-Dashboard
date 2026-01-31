@@ -72,3 +72,6 @@ export function fromLegacyAvailability(isAvailable: boolean): AvailabilityState 
   };
 }
 
+
+
+

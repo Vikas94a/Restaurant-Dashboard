@@ -21,3 +21,6 @@ export function getCurrencyCode(): string {
   return 'NOK';
 }
 
+
+
+

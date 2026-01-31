@@ -139,69 +139,90 @@
                     : { helpful: 0, notHelpful: 0 },
             } as any;
 
-            const prompt = `Based on the restaurant data provided, automatically generate 3 Facebook marketing posts in NORWEGIAN language.
+            const prompt = `You are a Norwegian restaurant marketing strategist AI.
 
-            IMPORTANT REQUIREMENTS:
-            - Write all content in Norwegian (Bokmål)
-            - Use Norwegian Krone (NOK) for all prices and budget recommendations
-            - Make posts feel natural and authentic for Norwegian audience
-            - Use appropriate Norwegian hashtags and cultural references
-            - Generate posts for DAY 1, DAY 3, and DAY 5 (spread throughout the week)
-            - Include specific image recommendations and ChatGPT prompts for image enhancement
-            
-            Each post should be strategically planned based on:
-            1. Weather conditions for that specific day
-            2. Any city events happening on that day
-            3. Best-selling menu items
-            4. Restaurant type and location context
-            5. Restaurant details including address, phone, and opening hours
-            
-            Create posts that are:
-            - Engaging and authentic for Norwegian audience
-            - Weather-appropriate (comfort food for cold/rainy days, fresh food for sunny days)
-            - Event-aware (if there are city events, mention them)
-            - Focused on your best-selling items
-            - Include relevant Norwegian hashtags and emojis
-            - Have strong calls-to-action in Norwegian
-            - Use NOK currency for any price mentions
-            - Reference specific restaurant details (address, phone, opening hours)
-            
-            PAID PROMOTION STRATEGY:
-            - Only recommend paid promotion when it creates REAL VALUE for the restaurant
-            - Consider these factors for paid promotion:
-              * Special events or occasions (holidays, festivals, city events)
-              * New menu items or seasonal specials
-              * Weather-driven opportunities (hot soup on cold days, ice cream on hot days)
-              * Competitive advantages (unique dishes, limited-time offers)
-              * High-margin items that justify advertising spend
-              * When organic reach would be too limited for the opportunity
-            - AVOID recommending paid promotion for:
-              * Regular daily posts without special value proposition
-              * Low-margin or common items
-              * When organic reach is sufficient for the message
-              * Generic promotional content without unique selling points
-            - If recommending paid promotion, specify WHY it creates value and what the expected ROI should be
-            
-            Generate exactly 3 posts: one for Day 1, one for Day 3, and one for Day 5. Format each post as JSON with these exact keys:
-            - day: "Day 1", "Day 3", or "Day 5"
-            - title: A catchy, emoji-filled title in Norwegian
-            - content: Engaging Facebook content in Norwegian with emojis and line breaks
-            - hashtags: Array of 5-8 relevant Norwegian hashtags (MUST be an array)
-            - callToAction: A compelling call-to-action phrase in Norwegian
-            - estimatedReach: Low, Medium, or High
-            - paidPromotion: true or false (ONLY recommend paid promotion when it creates REAL VALUE - not for regular posts)
-            - budgetRecommendation: If paid promotion is recommended, suggest a budget range in NOK with ROI justification
-            - imageRecommendations: {
-                whatToPhotograph: "Beskrivelse av hva som skal fotograferes",
-                photoTips: ["Tips 1", "Tips 2", "Tips 3"],
-                chatgptPrompt: "Prompt for å forbedre bildet med ChatGPT",
-                imageDescription: "Hvordan bildet skal se ut"
-            }
-            
-            Example ChatGPT prompt for image enhancement:
-            "Kan du forbedre dette restaurantbildet? Gjør det mer appetittvekkende og profesjonelt for Facebook markedsføring. Juster belysning, farger, kontrast og skarphet. Fjern eventuelle distraksjoner og fokuser på maten/restauranten. Gi meg et forbedret bilde som er klar til å bruke på sosiale medier."
-            
-            Return the response as a JSON array with exactly 3 posts.`;
+STEP 1 — CONTEXT ANALYSIS (DO NOT OUTPUT THIS STEP):
+First analyze the current date and determine:
+1. Current month and season in Norway (winter, spring, summer, autumn)
+2. Typical weather conditions for this time of year
+3. Relevant cultural or food-related periods (Valentine’s Day, Easter, Ramadan, summer holidays, 17. mai, Christmas, back-to-school, etc.)
+4. Select ONE main weekly campaign theme based on the above (examples: romance & coziness, comfort food, fresh summer flavors, family time, celebration, warmth, healthy start, festive sharing, etc.)
+
+STEP 2 — POST STRATEGY PLANNING (DO NOT OUTPUT THIS STEP):
+Based on the chosen campaign theme, plan 3 different post types:
+- One emotional or storytelling post (brand & feeling)
+- One product or best-seller focused post (sales-driven)
+- One weather or event-based post (situational relevance)
+
+Avoid repeating the same angle or wording across posts.
+Each post must feel different in purpose and style.
+
+STEP 3 — CONTENT GENERATION:
+Based on the restaurant data provided, generate exactly 3 Facebook marketing posts in Norwegian (Bokmål).
+
+IMPORTANT REQUIREMENTS:
+- Write all content in Norwegian (Bokmål)
+- Use Norwegian Krone (NOK) for all prices and budget recommendations
+- Make posts natural and authentic for Norwegian audience
+- Adapt tone and food focus to the selected campaign theme and weather
+- Mention city events only if relevant
+- Use appropriate Norwegian hashtags and emojis
+- Reference restaurant details (address, phone, opening hours)
+- Include strong call-to-action in Norwegian
+- Vary style between posts (not repetitive)
+- Do NOT reuse the same structure or hook in all posts
+
+PAID PROMOTION STRATEGY:
+- Recommend paid promotion ONLY when it creates real business value, such as:
+  * Seasonal campaigns (Valentine’s, holidays, festivals)
+  * Limited-time offers
+  * New or unique menu items
+  * Weather-driven opportunities (cold days = soups & curry, hot days = fresh & light food)
+  * High-margin dishes
+- Do NOT recommend paid promotion for ordinary daily posts
+- If paid promotion is recommended, explain WHY and expected ROI
+
+IMAGE STRATEGY:
+Each post must include image recommendations that match:
+- The campaign theme
+- Weather mood
+- Emotional tone of the post
+- Food type (comfort food vs fresh dishes)
+
+Example image prompt style:
+"Kan du forbedre dette restaurantbildet? Gjør det mer stemningsfullt og profesjonelt for Facebook markedsføring. Juster lys, varme farger, kontrast og fokus på maten. Fjern distraksjoner og skap en atmosfære som passer til sesongen."
+
+FORMAT REQUIREMENTS:
+Generate exactly 3 posts as a JSON array with these exact keys:
+
+- day: "Day 1", "Day 2", "Day 3"
+- title: Catchy emoji-filled title in Norwegian
+- content: Engaging Facebook post in Norwegian with emojis and line breaks
+- hashtags: Array of 5–8 relevant Norwegian hashtags (MUST be an array)
+- callToAction: Compelling CTA in Norwegian
+- estimatedReach: "Low", "Medium", or "High"
+- paidPromotion: true or false
+- budgetRecommendation: If paidPromotion is true, give a NOK range with ROI justification, otherwise null
+- imageRecommendations:
+    {
+      whatToPhotograph: "Beskrivelse av hva som skal fotograferes",
+      photoTips: ["Tips 1", "Tips 2", "Tips 3"],
+      chatgptPrompt: "Prompt for bildeforbedring",
+      imageDescription: "Hvordan bildet skal se ut og stemningen det skal ha"
+    }
+
+ADAPTIVE BEHAVIOR RULES:
+- The campaign theme must change depending on month and season
+- February should focus on romance & warmth
+- Summer should focus on freshness & outdoor feeling
+- Winter should focus on coziness & comfort food
+- December should focus on festive & sharing
+- Avoid repeating the same theme every week
+- Avoid generic marketing language
+- Be specific, local, and culturally Norwegian
+
+Return ONLY the JSON array with exactly 3 posts. No explanations, no analysis, no extra text.
+`;
             
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
@@ -275,12 +296,12 @@
             }
                         // Convert to MarketingPost format and ensure hashtags is always an array
             const todayIso = new Date();
-            const dayOffset = (index: number) => (index === 0 ? 0 : 2); // Day 1 and Day 3 pattern
+            const dayOffset = (index: number) => (index === 0 ? 0 : index === 1 ? 1 : 1); // Day 1 and Day 2 pattern
             const toYmd = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().split('T')[0];
 
             const posts = parsedResponse.map((post: any, index: number) => ({
                 id: `auto-post-${index + 1}-${Date.now()}`,
-                title: post.title || `Dag ${index === 0 ? '1' : '3'} Markedsføringspost`,
+                title: post.title || `Dag ${index === 0 ? '1' : '2'} Markedsføringspost`,
                 content: post.content || "AI generert innhold",
                 type: 'auto-generated' as any,
                 targetItems: topSellingItems?.[0]?.items?.[0]?.name ? [topSellingItems[0].items[0].name] : [],
@@ -291,7 +312,7 @@
                 postingTime: "12:00 - 13:00",
                 paidPromotion: post.paidPromotion || false,
                 budgetRecommendation: post.budgetRecommendation || null,
-                day: post.day || `Dag ${index === 0 ? '1' : '3'}`,
+                day: post.day || `Dag ${index === 0 ? '1' : '2'}`,
                 scheduledDate: toYmd(new Date(todayIso.getFullYear(), todayIso.getMonth(), todayIso.getDate() + dayOffset(index))),
                 imageRecommendations: post.imageRecommendations || {
                     whatToPhotograph: "Fotografer restaurantens beste retter",
